@@ -1,0 +1,31 @@
+/* Sets the base font and background color for the entire page */
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f8fafc;
+}
+
+/* Style for highlighting the top 3 ranked CEOs in the table */
+.top-3-highlight {
+    background-color: #f3e8ff; /* A light purple */
+}
+
+/* Style for highlighting CEOs with high ownership stakes */
+.high-ownership {
+    color: #8b5cf6; /* A strong purple color */
+    font-weight: 600;
+}
+
+/* Style for positive returns (e.g., green text) */
+.return-positive {
+    color: #16a34a; /* A vibrant green */
+}
+
+/* Style for negative returns (e.g., red text) */
+.return-negative {
+    color: #dc2626; /* A strong red */
+}
+
+/* Adds a smooth transition effect for the media popup sliding in and out */
+#mediaPopup {
+    transition: transform 0.3s ease-in-out;
+}
