@@ -1,34 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- DATA ---
-    // In a real application, this data would be fetched from a backend API.
-    const ceoData = [
-        { rank: 1, ceo: 'Jensen Huang', company: 'NVIDIA', tenure: '31 yrs', returns: '+89,432%', ownership: '3.51%', insiderScore: 95, media: [{type: 'youtube', count: 8}, {type: 'podcast', count: 4}], totalScore: 98.2, filter: ['all', 'top', 'ownership', 'insider'] },
-        { rank: 2, ceo: 'Mark Zuckerberg', company: 'Meta Platforms', tenure: '20.5 yrs', returns: '+1,247%', ownership: '13.60%', insiderScore: 88, media: [{type: 'youtube', count: 5}, {type: 'podcast', count: 3}], totalScore: 95.1, filter: ['all', 'top', 'ownership', 'insider'] },
-        { rank: 3, ceo: 'Satya Nadella', company: 'Microsoft', tenure: '10.8 yrs', returns: '+1,120%', ownership: '0.04%', insiderScore: 92, media: [{type: 'youtube', count: 12}], totalScore: 91.5, filter: ['all', 'top', 'insider'] },
-        { rank: 4, ceo: 'Tim Cook', company: 'Apple', tenure: '13.2 yrs', returns: '+980%', ownership: '0.02%', insiderScore: 78, media: [{type: 'podcast', count: 2}], totalScore: 85.7, filter: ['all', 'top'] },
-        { rank: 25, ceo: 'Jane Doe', company: 'Tech Corp', tenure: '2.1 yrs', returns: '-15%', ownership: '0.01%', insiderScore: 25, media: [], totalScore: 35.2, filter: ['all', 'flags'] }
-    ];
-    
-    // In a real application, these links would also come from your backend.
-    const mediaLinks = {
-        'Jensen Huang': [
-            { type: 'youtube', title: 'NVIDIA GTC 2024 Keynote', url: 'https://www.youtube.com/watch?v=Y9p_c_f_I2Y' }, // Example URL
-            { type: 'podcast', title: 'Acquired FM: The NVIDIA Story', url: 'https://www.acquired.fm/episodes/nvidia' }, // Example URL
-            { type: 'youtube', title: 'Interview with CNBC', url: 'https://www.youtube.com/watch?v=s_w8_i_i_iI' } // Example URL
-        ],
-        'Mark Zuckerberg': [
-            { type: 'podcast', title: 'Lex Fridman Podcast', url: 'https://www.youtube.com/watch?v=5zOHSysMmH0' }, // Example URL
-            { type: 'youtube', title: 'Meta Connect 2023', url: 'https://www.youtube.com/watch?v=dz_c0_L-f4k' } // Example URL
-        ],
-        'Satya Nadella': [
-            { type: 'youtube', title: 'Microsoft Ignite Opening', url: 'https://www.youtube.com/watch?v=9_g_m7p3b_Q' }, // Example URL
-        ],
-        'Tim Cook': [
-             { type: 'podcast', title: 'The Vergecast', url: 'https://www.theverge.com/2022/9/9/23344609/tim-cook-apple-iphone-14-interview-vergecast' } // Example URL
-        ],
-         'Jane Doe': []
-    };
+    // --- CONFIGURATION ---
+    // This is the URL of your backend.
+    const BACKEND_URL = 'https://ceorater-backend.onrender.com';
 
     // --- DOM ELEMENTS ---
     const tableBody = document.getElementById('ceoTableBody');
@@ -38,8 +12,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const popupOverlay = document.getElementById('popupOverlay');
     const popupCeoName = document.getElementById('popupCeoName');
     const popupMediaContent = document.getElementById('popupMediaContent');
+    
+    // --- APP STATE ---
+    // We'll store the data globally once it's fetched.
+    let ceoData = [];
+    let mediaLinks = {};
 
     // --- FUNCTIONS ---
+
+    /**
+     * Fetches all data from the backend server.
+     */
+    async function fetchData() {
+        // Show a loading message while fetching
+        tableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-gray-500">Loading live data...</td></tr>`;
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/ceo-data`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            ceoData = data.ceoData;
+            mediaLinks = data.mediaLinks;
+            // Render the table with the default 'all' filter after data is fetched
+            renderTable('all'); 
+        } catch (error) {
+            console.error("Could not fetch data from backend:", error);
+            tableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-red-500">Could not load data. Please check the backend connection and URL.</td></tr>`;
+        }
+    }
 
     /**
      * Generates the HTML for the insider score progress bar.
@@ -62,8 +63,18 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {string} [filter='all'] - The filter to apply (e.g., 'all', 'top', 'flags').
      */
     function renderTable(filter = 'all') {
+        if (ceoData.length === 0) {
+            // This case is handled by the initial loading message in fetchData
+            return;
+        }
+
         tableBody.innerHTML = ''; // Clear existing table rows
         const filteredData = ceoData.filter(ceo => ceo.filter.includes(filter));
+
+        if (filteredData.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-gray-500">No CEOs match the selected filter.</td></tr>`;
+            return;
+        }
 
         filteredData.forEach(ceo => {
             const row = document.createElement('tr');
@@ -170,6 +181,6 @@ document.addEventListener('DOMContentLoaded', () => {
     closePopupBtn.addEventListener('click', closePopup);
     popupOverlay.addEventListener('click', closePopup);
     
-    // --- INITIAL RENDER ---
-    renderTable(); // Render the table for the first time on page load
+    // --- INITIALIZATION ---
+    fetchData(); // Fetch data from the backend as soon as the page loads
 });
