@@ -10,31 +10,115 @@ const PORT = process.env.PORT || 3001;
 // --- Middleware ---
 app.use(cors());
 
-// --- Helper Function for YouTube API ---
+// --- Helper Function for Polygon.io API ---
 
 /**
- * Fetches recent media appearances for a CEO from the YouTube API.
- * @param {string} ceoName - The name of the CEO to search for.
- * @returns {Promise<object>} - A promise that resolves to an object with media counts.
+ * Fetches the current list of NASDAQ 100 CEOs from the Polygon.io API,
+ * including their 1-year stock return.
+ * @returns {Promise<Array<object>>} - A promise that resolves to an array of CEO objects.
  */
+async function getNasdaqCEOs() {
+    const polygonApiKey = process.env.POLYGON_API_KEY;
+    if (!polygonApiKey) {
+        console.warn('POLYGON_API_KEY is not set. Returning empty CEO list.');
+        return [];
+    }
+
+    try {
+        // Step 1: Get the list of tickers in the NASDAQ 100 index (I:NDX)
+        const snapshotUrl = `https://api.polygon.io/v3/snapshot?ticker.any_of=I:NDX&apiKey=${polygonApiKey}`;
+        const snapshotResponse = await fetch(snapshotUrl);
+        if (!snapshotResponse.ok) {
+            console.error('Failed to fetch NASDAQ 100 tickers from Polygon.');
+            return [];
+        }
+        const snapshotData = await snapshotResponse.json();
+        const tickers = snapshotData.results[0]?.tickers.map(t => t.ticker) || [];
+
+        if (tickers.length === 0) {
+            console.error('Could not parse tickers from Polygon snapshot.');
+            return [];
+        }
+        
+        console.log(`Found ${tickers.length} tickers in NASDAQ 100. Fetching details...`);
+
+        // --- Step 2: For each ticker, get company details AND performance ---
+        const ceoDetailsPromises = tickers.map(async (ticker) => {
+            // Get basic company info (CEO name, company name)
+            const detailsUrl = `https://api.polygon.io/v3/reference/tickers/${ticker}?apiKey=${polygonApiKey}`;
+            const detailsResponse = await fetch(detailsUrl);
+            if (!detailsResponse.ok) return null;
+            const detailsData = await detailsResponse.json();
+            const results = detailsData.results;
+
+            if (!results || !results.ceo) {
+                return null; // Skip if there's no CEO listed
+            }
+            
+            // --- Get 1-Year Stock Return ---
+            const today = new Date();
+            const oneYearAgo = new Date(new Date().setFullYear(today.getFullYear() - 1));
+            
+            // Format dates as YYYY-MM-DD
+            const to = today.toISOString().split('T')[0];
+            const from = oneYearAgo.toISOString().split('T')[0];
+            
+            const aggregatesUrl = `https://api.polygon.io/v2/aggs/ticker/${ticker}/range/1/day/${from}/${to}?adjusted=true&sort=desc&limit=252&apiKey=${polygonApiKey}`;
+            const aggregatesResponse = await fetch(aggregatesUrl);
+            let returns = 'N/A';
+
+            if (aggregatesResponse.ok) {
+                const aggregatesData = await aggregatesResponse.json();
+                if (aggregatesData.results && aggregatesData.results.length > 1) {
+                    const latestPrice = aggregatesData.results[0].c;
+                    const yearAgoPrice = aggregatesData.results[aggregatesData.results.length - 1].c;
+                    const returnPercent = ((latestPrice - yearAgoPrice) / yearAgoPrice) * 100;
+                    returns = `${returnPercent >= 0 ? '+' : ''}${returnPercent.toFixed(2)}%`;
+                }
+            }
+            // --- End of Return Calculation ---
+            
+            return {
+                ceo: results.ceo,
+                company: results.name,
+                ticker: ticker,
+                rank: 0, // We'll rank them later
+                returns: returns, // LIVE DATA!
+                // Tenure & Ownership require more advanced data sources, a great next step.
+                tenure: 'N/A',
+                ownership: 'N/A',
+                insiderScore: 50, // Placeholder
+                totalScore: 0, // Placeholder
+                filter: ['all']
+            };
+        });
+
+        const ceoList = (await Promise.all(ceoDetailsPromises)).filter(ceo => ceo !== null);
+        
+        // Assign ranks based on the final list order
+        return ceoList.map((ceo, index) => ({ ...ceo, rank: index + 1 }));
+
+    } catch (error) {
+        console.error('Error fetching data from Polygon.io:', error);
+        return [];
+    }
+}
+
+
+// --- Helper Function for YouTube API ---
 async function getYouTubeAppearances(ceoName) {
     const youtubeApiKey = process.env.YOUTUBE_API_KEY;
-
-    // If the API key isn't set, return no media appearances.
     if (!youtubeApiKey) {
         console.warn('YOUTUBE_API_KEY is not set. Skipping YouTube API call.');
         return { youtube: 0, podcast: 0, media: [] };
     }
 
-    // We'll search for recent interviews and talks.
     const query = encodeURIComponent(`${ceoName} interview`);
-    // 'date' orders by upload date, 'video' ensures we only get videos.
     const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&maxResults=5&order=date&type=video&key=${youtubeApiKey}`;
 
     try {
         const response = await fetch(url);
         if (!response.ok) {
-            // Log the error from YouTube but don't crash the server.
             const errorBody = await response.json();
             console.error(`YouTube API Error for ${ceoName}:`, errorBody.error.message);
             return { youtube: 0, podcast: 0, media: [] };
@@ -48,7 +132,7 @@ async function getYouTubeAppearances(ceoName) {
 
         return {
             youtube: appearances.length,
-            podcast: 0, // We can add podcast search later
+            podcast: 0,
             media: appearances
         };
 
@@ -64,33 +148,29 @@ app.get('/api/ceo-data', async (req, res) => {
     console.log("Received request for live CEO data.");
 
     try {
-        // This is our base data. In the future, this would also come from APIs like Polygon.
-        let ceoBaseData = [
-            { rank: 1, ceo: 'Jensen Huang', company: 'NVIDIA', tenure: '31 yrs', returns: '+89,432%', ownership: '3.51%', insiderScore: 95, totalScore: 98.2, filter: ['all', 'top', 'ownership', 'insider'] },
-            { rank: 2, ceo: 'Mark Zuckerberg', company: 'Meta Platforms', tenure: '20.5 yrs', returns: '+1,247%', ownership: '13.60%', insiderScore: 88, totalScore: 95.1, filter: ['all', 'top', 'ownership', 'insider'] },
-            { rank: 3, ceo: 'Satya Nadella', company: 'Microsoft', tenure: '10.8 yrs', returns: '+1,120%', ownership: '0.04%', insiderScore: 92, totalScore: 91.5, filter: ['all', 'top', 'insider'] },
-            { rank: 4, ceo: 'Tim Cook', company: 'Apple', tenure: '13.2 yrs', returns: '+980%', ownership: '0.02%', insiderScore: 78, totalScore: 85.7, filter: ['all', 'top'] },
-            { rank: 25, ceo: 'Jane Doe', company: 'Tech Corp', tenure: '2.1 yrs', returns: '-15%', ownership: '0.01%', insiderScore: 25, totalScore: 35.2, filter: ['all', 'flags'] }
-        ];
+        // Step 1: Get the live list of CEOs and their 1-year returns from Polygon.io
+        let ceoBaseData = await getNasdaqCEOs();
+        
+        if (ceoBaseData.length === 0) {
+            return res.status(500).json({ message: "Could not retrieve base CEO data from Polygon.io." });
+        }
 
-        // Create an object to hold the live media links.
         let liveMediaLinks = {};
 
-        // Use Promise.all to fetch data for all CEOs concurrently for speed.
+        // Step 2: For each live CEO, get their YouTube appearances.
         const liveDataPromises = ceoBaseData.map(async (ceo) => {
             const appearances = await getYouTubeAppearances(ceo.ceo);
             ceo.media = [];
             if (appearances.youtube > 0) {
                 ceo.media.push({ type: 'youtube', count: appearances.youtube });
             }
-            // Add live media links to our links object
             liveMediaLinks[ceo.ceo] = appearances.media;
             return ceo;
         });
         
         const finalCeoData = await Promise.all(liveDataPromises);
 
-        // Send the combined data to the frontend.
+        // Step 3: Send the combined live data to the frontend.
         res.json({
             ceoData: finalCeoData,
             mediaLinks: liveMediaLinks
