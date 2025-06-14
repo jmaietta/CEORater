@@ -1,55 +1,66 @@
 // This file sets up a backend server to securely fetch and process live data.
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
 const fetch = require('node-fetch');
+const { parse } = require('csv-parse/sync');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 // --- Middleware ---
-app.use(cors());
+// Enables Cross-Origin Resource Sharing so your frontend can call this backend.
+app.use(require('cors')());
 
-// --- MASTER DATA LIST ---
-// This is your new "source of truth".
-// Replace this sample data with the data from your Excel file.
-// IMPORTANT: The date format MUST be 'YYYY-MM-DD'.
-const ceoMasterList = [
-    {
-        ceo: 'Satya Nadella',
-        company: 'Microsoft Corporation',
-        ticker: 'MSFT',
-        startDate: '2014-02-04',
-        startPrice: 36.35
-    },
-    {
-        ceo: 'Jensen Huang',
-        company: 'NVIDIA Corporation',
-        ticker: 'NVDA',
-        startDate: '1993-04-05', // Note: Public trading date would be later
-        startPrice: 0.69 // Price around IPO, for example
-    },
-    {
-        ceo: 'Tim Cook',
-        company: 'Apple Inc.',
-        ticker: 'AAPL',
-        startDate: '2011-08-24',
-        startPrice: 13.44 // Adjusted for splits
-    },
-    {
-        ceo: 'Andy Jassy',
-        company: 'Amazon.com, Inc.',
-        ticker: 'AMZN',
-        startDate: '2021-07-05',
-        startPrice: 174.58 // Adjusted for splits
+// --- Google Sheet Data Source ---
+// The public URL to your Google Sheet, exported as a CSV file.
+const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA/export?format=csv';
+let ceoMasterList = []; // This will hold the data from your Google Sheet.
+
+/**
+ * Fetches and parses the master data from the public Google Sheet when the server starts.
+ */
+async function loadMasterData() {
+    try {
+        console.log("Fetching master data from Google Sheet...");
+        const response = await fetch(GOOGLE_SHEET_URL);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch Google Sheet: ${response.statusText}`);
+        }
+        const csvData = await response.text();
+        
+        // Parse the CSV data into a structured array of objects.
+        const records = parse(csvData, {
+            columns: header => header.map(h => h.trim().replace(/\s+/g, '_')), // Sanitize headers (e.g., "CEO Start Date" -> "CEO_Start_Date")
+            skip_empty_lines: true,
+            trim: true
+        });
+
+        // Convert the parsed records into the format our application expects.
+        ceoMasterList = records.map(rec => ({
+            ceo: rec.CEO,
+            company: rec.Company,
+            ticker: rec.Ticker,
+            startDate: rec.CEO_Start_Date,
+            startPrice: parseFloat(rec.Stock_Price_on_Start_Date)
+        }));
+
+        console.log(`Successfully loaded ${ceoMasterList.length} records from Google Sheet.`);
+    } catch (error) {
+        console.error("CRITICAL: Could not load master data from Google Sheet.", error);
+        // If the sheet can't be loaded, the app won't have data.
+        ceoMasterList = []; 
     }
-];
+}
 
-// --- Helper Function for YouTube API ---
+
+/**
+ * Fetches recent media appearances for a CEO from the YouTube API.
+ * @param {string} ceoName - The name of the CEO to search for.
+ * @returns {Promise<object>} An object containing the media count and links.
+ */
 async function getYouTubeAppearances(ceoName) {
     const youtubeApiKey = process.env.YOUTUBE_API_KEY;
     if (!youtubeApiKey) {
-        console.warn('YOUTUBE_API_KEY is not set. Skipping YouTube API call.');
         return { mediaCount: 0, mediaLinks: [] };
     }
     const query = encodeURIComponent(`${ceoName} interview`);
@@ -70,20 +81,25 @@ async function getYouTubeAppearances(ceoName) {
 }
 
 // --- Main API Endpoint ---
+// This is the endpoint your frontend will call to get all the data.
 app.get('/api/ceo-data', async (req, res) => {
     console.log("Received request for enriched CEO data.");
     const polygonApiKey = process.env.POLYGON_API_KEY;
-    // const nasdaqApiKey = process.env.NASDAQ_DATA_LINK_API_KEY; // For future use
-
+    
     if (!polygonApiKey) {
         return res.status(500).json({ message: "Polygon API key is not configured on the server." });
+    }
+    if (ceoMasterList.length === 0) {
+        return res.status(503).json({ message: "Server is initializing or master data could not be loaded." });
     }
 
     try {
         let liveMediaLinks = {};
 
+        // Loop through each CEO from the Google Sheet and enrich their data.
         const enrichedCeoPromises = ceoMasterList.map(async (ceoInfo, index) => {
-            // --- Enrich with Live Stock Price from Polygon ---
+            
+            // --- Enrich with Live Stock Price & Calculate Total Return ---
             const snapshotUrl = `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/${ceoInfo.ticker}?apiKey=${polygonApiKey}`;
             const snapshotResponse = await fetch(snapshotUrl);
             let returns = 'N/A';
@@ -92,11 +108,12 @@ app.get('/api/ceo-data', async (req, res) => {
                 const currentPrice = snapshotData.ticker?.lastTrade?.p;
                 if (currentPrice && ceoInfo.startPrice > 0) {
                     const returnPercent = ((currentPrice - ceoInfo.startPrice) / ceoInfo.startPrice) * 100;
-                    returns = `${returnPercent >= 0 ? '+' : ''}${returnPercent.toFixed(2)}%`;
+                    // Format as a percentage with commas for thousands.
+                    returns = `${returnPercent >= 0 ? '+' : ''}${returnPercent.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}%`;
                 }
             }
 
-            // --- Calculate Tenure ---
+            // --- Calculate Tenure from Start Date ---
             const startDate = new Date(ceoInfo.startDate);
             const tenureMs = new Date() - startDate;
             const tenureYears = (tenureMs / (1000 * 60 * 60 * 24 * 365.25)).toFixed(1);
@@ -105,13 +122,13 @@ app.get('/api/ceo-data', async (req, res) => {
             const mediaData = await getYouTubeAppearances(ceoInfo.ceo);
             liveMediaLinks[ceoInfo.ceo] = mediaData.mediaLinks;
             
-            // --- Enrich with Ownership Data (Future) ---
-            // Here you would call the Nasdaq Data Link API with `nasdaqApiKey`
-            const ownership = 'N/A'; // Placeholder
+            // --- Placeholder for Ownership Data (Future) ---
+            const ownership = 'N/A';
 
+            // Return the final, combined object for this CEO.
             return {
                 ...ceoInfo,
-                rank: index + 1, // Initial rank, can be re-sorted on frontend
+                rank: index + 1,
                 returns: returns,
                 tenure: `${tenureYears} yrs`,
                 ownership: ownership,
@@ -124,6 +141,7 @@ app.get('/api/ceo-data', async (req, res) => {
 
         const finalCeoData = await Promise.all(enrichedCeoPromises);
 
+        // Send all the enriched data back to the frontend.
         res.json({
             ceoData: finalCeoData,
             mediaLinks: liveMediaLinks
@@ -136,6 +154,8 @@ app.get('/api/ceo-data', async (req, res) => {
 });
 
 // --- Start the Server ---
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
+    // Load the master data from Google Sheets as soon as the server starts.
+    await loadMasterData();
     console.log(`Server is running on port ${PORT}`);
 });
