@@ -1,6 +1,7 @@
 // This file sets up a backend server to securely fetch and process live data.
 require('dotenv').config();
 const express = require('express');
+const cors = require('cors'); // Import cors at the top
 const fetch = require('node-fetch');
 const { parse } = require('csv-parse/sync');
 
@@ -9,7 +10,7 @@ const PORT = process.env.PORT || 3001;
 
 // --- Middleware ---
 // Enables Cross-Origin Resource Sharing so your frontend can call this backend.
-app.use(require('cors')());
+app.use(cors());
 
 // --- Google Sheet Data Source ---
 // The public URL to your Google Sheet, exported as a CSV file.
@@ -30,24 +31,35 @@ async function loadMasterData() {
         
         // Parse the CSV data into a structured array of objects.
         const records = parse(csvData, {
-            columns: header => header.map(h => h.trim().replace(/\s+/g, '_')), // Sanitize headers (e.g., "CEO Start Date" -> "CEO_Start_Date")
+            columns: header => header.map(h => h.trim().replace(/\s+/g, '_')), // Sanitize headers
             skip_empty_lines: true,
             trim: true
         });
+        
+        console.log(`Found ${records.length} records in CSV. Processing...`);
 
-        // Convert the parsed records into the format our application expects.
-        ceoMasterList = records.map(rec => ({
-            ceo: rec.CEO,
-            company: rec.Company,
-            ticker: rec.Ticker,
-            startDate: rec.CEO_Start_Date,
-            startPrice: parseFloat(rec.Stock_Price_on_Start_Date)
-        }));
+        // Convert the parsed records into the format our application expects, with added validation.
+        const tempList = records.map((rec, index) => {
+            const ceo = rec.CEO;
+            const company = rec.Company;
+            const ticker = rec.Ticker;
+            const startDate = rec.CEO_Start_Date;
+            const startPrice = parseFloat(rec.Stock_Price_on_Start_Date);
+            
+            // --- Data Validation ---
+            if (!ceo || !ticker || !startDate || isNaN(startPrice)) {
+                console.warn(`[Row ${index + 2}] Skipping invalid record:`, rec); // +2 to account for header and 0-index
+                return null; // This record will be filtered out.
+            }
 
-        console.log(`Successfully loaded ${ceoMasterList.length} records from Google Sheet.`);
+            return { ceo, company, ticker, startDate, startPrice };
+        }).filter(rec => rec !== null); // Filter out any null (invalid) records.
+
+        ceoMasterList = tempList;
+
+        console.log(`Successfully loaded and validated ${ceoMasterList.length} records.`);
     } catch (error) {
         console.error("CRITICAL: Could not load master data from Google Sheet.", error);
-        // If the sheet can't be loaded, the app won't have data.
         ceoMasterList = []; 
     }
 }
@@ -90,7 +102,7 @@ app.get('/api/ceo-data', async (req, res) => {
         return res.status(500).json({ message: "Polygon API key is not configured on the server." });
     }
     if (ceoMasterList.length === 0) {
-        return res.status(503).json({ message: "Server is initializing or master data could not be loaded." });
+        return res.status(503).json({ message: "Server is initializing or master data could not be loaded. Check logs." });
     }
 
     try {
@@ -115,9 +127,13 @@ app.get('/api/ceo-data', async (req, res) => {
 
             // --- Calculate Tenure from Start Date ---
             const startDate = new Date(ceoInfo.startDate);
-            const tenureMs = new Date() - startDate;
-            const tenureYears = (tenureMs / (1000 * 60 * 60 * 24 * 365.25)).toFixed(1);
-
+            let tenureYears = 'N/A';
+            // Check if the date is valid before calculating
+            if (!isNaN(startDate)) {
+                const tenureMs = new Date() - startDate;
+                tenureYears = (tenureMs / (1000 * 60 * 60 * 24 * 365.25)).toFixed(1);
+            }
+            
             // --- Enrich with YouTube Data ---
             const mediaData = await getYouTubeAppearances(ceoInfo.ceo);
             liveMediaLinks[ceoInfo.ceo] = mediaData.mediaLinks;
