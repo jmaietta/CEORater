@@ -6,6 +6,8 @@
     <title>CEORater</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Orbitron -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
     <style>
         /* Custom styles for better aesthetics and responsiveness */
         body {
@@ -37,6 +39,8 @@
             letter-spacing: -0.05em; /* Tighter letter spacing */
             line-height: 1;
             margin-bottom: 0.5rem;
+            font-family: 'Orbitron', sans-serif; /* Apply Orbitron font */
+            font-style: italic; /* Apply italics */
         }
         .header-section p {
             color: #64748b; /* Grey for subtitle */
@@ -89,8 +93,48 @@
             text-align: left;
             border-bottom: none; /* No border for headers in this design */
             cursor: pointer;
-            white-space: nowrap;
+            position: relative; /* For positioning sort icons */
         }
+        /* Specific column width adjustments */
+        th[data-column="CEO Name"] { min-width: 150px; }
+        th[data-column="Total Stock Return (TSR) During CEO's Tenure"] { min-width: 170px; } /* Wider TSR column */
+        th[data-column="Company Name"] { min-width: 150px; }
+        th[data-column="Ticker"] { min-width: 80px; }
+        th[data-column="Industry"] { min-width: 180px; }
+        th[data-column="Sector"] { min-width: 150px; }
+        /* Removed specific width for CEO Compensation as it's hidden */
+        th[data-column="Equity Transactions"] { min-width: 120px; }
+
+
+        /* Sort indicator styles */
+        .sort-indicator {
+            position: absolute;
+            right: 0.75rem; /* Position to the right of padding */
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            line-height: 0.8; /* Adjust line height for icon spacing */
+        }
+        .sort-indicator span {
+            font-size: 0.7em; /* Smaller arrow size */
+            opacity: 0.2; /* Subtle when not sorted */
+            transition: opacity 0.2s ease-in-out, color 0.2s ease-in-out;
+            color: #64748b; /* Default arrow color */
+        }
+        th:hover .sort-indicator span {
+            opacity: 0.5; /* More visible on hover */
+        }
+        th.asc .asc-arrow,
+        th.desc .desc-arrow {
+            opacity: 1; /* Fully visible for active sort arrow */
+            color: #4f46e5; /* Active arrow color */
+        }
+        th.asc .desc-arrow,
+        th.desc .asc-arrow {
+            opacity: 0.2; /* Keep inactive arrow subtle */
+        }
+
         tbody tr {
             background-color: #ffffff;
             border-radius: 0.75rem; /* Rounded corners for each row */
@@ -136,12 +180,29 @@
             display: inline-block;
             background-color: #fcd34d; /* Yellowish background */
             color: #78350f; /* Dark brown text */
-            padding: 0.25rem 0.5rem;
+            padding: 0.15rem 0.4rem; /* Slightly smaller padding for badge */
             border-radius: 0.5rem;
-            font-size: 0.75rem;
+            font-size: 0.7rem; /* Smaller font for badge */
             font-weight: 600;
-            margin-left: 0.5rem;
+            margin-top: 0.25rem; /* Space below CEO name */
             white-space: nowrap;
+        }
+        .ceo-info-cell {
+            display: flex;
+            flex-direction: column; /* Stack CEO name and badge/company */
+            align-items: flex-start; /* Align text to left */
+        }
+        .ceo-name-line {
+            font-semibold;
+            text-gray-900;
+            display: flex; /* Allow badge to sit next to or below CEO name */
+            align-items: center; /* Vertically align badge with name */
+            gap: 0.5rem; /* Space between name and badge */
+        }
+        .company-info-line {
+            text-sm;
+            text-gray-500;
+            margin-top: 0.2rem; /* Small space between CEO and company info */
         }
         .link-text {
             color: #4f46e5; /* Indigo for links */
@@ -169,6 +230,66 @@
             color: #64748b;
         }
 
+        /* Scroll shadow styles */
+        .overflow-x-auto {
+            position: relative; /* Needed for absolute positioning of pseudo-elements */
+            overflow-x: auto; /* Enable horizontal scrolling */
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+            scrollbar-width: thin; /* Firefox */
+            scrollbar-color: #cbd5e0 transparent; /* Firefox */
+        }
+        /* Webkit scrollbar styles */
+        .overflow-x-auto::-webkit-scrollbar {
+            height: 8px; /* height of horizontal scrollbar */
+        }
+        .overflow-x-auto::-webkit-scrollbar-thumb {
+            background-color: #cbd5e0; /* Color of the scroll thumb */
+            border-radius: 4px; /* Roundness of the scroll thumb */
+        }
+        .overflow-x-auto::-webkit-scrollbar-track {
+            background-color: transparent; /* Color of the scrollbar track */
+        }
+
+
+        .overflow-x-auto::before,
+        .overflow-x-auto::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 30px; /* Width of the shadow fade */
+            pointer-events: none; /* Allows clicks/interactions through the shadow */
+            transition: opacity 0.3s ease-in-out; /* Smooth transition for shadows */
+            z-index: 10; /* Ensure shadows are above table content but below header */
+        }
+
+        .overflow-x-auto::before {
+            left: 0;
+            background: linear-gradient(to right, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0) 100%);
+            opacity: 0; /* Initially hidden */
+        }
+
+        .overflow-x-auto::after {
+            right: 0;
+            background: linear-gradient(to left, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0) 100%);
+            opacity: 1; /* Initially visible */
+        }
+
+        /* Classes controlled by JavaScript to show/hide shadows */
+        .overflow-x-auto.no-left-shadow::before {
+            opacity: 0;
+        }
+        .overflow-x-auto.has-left-shadow::before {
+            opacity: 1;
+        }
+        .overflow-x-auto.no-right-shadow::after {
+            opacity: 0;
+        }
+        .overflow-x-auto.has-right-shadow::after {
+            opacity: 1;
+        }
+
+
         /* Responsive table behavior */
         @media (max-width: 768px) {
             .container {
@@ -192,7 +313,7 @@
                 display: block;
             }
             thead tr {
-                position: absolute;
+                position: absolute; /* Hide original headers for mobile */
                 top: -9999px;
                 left: -9999px;
             }
@@ -216,20 +337,22 @@
                 text-align: left;
                 font-weight: bold;
             }
-            /* Label the data - reverted to original labels */
+            /* Label the data - Adjusted for hidden columns */
             td:nth-of-type(1):before { content: "CEO Name"; }
-            td:nth-of-type(2):before { content: "Founder"; }
-            td:nth-of-type(3):before { content: "Total Stock Return"; }
-            td:nth-of-type(4):before { content: "Company Name"; }
-            td:nth-of-type(5):before { content: "Ticker"; }
-            td:nth-of-type(6):before { content: "Industry"; }
-            td:nth-of-type(7):before { content: "Sector"; }
-            td:nth-of-type(8):before { content: "CEO Compensation"; }
-            td:nth-of-type(9):before { content: "Equity Transactions"; }
-            td:nth-of-type(10):before { content: "CEO Start Date"; }
-            td:nth-of-type(11):before { content: "Start Date Stock Price"; }
-            td:nth-of-type(12):before { content: "Stock Price"; }
+            td:nth-of-type(2):before { content: "Total Stock Return During CEO's Tenure"; }
+            td:nth-of-type(3):before { content: "Company Name"; }
+            td:nth-of-type(4):before { content: "Ticker"; }
+            td:nth-of-type(5):before { content: "Industry"; }
+            td:nth-of-type(6):before { content: "Sector"; }
+            td:nth-of-type(7):before { content: "Equity Transactions"; } /* Shifted from 8th to 7th */
+            /* CEO Start Date, Start Date Stock Price, Stock Price are hidden */
             td:first-child, td:last-child { border-radius: 0; } /* Remove rounded corners on individual cells for mobile */
+
+            /* Hide scroll shadows on mobile as native scrollbars are more prominent */
+            .overflow-x-auto::before,
+            .overflow-x-auto::after {
+                display: none;
+            }
         }
     </style>
 </head>
@@ -237,7 +360,7 @@
     <div class="container">
         <div class="header-section mb-8">
             <h1 class="text-indigo-800 font-extrabold text-6xl tracking-tighter">CEORater</h1>
-            <p class="text-gray-600 text-lg">NASDAQ 100 Leadership Performance & Insider Analytics</p>
+            <p class="text-gray-600 text-lg font-bold">NASDAQ 100 Leadership Performance & Insider Analytics</p>
         </div>
 
         <div class="nav-tabs">
@@ -248,22 +371,71 @@
 
         <input type="text" id="searchInput" placeholder="Search by CEO Name, Company, or Industry..." class="search-input">
 
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto" id="tableContainer">
             <table id="ceoTable" class="min-w-full">
                 <thead>
                     <tr>
-                        <th data-column="CEO Name">CEO Name</th>
-                        <th data-column="Founder (Y/N)">Founder</th>
-                        <th data-column="Total Stock Return (TSR) During CEO's Tenure">Total Stock Return</th>
-                        <th data-column="Company Name">Company Name</th>
-                        <th data-column="Ticker">Ticker</th>
-                        <th data-column="Industry">Industry</th>
-                        <th data-column="Sector">Sector</th>
-                        <th data-column="CEO Compensation ($ millions)">CEO Compensation</th>
-                        <th data-column="Equity Transactions">Equity Transactions</th>
-                        <th data-column="CEO Start Date">CEO Start Date</th>
-                        <th data-column="Start Date Stock Price">Start Date Stock Price</th>
-                        <th data-column="Stock Price">Stock Price</th>
+                        <th data-column="CEO Name">
+                            CEO Name
+                            <span class="sort-indicator">
+                                <span class="asc-arrow">&#9650;</span>
+                                <span class="desc-arrow">&#9660;</span>
+                            </span>
+                        </th>
+                        <th data-column="Total Stock Return (TSR) During CEO's Tenure">
+                            Total Stock Return During CEO's Tenure
+                            <span class="sort-indicator">
+                                <span class="asc-arrow">&#9650;</span>
+                                <span class="desc-arrow">&#9660;</span>
+                            </span>
+                        </th>
+                        <th data-column="Company Name">
+                            Company Name
+                            <span class="sort-indicator">
+                                <span class="asc-arrow">&#9650;</span>
+                                <span class="desc-arrow">&#9660;</span>
+                            </span>
+                        </th>
+                        <th data-column="Ticker">
+                            Ticker
+                            <span class="sort-indicator">
+                                <span class="asc-arrow">&#9650;</span>
+                                <span class="desc-arrow">&#9660;</span>
+                            </span>
+                        </th>
+                        <th data-column="Industry">
+                            Industry
+                            <span class="sort-indicator">
+                                <span class="asc-arrow">&#9650;</span>
+                                <span class="desc-arrow">&#9660;</span>
+                            </span>
+                        </th>
+                        <th data-column="Sector">
+                            Sector
+                            <span class="sort-indicator">
+                                <span class="asc-arrow">&#9650;</span>
+                                <span class="desc-arrow">&#9660;</span>
+                            </span>
+                        </th>
+                        <!-- Hidden CEO Compensation column -->
+                        <!-- <th data-column="CEO Compensation ($ millions)">
+                            CEO Compensation
+                            <span class="sort-indicator">
+                                <span class="asc-arrow">&#9650;</span>
+                                <span class="desc-arrow">&#9660;</span>
+                            </span>
+                        </th> -->
+                        <th data-column="Equity Transactions">
+                            Equity Transactions
+                            <span class="sort-indicator">
+                                <span class="asc-arrow">&#9650;</span>
+                                <span class="desc-arrow">&#9660;</span>
+                            </span>
+                        </th>
+                        <!-- These columns are now hidden from the display -->
+                        <!-- <th data-column="CEO Start Date">CEO Start Date</th> -->
+                        <!-- <th data-column="Start Date Stock Price">Start Date Stock Price</th> -->
+                        <!-- <th data-column="Stock Price">Stock Price</th> -->
                     </tr>
                 </thead>
                 <tbody>
@@ -290,8 +462,9 @@
 
         const ceoTableBody = document.querySelector('#ceoTable tbody');
         const searchInput = document.getElementById('searchInput');
-        const tableHeaders = document.querySelectorAll('#ceoTable th');
+        const tableHeaders = Array.from(document.querySelectorAll('#ceoTable th'));
         const navTabs = document.querySelectorAll('.nav-tab');
+        const tableContainer = document.getElementById('tableContainer');
 
         let sortColumn = null;
         let sortDirection = 'asc'; // 'asc' or 'desc'
@@ -301,7 +474,7 @@
          * @param {Array<Object>} dataToDisplay - The array of objects to display in the table.
          */
         function renderTable(dataToDisplay) {
-            ceoTableBody.innerHTML = ''; // Clear existing rows
+            ceoTableBody.innerHTML = '';
 
             if (dataToDisplay.length === 0) {
                 const noResultsRow = ceoTableBody.insertRow();
@@ -314,17 +487,25 @@
 
             dataToDisplay.forEach(rowData => {
                 const row = ceoTableBody.insertRow();
-                // Iterate over the header columns to ensure correct order
-                tableHeaders.forEach(header => {
-                    const columnKey = header.dataset.column; // Use data-column to get original header name
-
+                tableHeaders.forEach(headerElement => {
+                    const columnKey = headerElement.dataset.column;
                     const cell = row.insertCell();
-                    let cellContent = rowData[columnKey] || ''; // Handle missing data gracefully
+                    let cellContent = rowData[columnKey] || '';
 
-                    // Special formatting based on column
-                    if (columnKey === "Founder (Y/N)") {
-                        cellContent = cellContent === 'Y' ? 'Yes' : 'No';
-                        cell.textContent = cellContent;
+                    if (columnKey === "CEO Name") {
+                        const ceoNameDiv = document.createElement('div');
+                        ceoNameDiv.classList.add('font-semibold', 'text-gray-900');
+                        ceoNameDiv.textContent = cellContent;
+                        cell.appendChild(ceoNameDiv);
+
+                        if (rowData["Founder (Y/N)"] === 'Y') {
+                            const founderBadge = document.createElement('span');
+                            founderBadge.classList.add('founder-badge');
+                            founderBadge.textContent = 'Founder';
+                            const badgeContainer = document.createElement('div');
+                            badgeContainer.appendChild(founderBadge);
+                            cell.appendChild(badgeContainer);
+                        }
                     } else if (columnKey === "Total Stock Return (TSR) During CEO's Tenure") {
                         const rawReturn = parseFloat(String(cellContent).replace('%', '').trim());
                         if (!isNaN(rawReturn)) {
@@ -337,11 +518,34 @@
                         } else {
                             cell.textContent = cellContent;
                         }
-                    } else if (columnKey === "CEO Compensation ($ millions)" ||
-                               columnKey === "Start Date Stock Price" ||
-                               columnKey === "Stock Price") {
-                        // Clean and parse the number, then format as currency
-                        const numericValue = parseFloat(String(cellContent).replace(/[\$, ]/g, '').trim());
+                    } else if (columnKey === "CEO Compensation ($ millions)") {
+                        // This column is hidden from the display, so this block will not execute
+                        // during rendering, but the data is still fetched.
+                        const compensationValue = String(cellContent).replace(/[\$, ]/g, '').trim();
+                        const numericCompensation = parseFloat(compensationValue);
+                        if (!isNaN(numericCompensation) && compensationValue !== "") {
+                            cell.textContent = new Intl.NumberFormat('en-US', {
+                                style: 'currency',
+                                currency: 'USD',
+                                minimumFractionDigits: 1,
+                                maximumFractionDigits: 1
+                            }).format(numericCompensation) + ' MM';
+                        } else {
+                            cell.textContent = 'N/A';
+                        }
+                    } else if (columnKey === "Equity Transactions") {
+                        if (cellContent && String(cellContent).startsWith('http')) {
+                            const link = document.createElement('a');
+                            link.href = cellContent;
+                            link.textContent = 'View Filings';
+                            link.target = '_blank';
+                            link.classList.add('link-text');
+                            cell.appendChild(link);
+                        } else {
+                            cell.textContent = cellContent || 'N/A';
+                        }
+                    } else if (columnKey === "Stock Price" || columnKey === "Start Date Stock Price") {
+                         const numericValue = parseFloat(String(cellContent).replace(/[\$, ]/g, '').trim());
                         if (!isNaN(numericValue)) {
                             cell.textContent = new Intl.NumberFormat('en-US', {
                                 style: 'currency',
@@ -350,24 +554,15 @@
                                 maximumFractionDigits: 2
                             }).format(numericValue);
                         } else {
-                            cell.textContent = cellContent; // Display as is if not a valid number
+                            cell.textContent = cellContent;
                         }
-                    } else if (columnKey === "Equity Transactions") {
-                        if (cellContent && String(cellContent).startsWith('http')) {
-                            const link = document.createElement('a');
-                            link.href = cellContent;
-                            link.textContent = 'View Transactions';
-                            link.target = '_blank'; // Open in new tab
-                            link.classList.add('link-text');
-                            cell.appendChild(link);
-                        } else {
-                            cell.textContent = cellContent || 'N/A'; // Display N/A if no link
-                        }
-                    } else {
+                    }
+                    else {
                         cell.textContent = cellContent;
                     }
                 });
             });
+            updateScrollShadows();
         }
 
         /**
@@ -376,7 +571,6 @@
         function filterData() {
             const searchTerm = searchInput.value.toLowerCase();
             currentData = originalData.filter(row => {
-                // Search across all displayed columns for simplicity
                 return Object.values(row).some(value =>
                     String(value).toLowerCase().includes(searchTerm)
                 );
@@ -395,7 +589,6 @@
 
                     const cleanString = (val) => String(val || '').trim();
 
-                    // Type-specific sorting logic
                     if (sortColumn === "Total Stock Return (TSR) During CEO's Tenure") {
                         valA = parseFloat(cleanString(valA).replace('%', ''));
                         valB = parseFloat(cleanString(valB).replace('%', ''));
@@ -405,32 +598,27 @@
                         valA = parseFloat(cleanString(valA).replace(/[\$, ]/g, ''));
                         valB = parseFloat(cleanString(valB).replace(/[\$, ]/g, ''));
                     } else if (sortColumn === "CEO Start Date") {
-                        // Parse dates for correct sorting
                         valA = new Date(cleanString(valA));
                         valB = new Date(cleanString(valB));
                     } else if (sortColumn === "Founder (Y/N)") {
                         valA = (cleanString(valA) === 'Y');
                         valB = (cleanString(valB) === 'Y');
                     } else {
-                        // Default to string comparison for other columns
                         valA = cleanString(valA).toLowerCase();
                         valB = cleanString(valB).toLowerCase();
                     }
 
                     if (typeof valA === 'number' && typeof valB === 'number') {
-                        // Handle NaN values during comparison (place them at the end)
                         if (isNaN(valA) && isNaN(valB)) return 0;
                         if (isNaN(valA)) return 1;
                         if (isNaN(valB)) return -1;
                         return sortDirection === 'asc' ? valA - valB : valB - valA;
                     } else if (valA instanceof Date && valB instanceof Date) {
-                        // Handle invalid dates (place them at the end)
                         if (isNaN(valA.getTime()) && isNaN(valB.getTime())) return 0;
                         if (isNaN(valA.getTime())) return 1;
                         if (isNaN(valB.getTime())) return -1;
                         return sortDirection === 'asc' ? valA.getTime() - valB.getTime() : valB.getTime() - valA.getTime();
                     } else {
-                        // Fallback for string comparison or mixed types
                         if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
                         if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
                         return 0;
@@ -442,49 +630,76 @@
 
         /**
          * Handles tab clicks for filtering and sorting data.
-         * Currently implements "All CEOs" and a basic sort for "Top Performers" and "Founders".
          * @param {string} tabName - The name of the clicked tab.
          */
         function handleTabClick(tabName) {
-            // Remove active class from all tabs
             navTabs.forEach(tab => tab.classList.remove('active'));
 
-            // Add active class to the clicked tab
-            // Note: Updated to handle direct text content for tab selection
             let targetTab = Array.from(navTabs).find(tab => tab.textContent === tabName);
             if (targetTab) {
                 targetTab.classList.add('active');
             }
 
-
-            let filtered = [...originalData]; // Start with all original data
+            let filtered = [...originalData];
 
             if (tabName === "Top Performers") {
-                // Sort by TSR descending for Top Performers
                 filtered.sort((a, b) => {
                     const tsrA = parseFloat(String(a["Total Stock Return (TSR) During CEO's Tenure"]).replace('%', '').trim());
                     const tsrB = parseFloat(String(b["Total Stock Return (TSR) During CEO's Tenure"]).replace('%', '').trim());
                     if (isNaN(tsrA) && isNaN(tsrB)) return 0;
                     if (isNaN(tsrA)) return 1;
                     if (isNaN(tsrB)) return -1;
-                    return tsrB - tsrA; // Descending order
+                    return tsrB - tsrA;
                 });
                 sortColumn = "Total Stock Return (TSR) During CEO's Tenure";
                 sortDirection = 'desc';
 
             } else if (tabName === "Founders") {
-                // Filter to show only founders
                 filtered = originalData.filter(row => row["Founder (Y/N)"] === 'Y');
-                // Default sort for founders (e.g., by CEO Name)
                 sortColumn = "CEO Name";
                 sortDirection = 'asc';
             } else { // All CEOs
-                sortColumn = null; // Clear sort
+                sortColumn = null;
                 sortDirection = 'asc';
             }
-            currentData = filtered; // Update current data with filtered/sorted results
-            applySort(); // Re-apply the current sort/render
+            currentData = filtered;
+            applySort();
         }
+
+        /**
+         * Updates the visibility of scroll shadows based on scroll position.
+         */
+        function updateScrollShadows() {
+            if (!tableContainer) return;
+
+            const { scrollWidth, clientWidth, scrollLeft } = tableContainer;
+            const scrollable = scrollWidth > clientWidth;
+
+            const atLeftEnd = scrollLeft === 0;
+            const atRightEnd = (scrollLeft + clientWidth) >= scrollWidth;
+
+            if (scrollable) {
+                if (atLeftEnd) {
+                    tableContainer.classList.remove('has-left-shadow');
+                    tableContainer.classList.add('no-left-shadow');
+                } else {
+                    tableContainer.classList.add('has-left-shadow');
+                    tableContainer.classList.remove('no-left-shadow');
+                }
+
+                if (atRightEnd) {
+                    tableContainer.classList.remove('has-right-shadow');
+                    tableContainer.classList.add('no-right-shadow');
+                } else {
+                    tableContainer.classList.add('has-right-shadow');
+                    tableContainer.classList.remove('no-right-shadow');
+                }
+            } else {
+                tableContainer.classList.remove('has-left-shadow', 'has-right-shadow');
+                tableContainer.classList.add('no-left-shadow', 'no-right-shadow');
+            }
+        }
+
 
         /**
          * Fetches data from Supabase and initializes the table.
@@ -502,8 +717,8 @@
                 }
 
                 originalData = data;
-                // Initialize the "All CEOs" tab as active and render.
                 handleTabClick("All CEOs");
+                updateScrollShadows();
             } catch (error) {
                 console.error('An unexpected error occurred:', error.message);
                 ceoTableBody.innerHTML = `<tr><td colspan="${tableHeaders.length}" class="text-center py-4 text-red-500">An unexpected error occurred: ${error.message}</td></tr>`;
@@ -513,7 +728,6 @@
         // Event Listeners
         searchInput.addEventListener('input', filterData);
 
-        // Add click listeners to navigation tabs
         navTabs.forEach(tab => {
             tab.addEventListener('click', (event) => {
                 handleTabClick(event.target.textContent);
@@ -521,10 +735,14 @@
         });
 
         tableHeaders.forEach(header => {
-            header.addEventListener('click', () => {
+            header.addEventListener('click', (event) => {
                 const column = header.dataset.column;
-                // Use the exact column name from data-column for sorting
                 const actualSortColumn = column;
+
+                // Reset all headers' sort indicators
+                tableHeaders.forEach(h => {
+                    h.classList.remove('asc', 'desc');
+                });
 
                 if (sortColumn === actualSortColumn) {
                     sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
@@ -533,19 +751,18 @@
                     sortDirection = 'asc';
                 }
 
-                // Update header text to show sort indicator
-                tableHeaders.forEach(h => {
-                    h.innerHTML = h.dataset.column.replace(' (Y/N)', '').replace(' ($ millions)', '').replace(' (TSR) During CEO\'s Tenure', ''); // Reset to original text, clean up display
-                    if (h.dataset.column === sortColumn) {
-                        h.innerHTML += sortDirection === 'asc' ? ' &#9650;' : ' &#9660;'; // Unicode arrows
-                    }
-                });
+                // Add active sort class to the current header
+                header.classList.add(sortDirection);
                 applySort();
             });
         });
 
-        // Initialize the Supabase connection and fetch data when the page loads
-        document.addEventListener('DOMContentLoaded', initSupabase);
+        tableContainer.addEventListener('scroll', updateScrollShadows);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initSupabase();
+            window.addEventListener('resize', updateScrollShadows);
+        });
     </script>
 </body>
 </html>
