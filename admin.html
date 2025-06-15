@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CEORater Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .form-input {
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .form-input:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.25);
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen (Shown by default) -->
+    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-gray-100 hidden">
+        <div class="max-w-md w-full bg-white p-8 rounded-lg shadow-md text-center">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">CEORater Admin</h2>
+            <p class="text-gray-600 mb-6">You must log in with your authorized Google account to manage CEO data.</p>
+            <button id="login-btn" class="w-full inline-flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C39.99,35.508,44,30.028,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                Log In with Google
+            </button>
+            <p id="auth-error" class="text-red-500 text-sm mt-4"></p>
+        </div>
+    </div>
+
+    <!-- Main Admin Panel (Hidden by default) -->
+    <div id="admin-panel" class="hidden container mx-auto p-8">
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">CEO Data Management</h1>
+            <div>
+                <span id="user-email" class="text-sm text-gray-600 mr-4"></span>
+                <button id="logout-btn" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">Log Out</button>
+            </div>
+        </header>
+
+        <!-- Add/Edit Form -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 id="form-title" class="text-xl font-bold mb-4">Add New CEO</h2>
+            <form id="ceo-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="lg:col-span-2">
+                    <label for="ceo_name" class="block text-sm font-medium text-gray-700">CEO Name</label>
+                    <input type="text" id="ceo_name" required class="mt-1 block w-full form-input border-gray-300 rounded-md shadow-sm">
+                </div>
+                <div class="lg:col-span-2">
+                    <label for="company_name" class="block text-sm font-medium text-gray-700">Company Name</label>
+                    <input type="text" id="company_name" required class="mt-1 block w-full form-input border-gray-300 rounded-md shadow-sm">
+                </div>
+                <div>
+                    <label for="ticker" class="block text-sm font-medium text-gray-700">Ticker</label>
+                    <input type="text" id="ticker" required class="mt-1 block w-full form-input border-gray-300 rounded-md shadow-sm uppercase">
+                </div>
+                <div>
+                    <label for="start_date" class="block text-sm font-medium text-gray-700">CEO Start Date</label>
+                    <input type="date" id="start_date" required class="mt-1 block w-full form-input border-gray-300 rounded-md shadow-sm">
+                </div>
+                <div>
+                    <label for="start_price" class="block text-sm font-medium text-gray-700">Stock Price on Start</label>
+                    <input type="number" step="0.01" id="start_price" required class="mt-1 block w-full form-input border-gray-300 rounded-md shadow-sm">
+                </div>
+                <div>
+                    <label for="is_founder" class="block text-sm font-medium text-gray-700">Founder?</label>
+                    <select id="is_founder" class="mt-1 block w-full form-input border-gray-300 rounded-md shadow-sm">
+                        <option value="N">No</option>
+                        <option value="Y">Yes</option>
+                    </select>
+                </div>
+                <div class="lg:col-span-4">
+                    <label for="ownership_url" class="block text-sm font-medium text-gray-700">Equity Ownership URL</label>
+                    <input type="url" id="ownership_url" class="mt-1 block w-full form-input border-gray-300 rounded-md shadow-sm">
+                </div>
+                 <div>
+                    <label for="compensation" class="block text-sm font-medium text-gray-700">CEO Compensation (in MM)</label>
+                    <input type="number" step="0.1" id="compensation" placeholder="e.g., 21.4" class="mt-1 block w-full form-input border-gray-300 rounded-md shadow-sm">
+                </div>
+                <div>
+                    <label for="industry" class="block text-sm font-medium text-gray-700">Industry</label>
+                    <input type="text" id="industry" class="mt-1 block w-full form-input border-gray-300 rounded-md shadow-sm">
+                </div>
+                 <div>
+                    <label for="sector" class="block text-sm font-medium text-gray-700">Sector</label>
+                    <input type="text" id="sector" class="mt-1 block w-full form-input border-gray-300 rounded-md shadow-sm">
+                </div>
+                <div class="lg:col-span-1">
+                    <label for="hq_address" class="block text-sm font-medium text-gray-700">HQ Address</label>
+                    <input type="text" id="hq_address" class="mt-1 block w-full form-input border-gray-300 rounded-md shadow-sm">
+                </div>
+                
+                <div class="lg:col-span-4 flex items-center space-x-4 mt-4">
+                    <button type="submit" id="submit-btn" class="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">Add CEO</button>
+                    <button type="button" id="cancel-btn" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 hidden">Cancel Edit</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- CEO List -->
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-bold mb-4">Current CEO List</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">CEO</th>
+                            <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Company</th>
+                            <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Ticker</th>
+                            <th class="px-4 py-2 text-center text-xs font-bold text-gray-500 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-ceo-list" class="bg-white divide-y divide-gray-200">
+                        <!-- Data will be populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- CONFIGURATION ---
+            // IMPORTANT: This must match the URL of your DEPLOYED backend service from Render
+            const API_URL = 'https://ceorater-backend.onrender.com';
+
+            // --- DOM ELEMENTS ---
+            const loginScreen = document.getElementById('login-screen');
+            const adminPanel = document.getElementById('admin-panel');
+            const loginBtn = document.getElementById('login-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+            const userEmailEl = document.getElementById('user-email');
+            const authErrorEl = document.getElementById('auth-error');
+            
+            const ceoForm = document.getElementById('ceo-form');
+            const formTitle = document.getElementById('form-title');
+            const submitBtn = document.getElementById('submit-btn');
+            const cancelBtn = document.getElementById('cancel-btn');
+            const adminCeoList = document.getElementById('admin-ceo-list');
+            
+            let currentEditTicker = null;
+
+            // --- CORE FUNCTIONS ---
+            
+            // This function checks with the backend to see if we have a valid login session
+            async function checkAuthStatus() {
+                try {
+                    // 'credentials: include' is essential for sending the session cookie
+                    const response = await fetch(`${API_URL}/admin/auth/status`, { credentials: 'include' });
+                    if (!response.ok) throw new Error('Auth check failed');
+                    
+                    const data = await response.json();
+                    if (data.loggedIn) {
+                        showAdminPanel(data.email);
+                    } else {
+                        showLoginScreen();
+                    }
+                } catch (error) {
+                    console.error("Auth check failed:", error);
+                    showLoginScreen();
+                }
+            }
+
+            function showAdminPanel(email) {
+                userEmailEl.textContent = email;
+                loginScreen.classList.add('hidden');
+                adminPanel.classList.remove('hidden');
+                loadCeoList();
+            }
+
+            function showLoginScreen() {
+                loginScreen.classList.remove('hidden');
+                adminPanel.classList.add('hidden');
+            }
+
+            async function loadCeoList() {
+                try {
+                    const ceos = await apiFetch('/admin/ceos');
+                    adminCeoList.innerHTML = '';
+                    ceos.forEach(ceo => {
+                        const row = document.createElement('tr');
+                        row.dataset.ticker = ceo.ticker; // Add data attribute for easier access
+                        row.innerHTML = `
+                            <td class="px-4 py-3 text-sm font-medium text-gray-900">${ceo.ceo_name}</td>
+                            <td class="px-4 py-3 text-sm text-gray-500">${ceo.company_name}</td>
+                            <td class="px-4 py-3 text-sm text-gray-500">${ceo.ticker}</td>
+                            <td class="px-4 py-3 text-sm text-center space-x-2">
+                                <button class="edit-btn text-indigo-600 hover:text-indigo-900" data-ticker="${ceo.ticker}">Edit</button>
+                                <button class="delete-btn text-red-600 hover:text-red-900" data-ticker="${ceo.ticker}">Delete</button>
+                            </td>
+                        `;
+                        adminCeoList.appendChild(row);
+                    });
+                } catch (error) {
+                    console.error('Failed to load CEO list:', error);
+                    // Do not alert here as it can be annoying on load; errors will be visible in console.
+                }
+            }
+            
+            function resetForm() {
+                ceoForm.reset();
+                formTitle.textContent = 'Add New CEO';
+                submitBtn.textContent = 'Add CEO';
+                cancelBtn.classList.add('hidden');
+                document.getElementById('ticker').readOnly = false;
+                currentEditTicker = null;
+            }
+            
+            function populateForm(ceo) {
+                formTitle.textContent = `Editing ${ceo.ticker}`;
+                document.getElementById('ceo_name').value = ceo.ceo_name || '';
+                document.getElementById('company_name').value = ceo.company_name || '';
+                document.getElementById('ticker').value = ceo.ticker || '';
+                document.getElementById('ticker').readOnly = true; // Primary key should not be changed
+                document.getElementById('start_date').value = ceo.start_date ? new Date(ceo.start_date).toISOString().split('T')[0] : '';
+                document.getElementById('start_price').value = ceo.start_price || '';
+                document.getElementById('is_founder').value = ceo.is_founder || 'N';
+                document.getElementById('ownership_url').value = ceo.ownership_url || '';
+                document.getElementById('compensation').value = ceo.compensation || '';
+                document.getElementById('industry').value = ceo.industry || '';
+                document.getElementById('sector').value = ceo.sector || '';
+                document.getElementById('hq_address').value = ceo.hq_address || '';
+                
+                submitBtn.textContent = 'Save Changes';
+                cancelBtn.classList.remove('hidden');
+                currentEditTicker = ceo.ticker;
+                window.scrollTo(0, 0);
+            }
+
+            // --- API WRAPPER ---
+            async function apiFetch(endpoint, options = {}) {
+                options.credentials = 'include'; // Essential for sending session cookies
+                options.headers = {
+                    ...options.headers,
+                    'Content-Type': 'application/json',
+                };
+                
+                const response = await fetch(`${API_URL}${endpoint}`, options);
+                
+                if (response.status === 401) {
+                    showLoginScreen();
+                    throw new Error('Unauthorized');
+                }
+                
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(errText || 'An API error occurred');
+                }
+                
+                return response.status !== 204 ? response.json() : null;
+            }
+
+            // --- EVENT LISTENERS ---
+            loginBtn.addEventListener('click', () => {
+                // Redirect to the backend's Google Auth endpoint
+                window.location.href = `${API_URL}/admin/auth/google`;
+            });
+
+            logoutBtn.addEventListener('click', async () => {
+                try {
+                    await apiFetch('/admin/auth/logout', { method: 'POST' });
+                } finally {
+                    showLoginScreen();
+                }
+            });
+            
+            ceoForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                // Gather all form data into an object
+                const data = {
+                    ceo_name: document.getElementById('ceo_name').value,
+                    company_name: document.getElementById('company_name').value,
+                    ticker: document.getElementById('ticker').value.toUpperCase(),
+                    is_founder: document.getElementById('is_founder').value,
+                    start_date: document.getElementById('start_date').value,
+                    start_price: parseFloat(document.getElementById('start_price').value),
+                    ownership_url: document.getElementById('ownership_url').value,
+                    compensation: parseFloat(document.getElementById('compensation').value) || null,
+                    industry: document.getElementById('industry').value,
+                    sector: document.getElementById('sector').value,
+                    hq_address: document.getElementById('hq_address').value,
+                };
+
+                // Validate required fields
+                if (!data.ticker || !data.ceo_name || !data.start_date || isNaN(data.start_price)) {
+                    alert('Please fill out all required fields: Ticker, CEO Name, Start Date, and Start Price.');
+                    return;
+                }
+                
+                try {
+                    if (currentEditTicker) {
+                        await apiFetch(`/admin/ceos/${currentEditTicker}`, { method: 'PUT', body: JSON.stringify(data) });
+                    } else {
+                        await apiFetch('/admin/ceos', { method: 'POST', body: JSON.stringify(data) });
+                    }
+                    resetForm();
+                    loadCeoList();
+                } catch (error) {
+                    alert(`Error saving data: ${error.message}`);
+                }
+            });
+
+            adminCeoList.addEventListener('click', async (e) => {
+                const target = e.target;
+                const ticker = target.dataset.ticker;
+
+                if (target.classList.contains('edit-btn')) {
+                    try {
+                        const ceos = await apiFetch('/admin/ceos');
+                        const ceoToEdit = ceos.find(c => c.ticker === ticker);
+                        if (ceoToEdit) populateForm(ceoToEdit);
+                    } catch (error) {
+                         console.error('Could not fetch CEO data for editing:', error);
+                    }
+                }
+
+                if (target.classList.contains('delete-btn')) {
+                    if (confirm(`Are you sure you want to delete ${ticker}? This cannot be undone.`)) {
+                        try {
+                            await apiFetch(`/admin/ceos/${ticker}`, { method: 'DELETE' });
+                            loadCeoList();
+                        } catch(error) {
+                            alert(`Error deleting: ${error.message}`);
+                        }
+                    }
+                }
+            });
+
+            cancelBtn.addEventListener('click', resetForm);
+            
+            // Check for authentication error from redirect
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('error')) {
+                authErrorEl.textContent = 'Google Authentication failed. Please check permissions or try again.';
+            }
+
+            // --- INITIALIZATION ---
+            checkAuthStatus();
+        });
+    </script>
+</body>
+</html>
