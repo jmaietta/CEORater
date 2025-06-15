@@ -1,368 +1,398 @@
-// admin_app.jsx – CEORater Admin Dashboard (rewritten & sanitised)
-// -----------------------------------------------------------------
-// • No double‑slash URLs (API_BASE_URL has *no* trailing '/')
-// • Stable API_BASE_URL is a module constant so React deps stay clean
-// • apiFetch guards 204 vs JSON, surfs auth redirects, shows messages
-// • Robust numeric / date parsing – prevents NaN → toFixed() crashes
-// • YouTube URLs parsed safely; modal is a React component (no raw DOM)
-// • New‑row placeholder uses a unique key to silence React warnings
-// • Minimal Tailwind classes; replace with your CSS if you prefer.
+import React, { useState, useEffect, useCallback } from 'react';
 
-import React, { useState, useEffect, useCallback } from "react";
+// Main App component
+const App = () => {
+    // IMPORTANT: Replace 'YOUR_RENDER_BACKEND_URL' with your actual Render backend service URL.
+    // Example: const API_BASE_URL = 'https://ceorater-backend-abcdef.onrender.com/';
+    const API_BASE_URL = 'https://ceorater-backend.onrender.com/';
 
-/* ---------- Config ---------- */
-export const API_BASE_URL =
-  import.meta.env.VITE_CEORATER_API ||
-  process.env.REACT_APP_CEORATER_API ||
-  "https://ceorater-backend.onrender.com"; // <-- fallback
+    const [loggedIn, setLoggedIn] = useState(false);
+    const [ceos, setCeos] = useState([]);
+    const [errorMessage, setErrorMessage] = useState('');
+    const [isAddingNewRow, setIsAddingNewRow] = useState(false);
+    const [editingId, setEditingId] = useState(null); // Tracks the ID of the CEO being edited
 
-/* Helper to build absolute URLs */
-const apiUrl = (path) =>
-  path.startsWith("http") ? path : `${API_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+    const displayError = useCallback((message) => {
+        setErrorMessage(message);
+    }, []);
 
-/* ---------- Re‑usable util ---------- */
-const parsePct = (val) => {
-  const n = parseFloat(String(val).replace(/[%+,]/g, ""));
-  return Number.isFinite(n) ? n : null;
-};
+    const hideError = useCallback(() => {
+        setErrorMessage('');
+    }, []);
 
-const safeJsonParse = (str, fallback = []) => {
-  try {
-    return JSON.parse(str || "[]");
-  } catch {
-    return fallback;
-  }
-};
+    // API Wrapper for authenticated requests
+    const apiFetch = useCallback(async (endpoint, options = {}) => {
+        options.credentials = 'include'; // Essential for sending session cookies
+        options.headers = {
+            ...options.headers,
+            'Content-Type': 'application/json',
+        };
 
-const tenureString = (start) => {
-  if (!start) return "N/A";
-  const s = new Date(start);
-  if (isNaN(s)) return "N/A";
-  const now = new Date();
-  let yrs = now.getFullYear() - s.getFullYear();
-  let mos = now.getMonth() - s.getMonth();
-  if (mos < 0) {
-    yrs -= 1;
-    mos += 12;
-  }
-  return `${yrs} yrs, ${mos} mo`;
-};
+        try {
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
 
-/* ---------- Main component ---------- */
-export default function AdminApp() {
-  /* ----- state ----- */
-  const [loggedIn, setLoggedIn]       = useState(false);
-  const [ceos, setCeos]               = useState([]);
-  const [error, setError]             = useState("");
-  const [addingNew, setAddingNew]     = useState(false);
-  const [editingId, setEditingId]     = useState(null);
-  const [videoUrls, setVideoUrls]     = useState(null); // opens modal when not null
+            if (response.status === 401 || response.status === 403) {
+                // If unauthorized, redirect to login
+                window.location.href = `${API_BASE_URL}/admin/auth/google`;
+                throw new Error('Unauthorized');
+            }
 
-  /* ----- error helpers ----- */
-  const showError = (msg) => setError(msg);
-  const clearError = () => setError("");
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(errText || `API error: ${response.status}`);
+            }
 
-  /* ----- generic fetch wrapper ----- */
-  const apiFetch = useCallback(async (path, opts = {}) => {
-    const options = {
-      credentials: "include",
-      headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
-      ...opts,
-    };
-    const res = await fetch(apiUrl(path), options);
-
-    if (res.status === 401 || res.status === 403) {
-      window.location.href = apiUrl("/admin/auth/google");
-      throw new Error("Unauthorized");
-    }
-    if (!res.ok) throw new Error((await res.text()) || `HTTP ${res.status}`);
-    return res.status === 204 ? null : res.json();
-  }, []);
-
-  /* ----- auth check & initial load ----- */
-  useEffect(() => {
-    (async () => {
-      try {
-        const { loggedIn: ok } = await apiFetch("/admin/auth/status");
-        if (ok) {
-          setLoggedIn(true);
-          loadCeos();
+            return response.status !== 204 ? await response.json() : null; // Handle No Content responses
+        } catch (error) {
+            console.error('API Fetch Error:', error);
+            // Re-throw to be caught by specific callers for custom error messages
+            throw error;
         }
-      } catch (e) {
-        setLoggedIn(false);
-        if (e.message !== "Unauthorized") showError(e.message);
-      }
-    })();
-  }, [apiFetch]);
+    }, [API_BASE_URL]);
 
-  /* ----- load CEO list ----- */
-  const loadCeos = useCallback(async () => {
-    clearError();
-    try {
-      const arr = await apiFetch("/admin/ceos");
-      arr.sort((a, b) => (a.ceo_name || "").localeCompare(b.ceo_name || ""));
-      setCeos(arr);
-    } catch (e) {
-      showError(`Failed to load CEOs: ${e.message}`);
-    }
-  }, [apiFetch]);
+    // Authentication status check on component mount
+    const checkAuthStatus = useCallback(async () => {
+        try {
+            const response = await apiFetch('/admin/auth/status');
+            if (response && response.loggedIn) {
+                setLoggedIn(true);
+                loadCeos();
+            } else {
+                setLoggedIn(false);
+            }
+        } catch (error) {
+            console.error("Auth check failed:", error);
+            setLoggedIn(false); // Ensure loggedIn is false on auth failure
+            if (error.message !== 'Unauthorized') {
+                displayError('Failed to connect to authentication service. Please try again.');
+            }
+        }
+    }, [apiFetch, displayError]);
 
-  /* ----- logout ----- */
-  const handleLogout = async () => {
-    clearError();
-    try {
-      await apiFetch("/admin/auth/logout", { method: "POST" });
-    } catch (e) {
-      /* ignore */
-    } finally {
-      setLoggedIn(false);
-      window.location.href = apiUrl("/admin/auth/google");
-    }
-  };
+    // Load and Render CEO Data
+    const loadCeos = useCallback(async () => {
+        hideError();
+        try {
+            const fetchedCeos = await apiFetch('/admin/ceos');
+            // Sort by CEO Name for consistent display
+            fetchedCeos.sort((a, b) => (a.ceo_name || '').localeCompare(b.ceo_name || ''));
+            setCeos(fetchedCeos);
+        } catch (error) {
+            console.error('Error loading CEOs:', error);
+            displayError(`Failed to load CEO data: ${error.message}. Please try again.`);
+        }
+    }, [apiFetch, displayError, hideError]);
 
-  /* ---------- row helpers ---------- */
-  const beginAddRow = () => {
-    if (addingNew) return showError("Finish the current new row first.");
-    clearError();
-    setAddingNew(true);
-    setCeos((prev) => [
-      { id: `tmp-${Date.now()}`, isNew: true },
-      ...prev,
-    ]);
-  };
+    useEffect(() => {
+        checkAuthStatus();
+        // Check for authentication error from redirect (e.g., if Google Auth failed)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('error')) {
+            displayError(urlParams.get('error_message') || 'Google Authentication failed. Please check permissions or try again.');
+            // Clear URL params after displaying error
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }, [checkAuthStatus, displayError]);
 
-  const cancelEdit = () => {
-    setEditingId(null);
-    if (addingNew) setCeos((prev) => prev.filter((c) => !c.isNew));
-    setAddingNew(false);
-  };
+    // Logout function
+    const handleLogout = useCallback(async () => {
+        hideError();
+        try {
+            await apiFetch('/admin/auth/logout', { method: 'POST' });
+        } catch (error) {
+            console.error("Logout failed:", error);
+            displayError(`Logout failed: ${error.message}`);
+        } finally {
+            setLoggedIn(false);
+            // Redirect to force re-auth
+            window.location.href = `${API_BASE_URL}/admin/auth/google`;
+        }
+    }, [apiFetch, hideError, displayError, API_BASE_URL]);
 
-  const saveRow = async (id, data) => {
-    clearError();
-    const required = ["ceo_name", "company_name", "ticker", "stock_price_on_start"];
-    if (required.some((k) => !data[k]))
-      return showError("Please fill all required fields.");
-    if (data.ceo_start_date && !/^\d{4}-\d{2}-\d{2}$/.test(data.ceo_start_date))
-      return showError("Start date must be YYYY-MM-DD.");
-    try {
-      if (id.startsWith("tmp-")) {
-        await apiFetch("/admin/ceos", { method: "POST", body: JSON.stringify(data) });
-        setAddingNew(false);
-      } else {
-        await apiFetch(`/admin/ceos/${id}`, { method: "PUT", body: JSON.stringify(data) });
-      }
-      setEditingId(null);
-      loadCeos();
-    } catch (e) {
-      showError(e.message);
-    }
-  };
+    // Utility to calculate CEO Tenure
+    const calculateTenure = (startDateString) => {
+        if (!startDateString) return 'N/A';
+        const startDate = new Date(startDateString);
+        const now = new Date();
+        let years = now.getFullYear() - startDate.getFullYear();
+        let months = now.getMonth() - startDate.getMonth();
 
-  const deleteRow = async (id) => {
-    clearError();
-    if (!window.confirm("Delete this CEO?")) return;
-    try {
-      await apiFetch(`/admin/ceos/${id}`, { method: "DELETE" });
-      loadCeos();
-    } catch (e) {
-      showError(e.message);
-    }
-  };
-
-  /* ---------- Row component ---------- */
-  const CeoRow = ({ ceo }) => {
-    const isEditing = editingId === ceo.id;
-    const [row, setRow] = useState(
-      ceo.isNew
-        ? {
-            ceo_name: "",
-            company_name: "",
-            ticker: "",
-            founder: "N",
-            ceo_start_date: "",
-            ceo_compensation_mm: "",
-            equity_ownership_url: "",
-            stock_price_on_start: "",
-            industry: "",
-            sector: "",
-            youtube_urls: "[]",
-          }
-        : { ...ceo }
-    );
-
-    const onChange = (e) => {
-      const { name, value, type } = e.target;
-      setRow((p) => ({ ...p, [name]: type === "number" ? Number(value) : value }));
+        if (months < 0) {
+            years--;
+            months += 12;
+        }
+        return `${years} yrs, ${months} mo`;
     };
 
-    const tenure = tenureString(row.ceo_start_date);
-    const returnPct = row.total_stock_return != null ? `${row.total_stock_return.toFixed(2)}%` : "N/A";
-    const compFmt = row.ceo_compensation_mm != null ? `$${Number(row.ceo_compensation_mm).toFixed(2)} MM` : "N/A";
-    const priceStartFmt = row.stock_price_on_start != null ? `$${Number(row.stock_price_on_start).toFixed(2)}` : "N/A";
-    const priceCurrentFmt = row.current_stock_price != null ? `$${Number(row.current_stock_price).toFixed(2)}` : "N/A";
-    const ytLinks = safeJsonParse(row.youtube_urls);
+    // Modal for YouTube Videos (simple implementation)
+    const showVideoListModal = useCallback((urls) => {
+        // Prevent multiple modals
+        if (document.getElementById('video-modal')) return;
+
+        const modalDiv = document.createElement('div');
+        modalDiv.id = 'video-modal';
+        modalDiv.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); display: flex; justify-content: center;
+            align-items: center; z-index: 1000;
+        `;
+        modalDiv.innerHTML = `
+            <div style="background: white; padding: 25px; border-radius: 8px; max-width: 500px; width: 90%; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+                <h3 style="margin-top: 0; margin-bottom: 15px; color: #333;">YouTube Videos</h3>
+                <ul style="list-style-type: none; padding: 0; margin: 0;">
+                    ${urls.map((url, index) => `
+                        <li style="margin-bottom: 10px;">
+                            <a href="${url}" target="_blank" style="color: #007bff; text-decoration: none;">Video ${index + 1}</a>
+                        </li>
+                    `).join('')}
+                </ul>
+                <button id="close-video-modal" style="margin-top: 20px; padding: 8px 15px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">Close</button>
+            </div>
+        `;
+        document.body.appendChild(modalDiv);
+        document.getElementById('close-video-modal').addEventListener('click', () => {
+            modalDiv.remove();
+        });
+    }, []);
+
+
+    // --- In-table editing logic ---
+    const handleAddRow = () => {
+        if (isAddingNewRow) {
+            displayError('Please save or cancel the current new row before adding another.');
+            return;
+        }
+        hideError();
+        setIsAddingNewRow(true);
+        // Add a placeholder CEO at the top of the list for input
+        setCeos(prevCeos => [{ id: 'new', isNew: true }, ...prevCeos]);
+    };
+
+    const handleEditClick = (id) => {
+        setEditingId(id);
+        hideError();
+    };
+
+    const handleCancelEdit = () => {
+        setEditingId(null);
+        hideError();
+        if (isAddingNewRow) {
+            setCeos(prevCeos => prevCeos.filter(ceo => !ceo.isNew));
+            setIsAddingNewRow(false);
+        }
+    };
+
+    const handleSave = async (id, currentData) => {
+        hideError();
+        const isNew = id === 'new';
+        let allRequiredFilled = true;
+
+        // Collect data from inputs
+        const updatedData = { ...currentData };
+        if (!updatedData.ceo_name || !updatedData.company_name || !updatedData.ticker || updatedData.stock_price_on_start === null) {
+            allRequiredFilled = false;
+        }
+
+        if (!allRequiredFilled) {
+            displayError('Please fill all required fields: CEO Name, Company Name, Ticker, Stock Price on Start.');
+            return;
+        }
+
+        // Validate CEO Start Date format
+        if (updatedData.ceo_start_date && !/^\d{4}-\d{2}-\d{2}$/.test(updatedData.ceo_start_date)) {
+            displayError('CEO Start Date must be in YYYY-MM-DD format.');
+            return;
+        }
+
+        try {
+            if (isNew) {
+                await apiFetch('/admin/ceos', {
+                    method: 'POST',
+                    body: JSON.stringify(updatedData)
+                });
+                setIsAddingNewRow(false);
+            } else {
+                await apiFetch(`/admin/ceos/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(updatedData)
+                });
+            }
+            setEditingId(null); // Exit editing mode
+            loadCeos(); // Reload data to show updated/new entry
+        } catch (error) {
+            console.error('Error saving CEO:', error);
+            displayError(`Failed to save CEO: ${error.message}`);
+        }
+    };
+
+    const handleDelete = async (id) => {
+        hideError();
+        if (!window.confirm('Are you sure you want to delete this CEO record? This cannot be undone.')) {
+            return;
+        }
+
+        try {
+            await apiFetch(`/admin/ceos/${id}`, { method: 'DELETE' });
+            loadCeos(); // Reload data after deleting
+        } catch (error) {
+            console.error('Error deleting CEO:', error);
+            displayError(`Failed to delete CEO: ${error.message}`);
+        }
+    };
+
+    // Component for a single editable/viewable CEO row
+    const CeoRow = ({ ceo, onSave, onCancelEdit, onEditClick, onDelete, isEditing, showVideoListModal }) => {
+        const [rowData, setRowData] = useState(ceo.isNew ? {
+            ceo_name: '', company_name: '', ticker: '', founder: 'N',
+            ceo_start_date: '', ceo_compensation_mm: '', equity_ownership_url: '',
+            stock_price_on_start: '', industry: '', sector: ''
+        } : { ...ceo });
+
+        const handleChange = (e) => {
+            const { name, value, type } = e.target;
+            setRowData(prev => ({
+                ...prev,
+                [name]: type === 'number' && value !== '' ? parseFloat(value) : value
+            }));
+        };
+
+        const handleSaveClick = () => {
+            onSave(ceo.id, rowData);
+        };
+
+        const handleCancelClick = () => {
+            onCancelEdit();
+        };
+        
+        // Calculate CEO Tenure
+        const ceoTenure = rowData.ceo_start_date ? calculateTenure(rowData.ceo_start_date) : 'N/A';
+        
+        // Format Total Stock Return
+        const totalStockReturn = rowData.total_stock_return !== null ? `${(rowData.total_stock_return).toFixed(2)}%` : 'N/A';
+        
+        // Format CEO Compensation
+        const ceoCompensation = rowData.ceo_compensation_mm !== null ? `$${parseFloat(rowData.ceo_compensation_mm).toFixed(2)} MM` : 'N/A';
+
+        // Format Stock Prices
+        const stockPriceOnStartDisplay = rowData.stock_price_on_start !== null ? `$${parseFloat(rowData.stock_price_on_start).toFixed(2)}` : 'N/A';
+        const currentStockPriceDisplay = rowData.current_stock_price !== null ? `$${parseFloat(rowData.current_stock_price).toFixed(2)}` : 'N/A';
+        
+        const youtubeUrlsParsed = rowData.youtube_urls ? JSON.parse(rowData.youtube_urls) : [];
+
+
+        return (
+            <tr className={isEditing ? 'editing-row' : ''}>
+                <td>{isEditing ? <input type="text" name="ceo_name" value={rowData.ceo_name} onChange={handleChange} required /> : (rowData.ceo_name || 'N/A')}</td>
+                <td>{isEditing ? <input type="text" name="company_name" value={rowData.company_name} onChange={handleChange} required /> : (rowData.company_name || 'N/A')}</td>
+                <td>{isEditing ? <input type="text" name="ticker" value={rowData.ticker} onChange={handleChange} required /> : (rowData.ticker || 'N/A')}</td>
+                <td>
+                    {isEditing ? (
+                        <select name="founder" value={rowData.founder} onChange={handleChange}>
+                            <option value="N">N</option>
+                            <option value="Y">Y</option>
+                        </select>
+                    ) : (rowData.founder || 'N/A')}
+                </td>
+                <td>{isEditing ? <input type="date" name="ceo_start_date" value={rowData.ceo_start_date} onChange={handleChange} /> : ceoTenure}</td>
+                <td>{totalStockReturn}</td>
+                <td>{isEditing ? <input type="number" step="0.01" name="ceo_compensation_mm" value={rowData.ceo_compensation_mm} onChange={handleChange} placeholder="e.g., 21.4" /> : ceoCompensation}</td>
+                <td>{isEditing ? <input type="url" name="equity_ownership_url" value={rowData.equity_ownership_url} onChange={handleChange} placeholder="NASDAQ URL" /> : (rowData.equity_ownership_url ? <a href={rowData.equity_ownership_url} target="_blank" rel="noopener noreferrer">View</a> : 'N/A')}</td>
+                <td>{isEditing ? <input type="number" step="0.01" name="stock_price_on_start" value={rowData.stock_price_on_start} onChange={handleChange} required placeholder="$0.00" /> : stockPriceOnStartDisplay}</td>
+                <td>{currentStockPriceDisplay}</td>
+                <td>
+                    {isEditing ? (
+                        <input type="text" name="youtube_urls" value={youtubeUrlsParsed.join(', ')} onChange={e => {
+                            setRowData(prev => ({ ...prev, youtube_urls: JSON.stringify(e.target.value.split(',').map(url => url.trim())) }));
+                        }} placeholder="Comma-separated URLs" />
+                    ) : (
+                        youtubeUrlsParsed.length > 0 ? (
+                            <a href="#" onClick={(e) => { e.preventDefault(); showVideoListModal(youtubeUrlsParsed); }}>View Videos ({youtubeUrlsParsed.length})</a>
+                        ) : 'N/A'
+                    )}
+                </td>
+                <td>
+                    {isEditing ? (
+                        <>
+                            <button className="save-btn" onClick={handleSaveClick}>Save</button>
+                            <button className="cancel-btn" onClick={handleCancelClick}>Cancel</button>
+                        </>
+                    ) : (
+                        <>
+                            <button className="edit-btn" onClick={() => onEditClick(ceo.id)}>Edit</button>
+                            <button className="delete-btn" onClick={() => onDelete(ceo.id)}>Delete</button>
+                        </>
+                    )}
+                </td>
+            </tr>
+        );
+    };
+
+
+    if (!loggedIn) {
+        return (
+            <div className="login-screen">
+                <div className="login-box">
+                    <h2>CEORater Admin</h2>
+                    <p className="text-gray-600 mb-6">Log in with your authorized Google account to manage CEO data.</p>
+                    <button id="login-btn" className="login-btn-google" onClick={() => window.location.href = `${API_BASE_URL}/admin/auth/google`}>
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C39.99,35.508,44,30.028,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                        Log In with Google
+                    </button>
+                    {errorMessage && <p className="text-red-500 text-sm mt-4">{errorMessage}</p>}
+                </div>
+            </div>
+        );
+    }
 
     return (
-      <tr>
-        {/* CEO Name */}
-        <td>{isEditing ? <input name="ceo_name" value={row.ceo_name} onChange={onChange} required /> : row.ceo_name || "N/A"}</td>
-        {/* Company */}
-        <td>{isEditing ? <input name="company_name" value={row.company_name} onChange={onChange} required /> : row.company_name || "N/A"}</td>
-        {/* Ticker */}
-        <td>{isEditing ? <input name="ticker" value={row.ticker} onChange={onChange} required /> : row.ticker || "N/A"}</td>
-        {/* Founder */}
-        <td>
-          {isEditing ? (
-            <select name="founder" value={row.founder} onChange={onChange}>
-              <option value="N">N</option>
-              <option value="Y">Y</option>
-            </select>
-          ) : (
-            row.founder || "N/A"
-          )}
-        </td>
-        {/* Tenure */}
-        <td>{isEditing ? <input name="ceo_start_date" type="date" value={row.ceo_start_date} onChange={onChange} /> : tenure}</td>
-        {/* Return */}
-        <td>{returnPct}</td>
-        {/* Comp */}
-        <td>
-          {isEditing ? (
-            <input name="ceo_compensation_mm" type="number" step="0.01" value={row.ceo_compensation_mm} onChange={onChange} />
-          ) : (
-            compFmt
-          )}
-        </td>
-        {/* Equity URL */}
-        <td>
-          {isEditing ? (
-            <input name="equity_ownership_url" value={row.equity_ownership_url} onChange={onChange} />
-          ) : row.equity_ownership_url ? (
-            <a href={row.equity_ownership_url} target="_blank" rel="noreferrer">View</a>
-          ) : "N/A"}
-        </td>
-        {/* Prices */}
-        <td>{isEditing ? <input name="stock_price_on_start" type="number" step="0.01" value={row.stock_price_on_start} onChange={onChange} /> : priceStartFmt}</td>
-        <td>{priceCurrentFmt}</td>
-        {/* YouTube */}
-        <td>
-          {isEditing ? (
-            <input
-              name="youtube_urls"
-              value={ytLinks.join(", ")}
-              onChange={(e) => setRow((p) => ({ ...p, youtube_urls: JSON.stringify(e.target.value.split(",").map((u) => u.trim())) }))}
-            />
-          ) : ytLinks.length ? (
-            <button className="text-blue-600 underline" onClick={() => setVideoUrls(ytLinks)}>
-              Videos ({ytLinks.length})
-            </button>
-          ) : (
-            "N/A"
-          )}
-        </td>
-        {/* Actions */}
-        <td>
-          {isEditing ? (
-            <>
-              <button className="text-green-600 mr-2" onClick={() => saveRow(ceo.id, row)}>Save</button>
-              <button className="text-gray-500" onClick={cancelEdit}>Cancel</button>
-            </>
-          ) : (
-            <>
-              <button className="text-blue-600 mr-2" onClick={() => setEditingId(ceo.id)}>Edit</button>
-              <button className="text-red-600" onClick={() => deleteRow(ceo.id)}>Delete</button>
-            </>
-          )}
-        </td>
-      </tr>
-    );
-  };
+        <div className="container">
+            <div className="header">
+                <div>
+                    <span className="logo">CEORater</span>
+                    <span className="admin-dashboard-text">Admin Dashboard</span>
+                </div>
+                <button className="logout-btn" onClick={handleLogout}>Logout</button>
+            </div>
 
-  /* ---------- Modal component ---------- */
-  const VideoModal = ({ urls }) => (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded max-w-md w-full">
-        <h3 className="text-lg font-semibold mb-4">YouTube Videos</h3>
-        <ul className="space-y-2 mb-4">
-          {urls.map((u, i) => (
-            <li key={i}>
-              <a className="text-blue-600 underline" href={u} target="_blank" rel="noreferrer">
-                Video {i + 1}
-              </a>
-            </li>
-          ))}
-        </ul>
-        <button className="bg-blue-600 text-white px-4 py-1 rounded" onClick={() => setVideoUrls(null)}>
-          Close
-        </button>
-      </div>
-    </div>
-  );
+            <h2>CEO Data Management</h2>
+            {errorMessage && <div className="error-message">{errorMessage}</div>}
 
-  /* ---------- render ---------- */
-  if (!loggedIn) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="bg-white p-8 rounded shadow max-w-sm w-full text-center">
-          <h2 className="text-2xl font-semibold mb-4">CEORater Admin</h2>
-          <p className="mb-6 text-gray-600">Log in with your Google account.</p>
-          <button
-            className="bg-blue-600 text-white px-4 py-2 rounded"
-            onClick={() => (window.location.href = apiUrl("/admin/auth/google"))}
-          >
-            Log In with Google
-          </button>
-          {error && <p className="text-red-500 mt-4 text-sm">{error}</p>}
+            <button className="add-row-btn" onClick={handleAddRow}>Add New CEO Row</button>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>CEO Name</th>
+                        <th>Company Name</th>
+                        <th>Ticker</th>
+                        <th>Founder (Y/N)</th>
+                        <th>CEO Tenure</th>
+                        <th>Total Stock Return</th>
+                        <th>CEO Compensation ($MM)</th>
+                        <th>Equity Trades</th>
+                        <th>Stock Price on Start</th>
+                        <th>Current Stock Price</th>
+                        <th>YouTube Videos</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {ceos.map(ceo => (
+                        <CeoRow
+                            key={ceo.id} // Use CEO ID as key
+                            ceo={ceo}
+                            onSave={handleSave}
+                            onCancelEdit={handleCancelEdit}
+                            onEditClick={handleEditClick}
+                            onDelete={handleDelete}
+                            isEditing={editingId === ceo.id}
+                            showVideoListModal={showVideoListModal}
+                        />
+                    ))}
+                </tbody>
+            </table>
         </div>
-      </div>
     );
-  }
+};
 
-  return (
-    <div className="p-6 max-w-full overflow-x-auto">
-      {/* header */}
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">CEORater • Admin Dashboard</h1>
-        <button className="text-red-600" onClick={handleLogout}>Logout</button>
-      </div>
-
-      {error && <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">{error}</div>}
-
-      <button className="mb-4 bg-green-600 text-white px-3 py-1 rounded" onClick={beginAddRow}>
-        + Add New CEO
-      </button>
-
-      <table className="min-w-full text-sm border">
-        <thead className="bg-gray-100">
-          <tr>
-            {[
-              "CEO Name",
-              "Company",
-              "Ticker",
-              "Founder",
-              "Tenure",
-              "Return",
-              "Comp ($MM)",
-              "Equity URL",
-              "Price @ Start",
-              "Current Price",
-              "YouTube",
-              "Actions",
-            ].map((h) => (
-              <th key={h} className="px-2 py-1 border">
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {ceos.map((c) => (
-            <CeoRow key={c.id || c.ticker || c.ceo_name} ceo={c} />
-          ))}
-        </tbody>
-      </table>
-
-      {videoUrls && <VideoModal urls={videoUrls} />}
-    </div>
-  );
-}
+export default App;
