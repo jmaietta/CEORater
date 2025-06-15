@@ -91,16 +91,30 @@
         async function loadCeoData() {
             console.log('Loading CEO data...');
             try {
-                const { data, error } = await supabase
-                    .from('ceos')
-                    .select('*');
+                // Try different ways to access the table with spaces
+                let data, error;
+                
+                // Method 1: Try with backticks
+                try {
+                    const result = await supabase.rpc('get_ceorater_data');
+                    data = result.data;
+                    error = result.error;
+                } catch (e) {
+                    // Method 2: Try direct query
+                    const result = await supabase
+                        .from('CEORater Table')
+                        .select('*');
+                    data = result.data;
+                    error = result.error;
+                }
 
                 console.log('Data response:', { data, error, count: data?.length });
+                console.log('First row sample:', data?.[0]);
 
                 if (error) throw error;
                 
                 if (!data || data.length === 0) {
-                    throw new Error('No data found in ceos table');
+                    throw new Error('No data found in CEORater Table');
                 }
                 
                 allCeos = data;
@@ -113,7 +127,7 @@
                 console.error('Error loading CEO data:', error);
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('error').classList.remove('hidden');
-                document.getElementById('error').innerHTML = '<p class="text-red-700">Error: ' + error.message + '</p>';
+                document.getElementById('error').innerHTML = '<p class="text-red-700">Error: ' + error.message + '</p><p class="text-sm text-gray-600 mt-2">Check browser console for details.</p>';
             }
         }
 
@@ -167,7 +181,7 @@
             console.log('Sorting by', column);
             try {
                 const { data, error } = await supabase
-                    .from('ceos')
+                    .from('CEORater Table')
                     .select('*')
                     .order(column, { ascending: false });
 
