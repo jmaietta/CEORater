@@ -91,27 +91,17 @@
         async function loadCeoData() {
             console.log('Loading CEO data...');
             try {
-                // Try different ways to access the table with spaces
-                let data, error;
-                
-                // Method 1: Try with backticks
-                try {
-                    const result = await supabase.rpc('get_ceorater_data');
-                    data = result.data;
-                    error = result.error;
-                } catch (e) {
-                    // Method 2: Try direct query
-                    const result = await supabase
-                        .from('CEORater Table')
-                        .select('*');
-                    data = result.data;
-                    error = result.error;
-                }
+                const { data, error } = await supabase
+                    .from('"CEORater Table"')
+                    .select('*');
 
                 console.log('Data response:', { data, error, count: data?.length });
                 console.log('First row sample:', data?.[0]);
 
-                if (error) throw error;
+                if (error) {
+                    console.error('Supabase error:', error);
+                    throw error;
+                }
                 
                 if (!data || data.length === 0) {
                     throw new Error('No data found in CEORater Table');
@@ -181,7 +171,7 @@
             console.log('Sorting by', column);
             try {
                 const { data, error } = await supabase
-                    .from('CEORater Table')
+                    .from('"CEORater Table"')
                     .select('*')
                     .order(column, { ascending: false });
 
