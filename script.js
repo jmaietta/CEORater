@@ -1,186 +1,131 @@
-document.addEventListener('DOMContentLoaded', () => {
+/* ------------------------------------------------------------
+   CEORater • script.js          (no backend required)
+   ------------------------------------------------------------
+   • Fetches the CSV already in the repo
+   • Parses it with Papa Parse   (index.html now loads the CDN)
+   • Fills your styled table, filter buttons, and video popup
+------------------------------------------------------------- */
 
-    // --- CONFIGURATION ---
-    // This is the URL of your backend.
-    const BACKEND_URL = 'https://ceorater-backend.onrender.com';
+/* ---------- CONFIG ---------- */
+const CSV_PATH = "/CEORater%20CSV%20for%20Upload.csv"; // (%20 = space)
 
-    // --- DOM ELEMENTS ---
-    const tableBody = document.getElementById('ceoTableBody');
-    const filterTabs = document.getElementById('filterTabs');
-    const popup = document.getElementById('mediaPopup');
-    const closePopupBtn = document.getElementById('closePopup');
-    const popupOverlay = document.getElementById('popupOverlay');
-    const popupCeoName = document.getElementById('popupCeoName');
-    const popupMediaContent = document.getElementById('popupMediaContent');
-    
-    // --- APP STATE ---
-    // We'll store the data globally once it's fetched.
-    let ceoData = [];
-    let mediaLinks = {};
+/* ---------- DOM SHORTCUTS ---------- */
+const tbody          = document.getElementById("ceoTableBody");
+const filterTabs     = document.getElementById("filterTabs");
+const popup          = document.getElementById("mediaPopup");
+const popupOverlay   = document.getElementById("popupOverlay");
+const popupCeoName   = document.getElementById("popupCeoName");
+const popupMediaCont = document.getElementById("popupMediaContent");
+const closePopupBtn  = document.getElementById("closePopup");
+const lastUpdated    = document.getElementById("lastUpdated");
 
-    // --- FUNCTIONS ---
+/* ---------- STATE ---------- */
+let allRows = [];              // full dataset
+let media   = {};              // CEO → array of URLs
+let active  = "all";           // current tab
 
-    /**
-     * Fetches all data from the backend server.
-     */
-    async function fetchData() {
-        // Show a loading message while fetching
-        tableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-gray-500">Loading live data...</td></tr>`;
-        try {
-            const response = await fetch(`${BACKEND_URL}/api/ceo-data`);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-            ceoData = data.ceoData;
-            mediaLinks = data.mediaLinks;
-            // Render the table with the default 'all' filter after data is fetched
-            renderTable('all'); 
-        } catch (error) {
-            console.error("Could not fetch data from backend:", error);
-            tableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-red-500">Could not load data. Please check the backend connection and URL.</td></tr>`;
-        }
-    }
+/* ---------- SMALL HELPERS ---------- */
+const pct  = (v) => (v ? `${v}%` : "N/A");
+const money= (m)=> (m?`$${Number(m).toLocaleString()} MM`:"N/A");
+const tenure = (d)=>{
+  if(!d)return"N/A";
+  const s=new Date(d);if(isNaN(s))return"N/A";
+  const n=new Date();let y=n.getFullYear()-s.getFullYear();
+  let m=n.getMonth()-s.getMonth();if(m<0){y--;m+=12}
+  return`${y}.${m} yrs`;
+};
 
-    /**
-     * Generates the HTML for the insider score progress bar.
-     * @param {number} score - The insider score from 0-100.
-     * @returns {string} The HTML string for the score bar.
-     */
-    function getInsiderScoreBar(score) {
-        let colorClass = 'bg-green-500';
-        if (score < 70) colorClass = 'bg-yellow-500';
-        if (score < 40) colorClass = 'bg-red-500';
-        return `
-            <div class="w-24 bg-gray-200 rounded-full h-2.5">
-                <div class="${colorClass} h-2.5 rounded-full" style="width: ${score}%"></div>
-            </div>
-        `;
-    }
-    
-    /**
-     * Renders the main table based on the selected filter.
-     * @param {string} [filter='all'] - The filter to apply (e.g., 'all', 'top', 'flags').
-     */
-    function renderTable(filter = 'all') {
-        if (ceoData.length === 0) {
-            // This case is handled by the initial loading message in fetchData
-            return;
-        }
+/* ---------- BUILD ONE TABLE ROW ---------- */
+function rowHTML(ceo, i){
+  const posRet=!String(ceo["Total Stock Return"]).startsWith("-");
+  const founder=(ceo["Founder (Y/N)"]||"").trim().toUpperCase()==="Y";
+  const ytCnt=+(ceo["YouTube Count"]||0);
+  return`
+  <td class="px-6 py-4">${i+1}</td>
+  <td class="px-6 py-4">
+      <div class="font-semibold">${ceo["CEO Name"]}</div>
+      <div class="text-sm text-gray-500">${ceo["Company Name"]} (${ceo["Ticker"]})</div>
+      ${founder?'<span class="inline-block mt-1 text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">Founder</span>':""}
+  </td>
+  <td class="px-6 py-4">${tenure(ceo["CEO Start Date"])}</td>
+  <td class="px-6 py-4 font-semibold ${posRet?"text-green-600":"text-red-600"}">
+      ${pct(ceo["Total Stock Return"])}
+  </td>
+  <td class="px-6 py-4">${ceo["Equity Ownership %"]||"N/A"}</td>
+  <td class="px-6 py-4">${ceo["Insider Score"]||"N/A"}</td>
+  <td class="px-6 py-4">
+    ${ytCnt
+      ? `<button class="view-vid text-blue-600 underline" data-ceo="${ceo["CEO Name"]}">Videos (${ytCnt})</button>`
+      : '<span class="text-gray-400">None</span>'}
+  </td>
+  <td class="px-6 py-4 font-bold">${ceo["Total Score"]||"N/A"}</td>`;
+}
 
-        tableBody.innerHTML = ''; // Clear existing table rows
-        const filteredData = ceoData.filter(ceo => ceo.filter.includes(filter));
+/* ---------- TABLE RENDER ---------- */
+function render(tab=active){
+  active=tab;
+  tbody.innerHTML="";
+  document.querySelectorAll("#filterTabs button").forEach(b=>{
+    b.classList.toggle("tab-active",b.dataset.filter===tab);
+  });
 
-        if (filteredData.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-gray-500">No CEOs match the selected filter.</td></tr>`;
-            return;
-        }
+  const show=allRows.filter(r=>{
+    if(tab==="top")       return +r["Total Score"]>=80;
+    if(tab==="ownership") return parseFloat(r["Equity Ownership %"])>1;
+    if(tab==="insider")   return +r["Insider Score"]>0;
+    if(tab==="flags")     return +r["Insider Score"]<0;
+    return true; // 'all'
+  });
 
-        filteredData.forEach(ceo => {
-            const row = document.createElement('tr');
-            if (ceo.rank <= 3 && filter === 'all') {
-                row.classList.add('top-3-highlight');
-            }
-            
-            const isPositiveReturn = !ceo.returns.startsWith('-');
-            
-            row.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="text-lg font-bold ${ceo.rank <= 3 && filter === 'all' ? 'text-purple-600' : 'text-gray-700'}">${ceo.rank}</span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm font-semibold text-gray-900">${ceo.ceo}</div>
-                    <div class="text-sm text-gray-500">${ceo.company}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${ceo.tenure}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold ${isPositiveReturn ? 'return-positive' : 'return-negative'}">${ceo.returns}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm ${parseFloat(ceo.ownership) > 1 ? 'high-ownership' : 'text-gray-600'}">${ceo.ownership}</td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    ${getInsiderScoreBar(ceo.insiderScore)}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center space-x-2">
-                        ${ceo.media.map(m => `
-                            <div class="flex items-center text-xs text-gray-500">
-                                <i class="fa-brands ${m.type === 'youtube' ? 'fa-youtube text-red-600' : 'fa-podcast text-purple-600'} mr-1"></i>
-                                ${m.count}
-                            </div>
-                        `).join('')}
-                         ${ceo.media.length > 0 ? `<button data-ceo="${ceo.ceo}" class="view-media-btn text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-1 px-2 rounded-md">View</button>` : `<span class="text-xs text-gray-400">None</span>`}
-                    </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-lg font-bold text-gray-800">${ceo.totalScore}</td>
-            `;
-            tableBody.appendChild(row);
-        });
-        
-        // Add event listeners to the newly created "View" buttons
-        document.querySelectorAll('.view-media-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const ceoName = e.target.dataset.ceo;
-                openPopup(ceoName);
-            });
-        });
-    }
+  if(!show.length){
+    tbody.innerHTML=`<tr><td colspan="8" class="p-6 text-center text-gray-500">No CEOs match this filter.</td></tr>`;
+    return;
+  }
 
-    /**
-     * Opens the media popup with content for the specified CEO.
-     * @param {string} ceoName - The name of the CEO to show media for.
-     */
-    function openPopup(ceoName) {
-        const media = mediaLinks[ceoName] || [];
-        popupCeoName.textContent = `${ceoName}'s Media`;
-        popupMediaContent.innerHTML = '';
+  show.forEach((c,i)=>{
+    const tr=document.createElement("tr");
+    tr.className=i%2?"bg-gray-50":"";
+    tr.innerHTML=rowHTML(c,i);
+    tbody.appendChild(tr);
+  });
+}
 
-        if (media.length > 0) {
-             media.forEach(item => {
-                const linkEl = document.createElement('a');
-                linkEl.href = item.url;
-                linkEl.target = '_blank';
-                linkEl.rel = 'noopener noreferrer';
-                linkEl.className = 'block p-4 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors';
-                linkEl.innerHTML = `
-                    <div class="flex items-center">
-                       <i class="fa-brands ${item.type === 'youtube' ? 'fa-youtube text-red-600' : 'fa-podcast text-purple-600'} mr-3 fa-lg w-6 text-center"></i>
-                       <span class="font-semibold">${item.title}</span>
-                    </div>
-                `;
-                popupMediaContent.appendChild(linkEl);
-            });
-        } else {
-            popupMediaContent.innerHTML = '<p class="text-gray-500">No recent media found.</p>';
-        }
+/* ---------- MEDIA POPUP ---------- */
+function openPopup(name){
+  const list=media[name]||[];
+  popupCeoName.textContent=`${name}'s Media`;
+  popupMediaCont.innerHTML=list.length
+    ? list.map((u,i)=>`<a href="${u}" target="_blank" class="block mb-2 text-blue-600 underline">Video ${i+1}</a>`).join("")
+    : "<p class='text-gray-500'>No recent media.</p>";
+  popup.classList.remove("translate-x-full");
+  popupOverlay.classList.remove("hidden");
+}
+const closePopup=()=>{popup.classList.add("translate-x-full");popupOverlay.classList.add("hidden");};
 
-        popup.classList.remove('translate-x-full');
-        popupOverlay.classList.remove('hidden');
-    }
-
-    /**
-     * Closes the media popup.
-     */
-    function closePopup() {
-        popup.classList.add('translate-x-full');
-        popupOverlay.classList.add('hidden');
-    }
-
-    // --- EVENT LISTENERS ---
-
-    // Handles clicks on the filter tabs
-    filterTabs.addEventListener('click', (e) => {
-        if (e.target.tagName === 'BUTTON') {
-            // Update active tab style
-            document.querySelector('#filterTabs button.text-purple-600').classList.remove('text-purple-600', 'border-purple-600');
-            e.target.classList.add('text-purple-600', 'border-purple-600');
-            
-            // Re-render the table with the new filter
-            renderTable(e.target.dataset.filter);
-        }
-    });
-
-    // Handles closing the popup
-    closePopupBtn.addEventListener('click', closePopup);
-    popupOverlay.addEventListener('click', closePopup);
-    
-    // --- INITIALIZATION ---
-    fetchData(); // Fetch data from the backend as soon as the page loads
+/* ---------- EVENT HANDLERS ---------- */
+filterTabs.addEventListener("click",e=>{
+  if(e.target.tagName==="BUTTON")render(e.target.dataset.filter);
 });
+tbody.addEventListener("click",e=>{
+  if(e.target.classList.contains("view-vid"))openPopup(e.target.dataset.ceo);
+});
+closePopupBtn.addEventListener("click",closePopup);
+popupOverlay.addEventListener("click",closePopup);
+
+/* ---------- BOOT ---------- */
+tbody.innerHTML='<tr><td colspan="8" class="p-6 text-center text-gray-500">Loading…</td></tr>';
+
+fetch(CSV_PATH)
+  .then(r=>r.text())
+  .then(txt=>{
+    const parsed=Papa.parse(txt,{header:true,skipEmptyLines:true});
+    allRows=parsed.data;
+    parsed.data.forEach(row=>{
+      media[row["CEO Name"]]=(row["YouTube URLs"]||"").split(",").map(u=>u.trim()).filter(Boolean);
+    });
+    lastUpdated.textContent="just now";
+    render("all");
+  })
+  .catch(e=>{
+    tbody.innerHTML=`<tr><td colspan="8" class="p-6 text-center text-red-600">Couldn't load CSV: ${e}</td></tr>`;
+  });
