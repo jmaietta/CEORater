@@ -15,19 +15,20 @@ DATABASE_PATH = os.path.join(os.getcwd(), 'ceorater.db')
 CSV_FILE_PATH = os.path.join(os.getcwd(), 'CEORater CSV for Upload.csv')
 
 # Define the mapping from your CSV column headers to the database column names.
-# Adjust these based on the EXACT column names in your new, simplified CSV file.
-# For example, if your CSV column is named 'CEO Name (Full)', change 'CEO Name' to 'CEO Name (Full)'.
+# THESE MUST EXACTLY MATCH THE HEADERS IN YOUR CSV FILE.
 CSV_COLUMN_MAPPING = {
     'CEO Name': 'ceo_name',
+    'Founder (Y/N)': 'founder',
+    'Total Stock Return (TSR) During CEO\'s Tenure': 'total_stock_return',
     'Company Name': 'company_name',
     'Ticker': 'ticker',
-    'CEO Start Date': 'ceo_start_date', # This needs to be in Jacqueline-MM-DD format or MM/DD/YYYY
-    'Founder (Y/N)': 'founder', # 'Y' or 'N'
     'Industry': 'industry',
     'Sector': 'sector',
-    'CEO Compensation ($MM)': 'ceo_compensation_mm', # Assumes this is the column name in the CSV
-    'Equity Trades URL': 'equity_ownership_url', # Assumes this is the column name in the CSV
-    'Stock Price on Start': 'stock_price_on_start', # Needs to be float
+    'CEO Compensation ($ millions)': 'ceo_compensation_mm',
+    'Equity Transactions': 'equity_ownership_url',
+    'CEO Start Date': 'ceo_start_date',
+    'Start Date Stock Price': 'stock_price_on_start',
+    'Stock Price': 'current_stock_price'
 }
 
 # The number of header rows to skip in the CSV before the actual data headers.
@@ -55,7 +56,7 @@ def create_table(conn):
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             ceo_name TEXT NOT NULL,
             company_name TEXT NOT NULL,
-            ticker TEXT UNIQUE NOT NULL, -- Ticker as unique identifier
+            ticker TEXT NOT NULL, -- Removed UNIQUE constraint to allow multiple CEOs per ticker
             ceo_start_date TEXT,
             founder TEXT, -- 'Y' or 'N'
             industry TEXT,
@@ -63,8 +64,8 @@ def create_table(conn):
             ceo_compensation_mm REAL, -- Stored as a floating point number (in millions)
             equity_ownership_url TEXT,
             stock_price_on_start REAL,
-            total_stock_return REAL, -- To be calculated/updated by backend logic
-            current_stock_price REAL, -- To be fetched/updated by backend logic
+            total_stock_return REAL, -- Now imported from CSV
+            current_stock_price REAL, -- Now imported from CSV
             youtube_urls TEXT -- JSON string of array of URLs, to be fetched by backend logic
         )
     ''')
@@ -109,7 +110,7 @@ def import_csv_data(conn, csv_file_path, column_mapping, skip_rows):
 
     missing_csv_columns = [col for col in column_mapping if col not in csv_headers]
     if missing_csv_columns:
-        print(f"Warning: The following expected CSV columns are missing from the file: {missing_csv_columns}")
+        print(f"Warning: The following expected CSV columns are missing from the file: {missing_csv_columns}. Their database fields will be NULL.")
         # For now, we'll proceed, but missing data will be null.
 
     inserted_count = 0
@@ -134,11 +135,13 @@ def import_csv_data(conn, csv_file_path, column_mapping, skip_rows):
                     except ValueError:
                         print(f"Warning: Invalid CEO Compensation '{csv_value}' for row {row_num}. Setting to NULL.")
                         db_data[db_col] = None
-                elif db_col == 'stock_price_on_start':
+                elif db_col in ['stock_price_on_start', 'current_stock_price', 'total_stock_return']:
                      try:
-                        db_data[db_col] = float(csv_value.replace('$', '').replace(',', '')) # Remove '$' and commas
+                        # For percentages like '+89,432%' or dollar values
+                        cleaned_value = csv_value.replace('$', '').replace('%', '').replace('+', '').replace(',', '').strip()
+                        db_data[db_col] = float(cleaned_value)
                      except ValueError:
-                        print(f"Warning: Invalid Stock Price on Start '{csv_value}' for row {row_num}. Setting to NULL.")
+                        print(f"Warning: Invalid numerical value '{csv_value}' for {db_col} on row {row_num}. Setting to NULL.")
                         db_data[db_col] = None
                 elif db_col == 'founder':
                     db_data[db_col] = 'Y' if csv_value.strip().upper() == 'Y' else 'N'
@@ -147,65 +150,64 @@ def import_csv_data(conn, csv_file_path, column_mapping, skip_rows):
                     try:
                         if '/' in csv_value: # Assume MM/DD/YYYY
                             db_data[db_col] = datetime.strptime(csv_value.strip(), '%m/%d/%Y').strftime('%Y-%m-%d')
-                        else: # Assume Jacqueline-MM-DD
+                        else: # Assume YYYY-MM-DD
                             db_data[db_col] = datetime.strptime(csv_value.strip(), '%Y-%m-%d').strftime('%Y-%m-%d')
                     except ValueError:
-                        print(f"Warning: Invalid CEO Start Date format '{csv_value}' for row {row_num}. Expected MM/DD/YYYY or Jacqueline-MM-DD. Setting to NULL.")
+                        print(f"Warning: Invalid CEO Start Date format '{csv_value}' for row {row_num}. Expected MM/DD/YYYY or YYYY-MM-DD. Setting to NULL.")
                         db_data[db_col] = None
                 else:
                     db_data[db_col] = csv_value.strip()
 
-            # Check if CEO (by ticker) already exists to perform an UPDATE or INSERT
-            # Note: For multiple CEOs per company, the 'ticker' alone might not be unique if not combined with CEO name.
-            # However, for now, we'll continue using ticker as the unique key as per the table schema definition.
-            # If a company has multiple CEOs, each must have a unique 'ticker' entry or a composite key.
-            # The current schema assumes ticker is unique. If you have multiple CEOs for same ticker,
-            # you will need a more complex primary key or multiple entries for the same ticker.
-            cursor.execute("SELECT id FROM ceos WHERE ticker = ?", (db_data.get('ticker'),))
+            # Ensure NOT NULL constraints are met for insertion/update
+            required_fields = ['ceo_name', 'company_name', 'ticker']
+            if any(db_data.get(field) is None or str(db_data.get(field)).strip() == '' for field in required_fields):
+                print(f"Error: Missing required field(s) for row {row_num}. Skipping row: {db_data}")
+                skipped_count += 1
+                continue
+
+            # Identify an existing record by combining ticker and ceo_name for multi-CEO support
+            cursor.execute("SELECT id FROM ceos WHERE ticker = ? AND ceo_name = ?",
+                           (db_data['ticker'], db_data['ceo_name']))
             existing_ceo = cursor.fetchone()
 
+            # Prepare fields for insertion/update (ensure order matches values)
+            fields = ['ceo_name', 'company_name', 'ticker', 'ceo_start_date',
+                      'founder', 'industry', 'sector', 'ceo_compensation_mm',
+                      'equity_ownership_url', 'stock_price_on_start',
+                      'total_stock_return', 'current_stock_price']
+            
+            values = [db_data.get(field) for field in fields]
+
             if existing_ceo:
-                # Update existing record
+                # Update existing record based on its unique 'id'
                 update_query = f"""
                     UPDATE ceos SET
                         ceo_name = ?, company_name = ?, ceo_start_date = ?,
                         founder = ?, industry = ?, sector = ?,
                         ceo_compensation_mm = ?, equity_ownership_url = ?,
-                        stock_price_on_start = ?
-                    WHERE ticker = ?
+                        stock_price_on_start = ?, total_stock_return = ?,
+                        current_stock_price = ?
+                    WHERE id = ?
                 """
-                cursor.execute(update_query, (
-                    db_data.get('ceo_name'), db_data.get('company_name'), db_data.get('ceo_start_date'),
-                    db_data.get('founder'), db_data.get('industry'), db_data.get('sector'),
-                    db_data.get('ceo_compensation_mm'), db_data.get('equity_ownership_url'),
-                    db_data.get('stock_price_on_start'),
-                    db_data.get('ticker')
-                ))
+                cursor.execute(update_query, (*values, existing_ceo['id']))
                 updated_count += 1
             else:
                 # Insert new record
+                placeholders = ', '.join(['?' for _ in fields])
                 insert_query = f"""
-                    INSERT INTO ceos (
-                        ceo_name, company_name, ticker, ceo_start_date,
-                        founder, industry, sector, ceo_compensation_mm,
-                        equity_ownership_url, stock_price_on_start
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO ceos ({', '.join(fields)})
+                    VALUES ({placeholders})
                 """
-                cursor.execute(insert_query, (
-                    db_data.get('ceo_name'), db_data.get('company_name'), db_data.get('ticker'), db_data.get('ceo_start_date'),
-                    db_data.get('founder'), db_data.get('industry'), db_data.get('sector'), db_data.get('ceo_compensation_mm'),
-                    db_data.get('equity_ownership_url'), db_data.get('stock_price_on_start')
-                ))
+                cursor.execute(insert_query, values)
                 inserted_count += 1
             
             conn.commit()
 
         except KeyError as e:
-            print(f"Error: Missing expected column in CSV row {row_num}: {e}. Skipping row.")
+            print(f"Error: Missing expected column in CSV row {row_num}: {e}. Please check CSV headers. Skipping row.")
             skipped_count += 1
         except sqlite3.IntegrityError as e:
-            # This can happen if ticker is unique and we try to insert duplicate due to a logic error
-            print(f"Integrity Error for row {row_num} (Ticker: {db_data.get('ticker')}): {e}. Skipping row.")
+            print(f"Integrity Error for row {row_num} (Data: Ticker={db_data.get('ticker')}, CEO={db_data.get('ceo_name')}): {e}. Skipping row.")
             skipped_count += 1
         except Exception as e:
             print(f"An unexpected error occurred for row {row_num}: {e}. Skipping row.")
