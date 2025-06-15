@@ -6,7 +6,8 @@ from datetime import datetime
 
 # Define the path to your database. For Render, this will likely be in the project root.
 # Make sure this matches where your server.js connects to the database.
-DATABASE_PATH = os.path.join(os.getcwd(), 'data', 'ceorater.db') # Assuming 'data' directory for the db
+# Adjusted path: Assuming ceorater.db is directly in the current working directory (e.g., ~/project/src/)
+DATABASE_PATH = os.path.join(os.getcwd(), 'ceorater.db')
 
 # Path to the uploaded CSV file.
 # IMPORTANT: You will need to place your CSV file in the same directory as this script,
@@ -20,7 +21,7 @@ CSV_COLUMN_MAPPING = {
     'CEO Name': 'ceo_name',
     'Company Name': 'company_name',
     'Ticker': 'ticker',
-    'CEO Start Date': 'ceo_start_date', # This needs to be in YYYY-MM-DD format or MM/DD/YYYY
+    'CEO Start Date': 'ceo_start_date', # This needs to be in Jacqueline-MM-DD format or MM/DD/YYYY
     'Founder (Y/N)': 'founder', # 'Y' or 'N'
     'Industry': 'industry',
     'Sector': 'sector',
@@ -146,10 +147,10 @@ def import_csv_data(conn, csv_file_path, column_mapping, skip_rows):
                     try:
                         if '/' in csv_value: # Assume MM/DD/YYYY
                             db_data[db_col] = datetime.strptime(csv_value.strip(), '%m/%d/%Y').strftime('%Y-%m-%d')
-                        else: # Assume YYYY-MM-DD
+                        else: # Assume Jacqueline-MM-DD
                             db_data[db_col] = datetime.strptime(csv_value.strip(), '%Y-%m-%d').strftime('%Y-%m-%d')
                     except ValueError:
-                        print(f"Warning: Invalid CEO Start Date format '{csv_value}' for row {row_num}. Expected MM/DD/YYYY or YYYY-MM-DD. Setting to NULL.")
+                        print(f"Warning: Invalid CEO Start Date format '{csv_value}' for row {row_num}. Expected MM/DD/YYYY or Jacqueline-MM-DD. Setting to NULL.")
                         db_data[db_col] = None
                 else:
                     db_data[db_col] = csv_value.strip()
