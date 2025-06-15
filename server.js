@@ -98,9 +98,8 @@ app.get('/api/ceo-data', async (req, res) => {
 
     try {
         const ceoMasterList = await getCeoMasterList();
-        if (ceoMasterList.length === 0) return res.status(503).json({ message: "No data found in database." });
+        if (ceoMasterList.length === 0) return res.status(200).json({ ceoData: [], mediaLinks: {} }); // Return empty if DB is empty
 
-        let liveMediaLinks = {};
         const enrichedCeoPromises = ceoMasterList.map(async (ceoInfo, index) => {
             const snapshotUrl = `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/${ceoInfo.ticker}?apiKey=${polygonApiKey}`;
             const snapshotResponse = await fetch(snapshotUrl);
@@ -116,8 +115,7 @@ app.get('/api/ceo-data', async (req, res) => {
 
             const tenureYears = ((new Date() - new Date(ceoInfo.startDate)) / 31557600000).toFixed(1);
             const mediaData = await getYouTubeAppearances(ceoInfo.ceo);
-            liveMediaLinks[ceoInfo.ceo] = mediaData.mediaLinks;
-
+            
             return {
                 ...ceoInfo,
                 rank: index + 1,
@@ -128,7 +126,7 @@ app.get('/api/ceo-data', async (req, res) => {
             };
         });
         const finalCeoData = await Promise.all(enrichedCeoPromises);
-        res.json({ ceoData: finalCeoData, mediaLinks: liveMediaLinks });
+        res.json({ ceoData: finalCeoData });
     } catch (error) {
         console.error("Error processing public CEO data:", error);
         res.status(500).json({ message: "Error processing data on the server." });
