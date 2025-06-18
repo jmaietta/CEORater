@@ -93,9 +93,7 @@
         <main class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
             <!-- Controls: Search and Filters -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <input type="text" id="searchInput"
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow md:col-span-1"
-                    placeholder="Search...">
+                <input type="text" id="searchInput" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow md:col-span-1" placeholder="Search...">
                 <select id="industryFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                     <option value="">All Industries</option>
                 </select>
@@ -104,7 +102,6 @@
                 </select>
             </div>
             <div id="lastUpdated" class="text-xs text-gray-500 text-right mb-6 h-4"></div>
-
 
              <!-- Loading Spinner -->
             <div id="loading" class="flex justify-center items-center h-64">
@@ -123,13 +120,30 @@
                     <table id="ceoTable" class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-left align-middle text-xs font-bold text-gray-500 uppercase tracking-wider" data-sort-key="ceo"><div class="flex items-center">CEO <span class="sort-icon"></span></div></th>
-                                <th class="px-6 py-3 text-left align-middle text-xs font-bold text-gray-500 uppercase tracking-wider" data-sort-key="tsrValue"><div class="flex items-center">TSR <span class="sort-icon"></span></div></th>
-                                <th class="px-6 py-3 text-left align-middle text-xs font-bold text-gray-500 uppercase tracking-wider" data-sort-key="company"><div class="flex items-center">Company <span class="sort-icon"></span></div></th>
-                                <th class="px-6 py-3 text-left align-middle text-xs font-bold text-gray-500 uppercase tracking-wider" data-sort-key="ticker"><div class="flex items-center">Ticker <span class="sort-icon"></span></div></th>
-                                <th class="px-6 py-3 text-left align-middle text-xs font-bold text-gray-500 uppercase tracking-wider" data-sort-key="industry"><div class="flex items-center">Industry <span class="sort-icon"></span></div></th>
-                                <th class="px-6 py-3 text-left align-middle text-xs font-bold text-gray-500 uppercase tracking-wider" data-sort-key="sector"><div class="flex items-center">Sector <span class="sort-icon"></span></div></th>
-                                <th class="px-6 py-3 text-left align-middle text-xs font-bold text-gray-500 uppercase tracking-wider"><div class="flex items-center">Equity Transactions</div></th>
+                                <th class="px-6 py-3 text-left align-middle text-xs font-bold text-gray-500 uppercase tracking-wider" data-sort-key="ceo">
+                                    <div class="flex items-center">CEO <span class="sort-icon"></span></div>
+                                </th>
+                                <th class="px-6 py-3 text-left align-middle text-xs font-bold text-gray-500 uppercase tracking-wider" data-sort-key="tsrValue">
+                                    <div class="flex items-center">
+                                        <span class="underline-dotted cursor-help" title="Total Stock Return generated during CEO's tenure">TSR</span>
+                                        <span class="sort-icon"></span>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-3 text-left align-middle text-xs font-bold text-gray-500 uppercase tracking-wider" data-sort-key="company">
+                                    <div class="flex items-center">Company <span class="sort-icon"></span></div>
+                                </th>
+                                <th class="px-6 py-3 text-left align-middle text-xs font-bold text-gray-500 uppercase tracking-wider" data-sort-key="ticker">
+                                    <div class="flex items-center">Ticker <span class="sort-icon"></span></div>
+                                </th>
+                                <th class="px-6 py-3 text-left align-middle text-xs font-bold text-gray-500 uppercase tracking-wider" data-sort-key="industry">
+                                    <div class="flex items-center">Industry <span class="sort-icon"></span></div>
+                                </th>
+                                <th class="px-6 py-3 text-left align-middle text-xs font-bold text-gray-500 uppercase tracking-wider" data-sort-key="sector">
+                                    <div class="flex items-center">Sector <span class="sort-icon"></span></div>
+                                </th>
+                                <th class="px-6 py-3 text-left align-middle text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                    <div class="flex items-center">Equity Transactions</div>
+                                </th>
                             </tr>
                         </thead>
                         <tbody id="ceoTableBody" class="bg-white divide-y divide-gray-200">
@@ -147,7 +161,7 @@
             </div>
         </main>
         <footer class="text-center mt-8 text-sm text-gray-500">
-            <p>Data sourced from a public Google Sheet. This is a front-end demonstration.</p>
+            <p>CEORater 2025</p>
         </footer>
     </div>
 
@@ -175,82 +189,61 @@
         let displayedCeoData = [];
         let currentSort = { key: 'tsrValue', direction: 'desc' };
         let maxAbsTsr = 0;
-        
+
         function parseJSONResponse(text) {
             const jsonString = text.match(/google\.visualization\.Query\.setResponse\((.*)\)/s)[1];
             const data = JSON.parse(jsonString);
             if (!data.table || !data.table.rows) return [];
-            
             return data.table.rows.map(row => {
-                const getCellVal = (index, property = 'v') => (row.c[index] && row.c[index][property] !== null) ? row.c[index][property] : 0; // Default to 0 if null
+                const getCellVal = (index, property = 'v') => (row.c[index] && row.c[index][property] !== null) ? row.c[index][property] : 0;
                 return {
-                    company: getCellVal(0, 'f') || getCellVal(0), 
-                    ticker: getCellVal(1, 'f') || getCellVal(1), 
+                    company: getCellVal(0, 'f') || getCellVal(0),
+                    ticker: getCellVal(1, 'f') || getCellVal(1),
                     industry: getCellVal(2, 'f') || getCellVal(2),
-                    sector: getCellVal(3, 'f') || getCellVal(3), 
-                    ceo: getCellVal(5, 'f') || getCellVal(5), 
+                    sector: getCellVal(3, 'f') || getCellVal(3),
+                    ceo: getCellVal(5, 'f') || getCellVal(5),
                     founder: getCellVal(6, 'f') || getCellVal(6),
-                    equityTransactions: getCellVal(8, 'f') || getCellVal(8), 
-                    tsrValue: getCellVal(13) // Always get the raw numeric value for TSR
+                    equityTransactions: getCellVal(8, 'f') || getCellVal(8),
+                    tsrValue: getCellVal(13)
                 };
             });
         }
 
-        /**
-         * Formats a raw TSR value (e.g., 334.05) into a percentage string (e.g., "33,405%")
-         * @param {number} tsrValue The raw decimal value of the TSR.
-         * @returns {string} A formatted percentage string.
-         */
         function formatTsr(tsrValue) {
-            if (typeof tsrValue !== 'number') {
-                return 'N/A';
-            }
-            // Multiply by 100 to convert from decimal ratio to percentage
+            if (typeof tsrValue !== 'number') return 'N/A';
             const percentage = tsrValue * 100;
-            return percentage.toLocaleString('en-US', {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-            }) + '%';
+            return percentage.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + '%';
         }
 
-        function displayData(data) {
-            // Clear both views
-            ceoTableBody.innerHTML = '';
-            ceoCardView.innerHTML = '';
-
-            if (data.length === 0) {
-                noResults.classList.remove('hidden');
-                return;
-            }
-            noResults.classList.add('hidden');
-
-            renderTableRows(data);
-            renderCards(data);
+        function sortData() {
+            const { key, direction } = currentSort;
+            displayedCeoData.sort((a, b) => {
+                const valA = key === 'tsrValue' ? a.tsrValue : (a[key] || '');
+                const valB = key === 'tsrValue' ? b.tsrValue : (b[key] || '');
+                const comparison = typeof valA === 'number' && typeof valB === 'number'
+                    ? valA - valB
+                    : String(valA).localeCompare(String(valB), 'en', { sensitivity: 'base' });
+                return direction === 'asc' ? comparison : -comparison;
+            });
+            updateSortIcons();
+            displayData(displayedCeoData);
         }
 
         function renderTableRows(data) {
-             data.forEach(ceo => {
+            ceoTableBody.innerHTML = '';
+            data.forEach(ceo => {
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-gray-50 transition-colors duration-200';
-                
-                const founderBadge = ceo.founder.toUpperCase() === 'Y' 
-                    ? `<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
-                
-                const filingsLink = ceo.equityTransactions
-                    ? `<a href="${ceo.equityTransactions}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline">View Filings</a>` : `<span class="text-gray-400">N/A</span>`;
-
+                const founderBadge = ceo.founder.toUpperCase() === 'Y' ? `<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
+                const filingsLink = ceo.equityTransactions ? `<a href="${ceo.equityTransactions}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline">View Filings</a>` : `<span class="text-gray-400">N/A</span>`;
                 const tsrBarWidth = maxAbsTsr > 0 ? (Math.abs(ceo.tsrValue) / maxAbsTsr) * 100 : 0;
                 const tsrBarColor = ceo.tsrValue >= 0 ? 'bg-green-500' : 'bg-red-500';
                 const tsrTextColor = ceo.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
                 const tsrBar = `<div class="tsr-bar-container"><div class="tsr-bar ${tsrBarColor}" style="width: ${tsrBarWidth}%"></div></div>`;
                 const formattedTsr = formatTsr(ceo.tsrValue);
-
                 row.innerHTML = `
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${ceo.ceo}${founderBadge}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm tsr-cell">
-                        ${tsrBar}
-                        <span class="tsr-text font-bold ${tsrTextColor}">${formattedTsr}</span>
-                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm tsr-cell">${tsrBar}<span class="tsr-text font-bold ${tsrTextColor}">${formattedTsr}</span></td>
                     <td class="px-6 py-4 text-sm text-gray-500 whitespace-normal">${ceo.company}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${ceo.ticker}</td>
                     <td class="px-6 py-4 text-sm text-gray-500 whitespace-normal">${ceo.industry}</td>
@@ -260,21 +253,16 @@
                 ceoTableBody.appendChild(row);
             });
         }
-        
+
         function renderCards(data) {
+            ceoCardView.innerHTML = '';
             data.forEach(ceo => {
                 const card = document.createElement('div');
                 card.className = 'bg-white border border-gray-200 rounded-lg p-4 shadow-sm';
-                
-                const founderBadge = ceo.founder.toUpperCase() === 'Y' 
-                    ? `<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
-
-                const filingsLink = ceo.equityTransactions
-                    ? `<a href="${ceo.equityTransactions}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline">View Filings</a>` : `<span class="text-gray-400">N/A</span>`;
-                
+                const founderBadge = ceo.founder.toUpperCase() === 'Y' ? `<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
+                const filingsLink = ceo.equityTransactions ? `<a href="${ceo.equityTransactions}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline">View Filings</a>` : `<span class="text-gray-400">N/A</span>`;
                 const formattedTsr = formatTsr(ceo.tsrValue);
                 const tsrTextColor = ceo.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
-
                 card.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div>
@@ -283,65 +271,21 @@
                         </div>
                     </div>
                     <div class="mt-4 space-y-2">
-                        <div class="flex justify-between text-sm">
-                            <span class="font-medium text-gray-500">TSR</span>
-                            <span class="font-bold ${tsrTextColor}">${formattedTsr}</span>
-                        </div>
-                         <div class="flex justify-between text-sm">
-                            <span class="font-medium text-gray-500">Industry</span>
-                            <span class="text-gray-700 text-right">${ceo.industry}</span>
-                        </div>
-                         <div class="flex justify-between text-sm">
-                            <span class="font-medium text-gray-500">Sector</span>
-                            <span class="text-gray-700 text-right">${ceo.sector}</span>
-                        </div>
-                        <div class="flex justify-between text-sm items-center pt-2 border-t">
-                            <span class="font-medium text-gray-500">Equity Transactions</span>
-                            <span>${filingsLink}</span>
-                        </div>
+                        <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">TSR</span><span class="font-bold ${tsrTextColor}">${formattedTsr}</span></div>
+                        <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Industry</span><span class="text-gray-700 text-right">${ceo.industry}</span></div>
+                        <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Sector</span><span class="text-gray-700 text-right">${ceo.sector}</span></div>
+                        <div class="flex justify-between text-sm items-center pt-2 border-t"><span class="font-medium text-gray-500">Equity Transactions</span><span>${filingsLink}</span></div>
                     </div>
                 `;
                 ceoCardView.appendChild(card);
             });
         }
 
-        function sortData() {
-            const { key, direction } = currentSort;
-            displayedCeoData.sort((a, b) => {
-                const valA = key === 'tsrValue' ? a.tsrValue : (a[key] || '');
-                const valB = key === 'tsrValue' ? b.tsrValue : (b[key] || '');
-                const comparison = typeof valA === 'number' && typeof valB === 'number'
-                    ? valA - valB : String(valA).localeCompare(String(valB), 'en', { sensitivity: 'base' });
-                return direction === 'asc' ? comparison : -comparison;
-            });
-            updateSortIcons();
-            displayData(displayedCeoData);
-        }
-
-        function updateSortIcons() {
-            document.querySelectorAll('th[data-sort-key]').forEach(th => {
-                th.classList.remove('sorted');
-                const icon = th.querySelector('.sort-icon');
-                const sortKey = th.dataset.sortKey;
-                const isCurrentSortCol = sortKey === currentSort.key || (sortKey === 'tsrValue' && currentSort.key === 'tsrValue');
-                if (isCurrentSortCol) {
-                    th.classList.add('sorted');
-                    icon.textContent = currentSort.direction === 'asc' ? '▲' : '▼';
-                } else {
-                    icon.textContent = '';
-                }
-            });
-        }
-        
         function handleSort(e) {
             const key = e.currentTarget.dataset.sortKey;
             if (!key) return;
-            if (currentSort.key === key) {
-                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
-            } else {
-                currentSort.key = key;
-                currentSort.direction = 'desc';
-            }
+            if (currentSort.key === key) currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            else { currentSort.key = key; currentSort.direction = 'desc'; }
             sortData();
         }
 
@@ -349,11 +293,10 @@
             const searchTerm = searchInput.value.toLowerCase();
             const selectedIndustry = industryFilter.value;
             const selectedSector = sectorFilter.value;
-
             displayedCeoData = masterCeoData.filter(ceo => {
                 const searchMatch = (ceo.ceo && ceo.ceo.toLowerCase().includes(searchTerm)) ||
-                       (ceo.company && ceo.company.toLowerCase().includes(searchTerm)) ||
-                       (ceo.ticker && ceo.ticker.toLowerCase().includes(searchTerm));
+                    (ceo.company && ceo.company.toLowerCase().includes(searchTerm)) ||
+                    (ceo.ticker && ceo.ticker.toLowerCase().includes(searchTerm));
                 const industryMatch = !selectedIndustry || ceo.industry === selectedIndustry;
                 const sectorMatch = !selectedSector || ceo.sector === selectedSector;
                 return searchMatch && industryMatch && sectorMatch;
@@ -362,55 +305,33 @@
         }
 
         function populateFilters(data) {
-            const industries = [...new Set(data.map(ceo => ceo.industry).filter(Boolean))].sort();
-            const sectors = [...new Set(data.map(ceo => ceo.sector).filter(Boolean))].sort();
-
-            industryFilter.innerHTML = '<option value="">All Industries</option>';
-            industries.forEach(industry => {
-                const option = document.createElement('option');
-                option.value = industry;
-                option.textContent = industry;
-                industryFilter.appendChild(option);
-            });
-
-            sectorFilter.innerHTML = '<option value="">All Sectors</option>';
-            sectors.forEach(sector => {
-                const option = document.createElement('option');
-                option.value = sector;
-                option.textContent = sector;
-                sectorFilter.appendChild(option);
-            });
+            const industries = [...new Set(data.map(c => c.industry).filter(Boolean))].sort();
+            const sectors = [...new Set(data.map(c => c.sector).filter(Boolean))].sort();
+            industryFilter.innerHTML = '<option value="">All Industries</option>' + industries.map(i => `<option value="${i}">${i}</option>`).join('');
+            sectorFilter.innerHTML = '<option value="">All Sectors</option>' + sectors.map(s => `<option value="${s}">${s}</option>`).join('');
         }
-        
-        async function fetchAndUpdateData(isInitialLoad = false) {
-             try {
-                const response = await fetch(`${sheetUrl}&t=${new Date().getTime()}`); // Cache-busting
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const responseText = await response.text();
-                masterCeoData = parseJSONResponse(responseText);
-                if (masterCeoData.length === 0) throw new Error("No data parsed.");
 
-                maxAbsTsr = Math.max(...masterCeoData.map(ceo => Math.abs(ceo.tsrValue)));
-                
-                if (isInitialLoad) {
-                    populateFilters(masterCeoData);
-                }
-                
+        async function fetchAndUpdateData(isInitialLoad) {
+            if (isInitialLoad) loading.style.display = 'flex';
+            try {
+                const resp = await fetch(sheetUrl);
+                const text = await resp.text();
+                masterCeoData = parseJSONResponse(text);
+                maxAbsTsr = Math.max(...masterCeoData.map(c => Math.abs(c.tsrValue)));
+                displayedCeoData = [...masterCeoData];
+                populateFilters(masterCeoData);
                 filterData();
-                
-                const now = new Date();
-                lastUpdated.textContent = `Last updated: ${now.toLocaleTimeString()}`;
-
-            } catch (error) {
-                console.error("Error fetching data: ", error);
+                const now = new Date(); lastUpdated.textContent = `Last updated: ${now.toLocaleTimeString()}`;
+            } catch (err) {
+                console.error('Error fetching data:', err);
                 if (isInitialLoad) errorMessage.classList.remove('hidden');
             } finally {
                 if (isInitialLoad) loading.style.display = 'none';
             }
         }
 
-        async function init() {
-            await fetchAndUpdateData(true);
+        function init() {
+            fetchAndUpdateData(true);
             searchInput.addEventListener('input', filterData);
             industryFilter.addEventListener('change', filterData);
             sectorFilter.addEventListener('change', filterData);
