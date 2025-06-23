@@ -199,8 +199,19 @@
 
                 // Helper to parse numeric values safely, returning 0 if invalid/null.
                 const getNumericVal = (index) => {
-                    const val = getCellVal(index, 'v');
-                    if (val === null) return 0;
+                    const cell = row.c[index];
+                    if (!cell) return 0;
+
+                    // Try to get value from 'v' (raw) or 'f' (formatted) properties
+                    let val = cell.v !== null && typeof cell.v !== 'undefined' ? cell.v : cell.f;
+                    
+                    if (val === null || typeof val === 'undefined') return 0;
+                    
+                    // If value is a string, remove common non-numeric characters like commas.
+                    if (typeof val === 'string') {
+                        val = val.replace(/,/g, '').trim();
+                    }
+
                     const num = parseFloat(val);
                     return isNaN(num) ? 0 : num;
                 };
