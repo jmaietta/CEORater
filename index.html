@@ -159,8 +159,8 @@
         // Configuration
         const sheetId = '17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA';
         const sheetGid = '0';
-        // Updated range to C6:P107 to include all necessary columns
-        const range = 'C6:P107'; 
+        // Corrected range to include all required columns up to Q
+        const range = 'C6:Q107'; 
         const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${sheetGid}&range=${range}`;
         const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -186,7 +186,6 @@
             const data = JSON.parse(jsonString);
             if (!data.table || !data.table.rows) return [];
             
-            // Updated column mapping based on the new sheet structure
             return data.table.rows.map(row => {
                 // Helper to safely get cell value. Defaults to null if not found.
                 const getCellVal = (index, property = 'v') => {
@@ -202,10 +201,10 @@
                     const cell = row.c[index];
                     if (!cell) return 0;
 
-                    // Try to get value from 'v' (raw) or 'f' (formatted) properties
+                    // Try to get value from 'v' (raw value) or 'f' (formatted string) properties
                     let val = cell.v !== null && typeof cell.v !== 'undefined' ? cell.v : cell.f;
                     
-                    if (val === null || typeof val === 'undefined') return 0;
+                    if (val === null || typeof val === 'undefined' || val === "") return 0;
                     
                     // If value is a string, remove common non-numeric characters like commas.
                     if (typeof val === 'string') {
@@ -216,20 +215,20 @@
                     return isNaN(num) ? 0 : num;
                 };
                 
+                // Corrected mapping based on the C6:Q107 range from the Google Sheet
                 return {
-                    company: getCellVal(0, 'f') || getCellVal(0) || '', 
-                    ticker: getCellVal(1, 'f') || getCellVal(1) || '', 
-                    industry: getCellVal(2, 'f') || getCellVal(2) || '',
-                    sector: getCellVal(3, 'f') || getCellVal(3) || '', 
-                    ceo: getCellVal(5, 'f') || getCellVal(5) || '', 
-                    founder: getCellVal(6, 'f') || getCellVal(6) || '',
-                    equityTransactions: getCellVal(8, 'f') || getCellVal(8) || '',
-                    // New fields parsed explicitly as numbers
-                    tenure: getNumericVal(9),
-                    compensation: getNumericVal(10),
-                    compensationCost: getNumericVal(11),
-                    avgAnnualTsr: getNumericVal(12),
-                    tsrValue: getNumericVal(13)
+                    company: getCellVal(0, 'f') || getCellVal(0) || '',              // Col C
+                    ticker: getCellVal(1, 'f') || getCellVal(1) || '',              // Col D
+                    industry: getCellVal(2, 'f') || getCellVal(2) || '',            // Col E
+                    sector: getCellVal(3, 'f') || getCellVal(3) || '',              // Col F
+                    ceo: getCellVal(5, 'f') || getCellVal(5) || '',                 // Col H
+                    founder: getCellVal(6, 'f') || getCellVal(6) || '',             // Col I
+                    equityTransactions: getCellVal(14, 'f') || getCellVal(14) || '',// Col Q
+                    tenure: getNumericVal(9),                                       // Col L
+                    compensation: getNumericVal(10),                                // Col M
+                    compensationCost: getNumericVal(11),                            // Col N
+                    avgAnnualTsr: getNumericVal(12),                                // Col O
+                    tsrValue: getNumericVal(13)                                     // Col P
                 };
             });
         }
