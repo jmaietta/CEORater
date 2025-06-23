@@ -56,8 +56,8 @@
                     <option value="tsrValue-asc">Sort by: TSR (Low to High)</option>
                     <option value="avgAnnualTsr-desc">Sort by: Avg. Annual TSR (High to Low)</option>
                     <option value="avgAnnualTsr-asc">Sort by: Avg. Annual TSR (Low to High)</option>
-                    <option value="compensation-desc">Sort by: Compensation (High to Low)</option>
-                    <option value="compensation-asc">Sort by: Compensation (Low to High)</option>
+                    <option value="compensation-desc">Sort by: CEO Compensation (High to Low)</option>
+                    <option value="compensation-asc">Sort by: CEO Compensation (Low to High)</option>
                     <option value="tenure-desc">Sort by: Tenure (High to Low)</option>
                     <option value="tenure-asc">Sort by: Tenure (Low to High)</option>
                     <option value="ceo-asc">Sort by: CEO (A-Z)</option>
@@ -171,9 +171,18 @@
             return (value * 100).toLocaleString('en-US', { maximumFractionDigits: 0 }) + '%';
         }
         
-        function formatMillions(value) {
+        /**
+         * Formats a number into a currency string in millions with a specified number of decimal places.
+         * @param {number} value The number to format.
+         * @param {number} decimalPlaces The number of decimal places to show.
+         * @returns {string} Formatted currency string.
+         */
+        function formatMillions(value, decimalPlaces = 2) {
             if (typeof value !== 'number') return 'N/A';
-            return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return value.toLocaleString('en-US', { 
+                minimumFractionDigits: decimalPlaces, 
+                maximumFractionDigits: decimalPlaces 
+            });
         }
 
         function displayData(data) {
@@ -211,8 +220,8 @@
                         <div class="mt-4 space-y-2">
                             <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Total Stock Return (TSR) During CEO's Tenure</span><span class="font-bold ${tsrTextColor}">${formatPercentage(ceo.tsrValue)}</span></div>
                             <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Avg. Annual TSR</span><span class="font-bold ${avgTsrTextColor}">${formatPercentage(ceo.avgAnnualTsr)}</span></div>
-                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Compensation ($MM)</span><span class="text-gray-700 text-right">$${formatMillions(ceo.compensation)}</span></div>
-                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500 text-left">Comp. Cost / 1% Avg. Annual TSR ($MM)</span><span class="text-gray-700 text-right">$${formatMillions(ceo.compensationCost)}</span></div>
+                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">CEO Compensation ($MM)</span><span class="text-gray-700 text-right">$${formatMillions(ceo.compensation, 1)}</span></div>
+                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500 text-left">Comp. Cost / 1% Avg. Annual TSR ($MM)</span><span class="text-gray-700 text-right">$${formatMillions(ceo.compensationCost, 3)}</span></div>
                             <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Tenure (Yrs.)</span><span class="text-gray-700 text-right">${ceo.tenure.toFixed(1)}</span></div>
                             <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Industry</span><span class="text-gray-700 text-right">${ceo.industry}</span></div>
                             <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Sector</span><span class="text-gray-700 text-right">${ceo.sector}</span></div>
