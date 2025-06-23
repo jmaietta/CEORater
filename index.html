@@ -159,8 +159,8 @@
         // Configuration
         const sheetId = '17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA';
         const sheetGid = '0';
-        // Corrected range to include all required columns up to Q
-        const range = 'C6:Q107'; 
+        // Corrected range to include all required columns up to S
+        const range = 'C6:S107'; 
         const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${sheetGid}&range=${range}`;
         const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -196,39 +196,54 @@
                     return null;
                 };
 
-                // Helper to parse numeric values safely, returning 0 if invalid/null.
+                /**
+                 * More robustly parse a numeric value from a cell.
+                 * Handles raw numbers, formatted strings, currencies, and text mixed with numbers.
+                 * @param {number} index - The column index in the data row.
+                 * @returns {number} The parsed number, or 0 if parsing fails.
+                 */
                 const getNumericVal = (index) => {
                     const cell = row.c[index];
                     if (!cell) return 0;
 
-                    // Try to get value from 'v' (raw value) or 'f' (formatted string) properties
+                    // Prefer the raw numeric value 'v' if it exists and is a number.
+                    if (typeof cell.v === 'number') {
+                        return cell.v;
+                    }
+
+                    // Otherwise, try to parse the raw value 'v' or the formatted value 'f'.
                     let val = cell.v !== null && typeof cell.v !== 'undefined' ? cell.v : cell.f;
                     
                     if (val === null || typeof val === 'undefined' || val === "") return 0;
                     
-                    // If value is a string, remove common non-numeric characters like commas.
+                    // If the value is a string, perform aggressive cleanup to find a number.
                     if (typeof val === 'string') {
-                        val = val.replace(/,/g, '').trim();
+                        // This regex finds the first valid number (integer or float, positive or negative) in the string.
+                        const match = val.match(/^-?\d*\.?\d+/);
+                        if (match) {
+                           val = match[0];
+                        }
                     }
 
                     const num = parseFloat(val);
                     return isNaN(num) ? 0 : num;
                 };
                 
-                // Corrected mapping based on the C6:Q107 range from the Google Sheet
+                // Mapping based on the C6:S107 range from the Google Sheet
+                // Index is 0-based from the start of the range (Column C)
                 return {
-                    company: getCellVal(0, 'f') || getCellVal(0) || '',              // Col C
-                    ticker: getCellVal(1, 'f') || getCellVal(1) || '',              // Col D
-                    industry: getCellVal(2, 'f') || getCellVal(2) || '',            // Col E
-                    sector: getCellVal(3, 'f') || getCellVal(3) || '',              // Col F
-                    ceo: getCellVal(5, 'f') || getCellVal(5) || '',                 // Col H
-                    founder: getCellVal(6, 'f') || getCellVal(6) || '',             // Col I
-                    equityTransactions: getCellVal(14, 'f') || getCellVal(14) || '',// Col Q
-                    tenure: getNumericVal(9),                                       // Col L
-                    compensation: getNumericVal(10),                                // Col M
-                    compensationCost: getNumericVal(11),                            // Col N
-                    avgAnnualTsr: getNumericVal(12),                                // Col O
-                    tsrValue: getNumericVal(13)                                     // Col P
+                    company: getCellVal(0) || '',              // Col C -> index 0
+                    ticker: getCellVal(1) || '',              // Col D -> index 1
+                    industry: getCellVal(2) || '',            // Col E -> index 2
+                    sector: getCellVal(3) || '',              // Col F -> index 3
+                    ceo: getCellVal(5) || '',                 // Col H -> index 5
+                    founder: getCellVal(6) || '',             // Col I -> index 6
+                    compensation: getNumericVal(7),           // Col J -> index 7
+                    equityTransactions: getCellVal(8) || '',  // Col K -> index 8
+                    tsrValue: getNumericVal(13),              // Col P -> index 13
+                    tenure: getNumericVal(14),                // Col Q -> index 14
+                    avgAnnualTsr: getNumericVal(15),          // Col R -> index 15
+                    compensationCost: getNumericVal(16)       // Col S -> index 16
                 };
             });
         }
