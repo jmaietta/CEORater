@@ -26,10 +26,6 @@
         .follow-star.following { color: #f59e0b; }
         .follow-star.disabled { cursor: not-allowed; opacity: 0.5; }
         /* This new class makes the toggle switch work correctly */
-        .toggle-bg { position: relative; }
-        .toggle-bg:after { content: ''; position: absolute; top: 2px; left: 2px; background: white; border-radius: 9999px; height: 1.25rem; width: 1.25rem; transition: transform 0.2s ease-in-out; }
-        input:checked + .toggle-bg:after { transform: translateX(1rem); }
-        input:checked + .toggle-bg { background-color: #3b82f6; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
