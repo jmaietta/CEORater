@@ -55,7 +55,11 @@
                 </select>
                 <div class="flex items-center justify-center space-x-2 p-2 border border-gray-300 rounded-lg h-full">
                     <label for="watchlistToggle" class="text-sm font-medium text-gray-700">My Watchlist</label>
-                    <div class="relative"><input type="checkbox" id="watchlistToggle" class="sr-only"><div class="toggle-bg block bg-gray-200 w-10 h-6 rounded-full"></div></div>
+                    <label class="relative inline-block">
+                        <input type="checkbox" id="watchlistToggle" class="sr-only peer">
+                        <div class="toggle-bg block bg-gray-200 w-10 h-6 rounded-full peer-checked:bg-blue-600"></div>
+                        <div class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full transition-transform peer-checked:translate-x-full"></div>
+                    </label>
                 </div>
             </div>
 
