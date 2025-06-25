@@ -8,336 +8,336 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
+    <link rel="icon" type="image/png" href="/CEORater favicon.png">
+    
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .font-orbitron { font-family: 'Orbitron', sans-serif; }
-        #loading-spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #09f; animation: spin 1s ease infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .action-button { transition: all 0.2s ease-in-out; }
-        .action-button:hover { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
-        .modal.hidden { display: none; }
-        .modal-content { animation: fadeIn 0.3s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-        .follow-star { cursor: pointer; color: #d1d5db; transition: color 0.2s, transform 0.2s; }
-        .follow-star:hover { transform: scale(1.1); }
-        .follow-star.following { color: #f59e0b; }
-        .follow-star.disabled { cursor: not-allowed; opacity: 0.5; }
-        /* This new class makes the toggle switch work correctly */
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        #loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-    <div class="container max-w-full mx-auto p-2 sm:p-4 md:p-8">
-        <header class="text-center mb-4">
-            <h1 class="text-3xl sm:text-4xl md:text-5xl font-orbitron font-bold italic text-blue-600">CEORater</h1>
-            <p class="text-gray-600 mt-2 text-base sm:text-lg">NASDAQ 100 CEO Performance & Compensation Analytics</p>
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-orbitron font-bold italic text-blue-600">CEORater</h1>
+            <p class="text-gray-600 mt-2 text-lg">NASDAQ 100 CEO Performance & Compensation Analytics</p>
         </header>
 
-        <main class="bg-white rounded-xl shadow-lg p-2 sm:p-4 md:p-6">
-            <div class="flex justify-end mb-4">
-                <button id="mainAuthButton" class="w-full sm:w-auto px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 action-button">Log In / Sign Up</button>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 items-center">
-                <input type="text" id="searchInput" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 sm:col-span-2" placeholder="Search...">
-                <select id="industryFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"><option value="">All Industries</option></select>
-                <select id="sectorFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"><option value="">All Sectors</option></select>
+        <main class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <input type="text" id="searchInput"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow lg:col-span-1"
+                    placeholder="Search by CEO, Company, or Ticker...">
+                <select id="industryFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                    <option value="">All Industries</option>
+                </select>
+                <select id="sectorFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                    <option value="">All Sectors</option>
+                </select>
                 <select id="sortControl" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                     <option value="tsrValue-desc">Sort by: TSR (High to Low)</option>
-                    <option value="compensation-desc">Sort by: CEO Compensation</option>
+                    <option value="tsrValue-asc">Sort by: TSR (Low to High)</option>
+                    <option value="avgAnnualTsr-desc">Sort by: Avg. Annual TSR (High to Low)</option>
+                    <option value="avgAnnualTsr-asc">Sort by: Avg. Annual TSR (Low to High)</option>
+                    <option value="compensation-desc">Sort by: CEO Compensation (High to Low)</option>
+                    <option value="compensation-asc">Sort by: CEO Compensation (Low to High)</option>
+                    <option value="tenure-desc">Sort by: Tenure (High to Low)</option>
+                    <option value="tenure-asc">Sort by: Tenure (Low to High)</option>
+                    <option value="ceo-asc">Sort by: CEO (A-Z)</option>
+                    <option value="ceo-desc">Sort by: CEO (Z-A)</option>
+                    <option value="company-asc">Sort by: Company (A-Z)</option>
+                    <option value="company-desc">Sort by: Company (Z-A)</option>
                 </select>
-                <div class="flex items-center justify-center space-x-2 p-2 border border-gray-300 rounded-lg h-full">
-                    <label for="watchlistToggle" class="text-sm font-medium text-gray-700">My Watchlist</label>
-                    <label class="relative inline-block">
-                        <input type="checkbox" id="watchlistToggle" class="sr-only peer">
-                        <div class="toggle-bg block bg-gray-200 w-10 h-6 rounded-full peer-checked:bg-blue-600"></div>
-                        <div class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full transition-transform peer-checked:translate-x-full"></div>
-                    </label>
-                </div>
             </div>
-
             <div id="lastUpdated" class="text-xs text-gray-500 text-right mb-6 h-4"></div>
-            <div id="loading" class="flex justify-center items-center h-64"><div id="loading-spinner"></div></div>
-            <div id="error-message" class="hidden text-center text-red-500 font-medium py-8"><p>Could not load data.</p></div>
-            <div id="ceoCardView" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"></div>
-            <p id="noResults" class="text-center text-gray-500 py-8 hidden">No results found.</p>
+
+
+             <div id="loading" class="flex justify-center items-center h-64">
+                <div id="loading-spinner"></div>
+            </div>
+
+             <div id="error-message" class="hidden text-center text-red-500 font-medium py-8">
+                <p>Could not load data from Google Sheets. Please ensure the sheet is published to the web and the link is correct.</p>
+            </div>
+
+            <div>
+                <div id="ceoCardView" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    </div>
+
+                <p id="noResults" class="text-center text-gray-500 py-8 hidden">No results found.</p>
+            </div>
         </main>
-        <footer class="text-center mt-8 text-sm text-gray-500"><p>TSR is Total Stock Return during CEO tenure. CEORater 2025.</p></footer>
+        <footer class="text-center mt-8 text-sm text-gray-500">
+            <p>TSR is Total Stock Return during CEO tenure. CEORater 2025.</p>
+        </footer>
     </div>
 
-    <div id="authModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 hidden">
-        <div class="modal-content bg-white rounded-lg shadow-xl p-4 sm:p-8 max-w-sm w-full text-center relative max-h-screen overflow-y-auto">
-            <button id="closeAuthModal" class="absolute top-0 right-0 mt-2 mr-3 text-gray-400 hover:text-gray-600 text-3xl">&times;</button>
-            <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Create Account or Log In</h2>
-            <p class="text-gray-600 mb-6">to access premium features.</p>
-            <div id="authError" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 hidden" role="alert"></div>
-            <form id="emailForm" class="space-y-4">
-                <input type="email" id="emailInput" placeholder="Email Address" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <input type="password" id="passwordInput" placeholder="Password (6+ characters)" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <button type="submit" class="w-full px-4 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 action-button">Continue</button>
-            </form>
-             <div class="relative flex py-4 items-center"><div class="flex-grow border-t border-gray-300"></div><span class="flex-shrink mx-4 text-gray-400 text-sm">OR</span><div class="flex-grow border-t border-gray-300"></div></div>
-             <div class="space-y-3">
-                 <button id="google-signin" class="w-full px-4 py-3 flex items-center justify-center bg-white border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-100 action-button sso-button">
-                     <img src="https://www.google.com/favicon.ico" alt="Google" class="w-5 h-5 mr-3"> Continue with Google
-                 </button>
-                 <button id="microsoft-signin" class="w-full px-4 py-3 flex items-center justify-center bg-white border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-100 action-button sso-button">
-                     <img src="https://www.microsoft.com/favicon.ico" alt="Microsoft" class="w-5 h-5 mr-3"> Continue with Microsoft
-                 </button>
-            </div>
-        </div>
-    </div>
-    
-    <div id="premiumModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 hidden">
-        <div class="modal-content bg-white rounded-lg shadow-xl p-4 sm:p-8 max-w-md w-full text-center relative max-h-screen overflow-y-auto">
-            <button id="closePremiumModal" class="absolute top-0 right-0 mt-2 mr-3 text-gray-400 hover:text-gray-600 text-3xl">&times;</button>
-            <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-2">Unlock the Premium Suite</h2>
-            <ul class="text-left my-6 space-y-3 text-gray-600">
-                <li class="flex items-start"><svg class="w-6 h-6 text-green-500 mr-2 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg><span>**Follow CEOs & Tickers:** Create a personalized watchlist to track executives.</span></li>
-                <li class="flex items-start"><svg class="w-6 h-6 text-green-500 mr-2 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg><span>**Performance Alerts:** Receive email notifications on performance changes (coming soon).</span></li>
-            </ul>
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <p class="text-4xl font-bold text-blue-800">$9.99<span class="text-base font-medium"> / month</span></p>
-            </div>
-            <button id="upgradeButton" class="w-full px-4 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 action-button">Upgrade Now</button>
-        </div>
-    </div>
-    
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // --- CONFIG & STATE ---
-            const sheetId = '17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA', sheetGid = '0', range = 'C6:S107';
-            const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${sheetGid}&range=${range}`;
-            let masterCeoData = [];
-            const appState = {
-                currentUser: null,
-                isPremium: false,
-                watchlistMode: false,
-                followedCeos: new Set(),
-                filters: { searchTerm: '', industry: '', sector: '' },
-                sort: { key: 'tsrValue', direction: 'desc' }
-            };
+        // Configuration
+        const sheetId = '17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA';
+        const sheetGid = '0';
+        // Corrected range to include all required columns up to S
+        const range = 'C6:S107'; 
+        const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${sheetGid}&range=${range}`;
+        const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
-            // --- FIREBASE CONFIGURATION ---
-            const firebaseConfig = {
-                apiKey: "AIzaSyDxHijS3cGbVq-mHFc5SfdgyqnbKUJarYQ",
-                authDomain: "ceorater-dacef.firebaseapp.com",
-                projectId: "ceorater-dacef",
-                storageBucket: "ceorater-dacef.appspot.com",
-                messagingSenderId: "772315733470",
-                appId: "1:772315733470:web:990b30df47ba3fc8fc914f",
-                measurementId: "G-NRNZ6WZNE8"
-            };
+        // DOM Elements
+        const searchInput = document.getElementById('searchInput');
+        const industryFilter = document.getElementById('industryFilter');
+        const sectorFilter = document.getElementById('sectorFilter');
+        const sortControl = document.getElementById('sortControl');
+        const lastUpdated = document.getElementById('lastUpdated');
+        const ceoCardView = document.getElementById('ceoCardView');
+        const noResults = document.getElementById('noResults');
+        const loading = document.getElementById('loading');
+        const errorMessage = document.getElementById('error-message');
+
+        // State
+        let masterCeoData = [];
+        let displayedCeoData = [];
+        let currentSort = { key: 'tsrValue', direction: 'desc' };
+        
+        function parseJSONResponse(text) {
+            const jsonString = text.match(/google\.visualization\.Query\.setResponse\((.*)\)/s)[1];
+            const data = JSON.parse(jsonString);
+            if (!data.table || !data.table.rows) return [];
             
-            if (firebaseConfig.apiKey) {
-                firebase.initializeApp(firebaseConfig);
-            }
-
-            // --- DOM ELEMENTS ---
-            const dom = {
-                mainAuthButton: document.getElementById('mainAuthButton'),
-                premiumModal: document.getElementById('premiumModal'),
-                closePremiumModal: document.getElementById('closePremiumModal'),
-                upgradeButton: document.getElementById('upgradeButton'),
-                authModal: document.getElementById('authModal'),
-                closeAuthModal: document.getElementById('closeAuthModal'),
-                emailForm: document.getElementById('emailForm'),
-                emailInput: document.getElementById('emailInput'),
-                passwordInput: document.getElementById('passwordInput'),
-                authError: document.getElementById('authError'),
-                googleSigninButton: document.getElementById('google-signin'),
-                microsoftSigninButton: document.getElementById('microsoft-signin'),
-                ceoCardView: document.getElementById('ceoCardView'),
-                noResults: document.getElementById('noResults'),
-                loading: document.getElementById('loading'),
-                lastUpdated: document.getElementById('lastUpdated'),
-                searchInput: document.getElementById('searchInput'),
-                industryFilter: document.getElementById('industryFilter'),
-                sectorFilter: document.getElementById('sectorFilter'),
-                sortControl: document.getElementById('sortControl'),
-                watchlistToggle: document.getElementById('watchlistToggle')
-            };
-            
-            // --- AUTH & UI LOGIC ---
-            const showModal = (modal, show) => modal.classList.toggle('hidden', !show);
-            const showAuthError = (message) => {
-                dom.authError.textContent = message;
-                dom.authError.classList.remove('hidden');
-            };
-
-            const updateUIForAuthState = (user) => {
-                appState.currentUser = user;
-                if (user) {
-                    appState.isPremium = true; 
-                    showModal(dom.authModal, false);
-                } else {
-                    appState.isPremium = false;
-                    appState.followedCeos.clear();
-                    appState.watchlistMode = false;
-                }
-                renderDisplay();
-            };
-
-            const handleEmailAuth = (e) => {
-                e.preventDefault();
-                const email = dom.emailInput.value;
-                const password = dom.passwordInput.value;
-                dom.authError.classList.add('hidden');
-                firebase.auth().createUserWithEmailAndPassword(email, password)
-                    .catch(error => {
-                        if (error.code === 'auth/email-already-in-use') {
-                            return firebase.auth().signInWithEmailAndPassword(email, password);
-                        } throw error;
-                    })
-                    .then(userCredential => console.log("Signed in:", userCredential.user))
-                    .catch(error => showAuthError(error.message));
-            };
-
-            const handleOAuth = (provider) => {
-                firebase.auth().signInWithPopup(provider)
-                    .then(result => console.log("Signed in with provider:", result.user))
-                    .catch(error => { console.error("OAuth Error:", error); showAuthError(error.message); });
-            };
-            
-            // --- DATA PARSING & FORMATTING ---
-            const parseJSONResponse = text => {
-                const jsonStringMatch = text.match(/google\.visualization\.Query\.setResponse\((.*)\)/s);
-                if (!jsonStringMatch || !jsonStringMatch[1]) return [];
-                const data = JSON.parse(jsonStringMatch[1]);
-                if (!data.table || !data.table.rows) return [];
-                return data.table.rows.map(row => {
-                    const getCell = (i,p='v')=>row.c[i]&&row.c[i][p]!=null?row.c[i][p]:null;
-                    const getNum=i=>{const c=row.c[i];if(!c)return 0;if(typeof c.v==='number')return c.v;let v=c.v!=null?c.v:c.f;if(v==null||v==="")return 0;if(typeof v==='string'){const m=v.match(/^-?\d*\.?\d+/);if(m)v=m[0];}const n=parseFloat(v);return isNaN(n)?0:n};
-                    return {company:getCell(0)||'',ticker:getCell(1)||'',industry:getCell(2)||'',sector:getCell(3)||'',ceo:getCell(5)||'',founder:getCell(6)||'',compensation:getNum(7),equityTransactions:getCell(8)||'',tsrValue:getNum(13),tenure:getNum(14),avgAnnualTsr:getNum(15),compensationCost:getNum(16)};
-                });
-            };
-            const formatPercentage=v=>typeof v!=='number'?'N/A':(v*100).toLocaleString('en-US',{maximumFractionDigits:0})+'%';
-            const formatMillions=(v,p=2)=>typeof v!=='number'?'N/A':v.toLocaleString('en-US',{minimumFractionDigits:p,maximumFractionDigits:p});
-            
-            // --- MASTER DISPLAY LOGIC (REWRITTEN FOR STABILITY) ---
-            const getFilteredAndSortedData = () => {
-                let data = [...masterCeoData];
-
-                if (appState.watchlistMode && appState.isPremium) {
-                    data = data.filter(c => appState.followedCeos.has(c.ticker));
-                }
-
-                const { searchTerm, industry, sector } = appState.filters;
-                if (searchTerm || industry || sector) {
-                    data = data.filter(c => 
-                        (c.ceo.toLowerCase().includes(searchTerm) || c.company.toLowerCase().includes(searchTerm) || c.ticker.toLowerCase().includes(searchTerm)) &&
-                        (!industry || c.industry === industry) &&
-                        (!sector || c.sector === sector)
-                    );
-                }
-                
-                const {key, direction} = appState.sort;
-                data.sort((a,b)=>{let vA=a[key],vB=b[key],c=0;if(typeof vA==='number'&&typeof vB==='number')c=vA-vB;else c=String(vA).localeCompare(String(vB),'en',{sensitivity:'base'});return direction==='asc'?c:-c;});
-                
-                return data;
-            };
-            
-            const renderDisplay = () => {
-                dom.mainAuthButton.textContent = appState.currentUser ? 'Log Out' : 'Log In / Sign Up';
-                dom.watchlistToggle.disabled = !appState.isPremium;
-                dom.watchlistToggle.parentElement.parentElement.classList.toggle('opacity-50', !appState.isPremium);
-                dom.watchlistToggle.checked = appState.watchlistMode;
-
-                const dataToRender = getFilteredAndSortedData();
-                dom.ceoCardView.innerHTML = '';
-                dom.noResults.classList.toggle('hidden', dataToRender.length > 0);
-                
-                dataToRender.forEach(c => {
-                    const card = document.createElement('div');
-                    card.className = 'bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col justify-between';
-                    
-                    const starSVG = `<svg class="follow-star w-6 h-6 ${appState.followedCeos.has(c.ticker) ? 'following' : ''} ${!appState.isPremium ? 'disabled' : ''}" data-ticker="${c.ticker}" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>`;
-                    const filingsLink = c.equityTransactions ? `<a href="${c.equityTransactions}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline">View Filings</a>` : `<span class="text-gray-400">N/A</span>`;
-                    const tsrTextColor = c.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
-                    const avgTsrTextColor = c.avgAnnualTsr >= 0 ? 'text-green-600' : 'text-red-600';
-                    card.innerHTML = `<div class="flex justify-between items-start mb-3"><div class="flex-1 min-w-0 pr-3"><h3 class="font-bold text-base md:text-lg text-gray-900 truncate">${c.ceo}${c.founder.toUpperCase()==='Y'?'<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>':''}</h3><p class="text-sm text-gray-600 truncate">${c.company} (${c.ticker})</p></div><div class="flex-shrink-0">${starSVG}</div></div><div class="space-y-1"><div class="py-1 flex flex-col sm:flex-row sm:justify-between text-sm"><span class="font-medium text-gray-500">Total Stock Return (TSR) During CEO's Tenure</span><span class="font-bold text-left sm:text-right ${tsrTextColor}">${formatPercentage(c.tsrValue)}</span></div><div class="py-1 flex flex-col sm:flex-row sm:justify-between text-sm"><span class="font-medium text-gray-500">Avg. Annual TSR</span><span class="font-bold text-left sm:text-right ${avgTsrTextColor}">${formatPercentage(c.avgAnnualTsr)}</span></div><div class="py-1 flex flex-col sm:flex-row sm:justify-between text-sm"><span class="font-medium text-gray-500">CEO Compensation ($MM)</span><span class="font-bold text-left sm:text-right text-gray-700">$${formatMillions(c.compensation,1)}</span></div><div class="py-1 flex flex-col sm:flex-row sm:justify-between text-sm"><span class="font-medium text-gray-500">Comp. Cost / 1% Avg. Annual TSR ($MM)</span><span class="font-bold block text-left sm:text-right text-gray-700">$${formatMillions(c.compensationCost,3)}</span></div><div class="py-1 flex flex-col sm:flex-row sm:justify-between text-sm"><span class="font-medium text-gray-500">Tenure (Yrs.)</span><span class="font-bold text-left sm:text-right text-gray-700">${c.tenure.toFixed(1)}</span></div><div class="py-1 flex flex-col sm:flex-row sm:justify-between text-sm"><span class="font-medium text-gray-500">Industry</span><span class="font-bold text-left sm:text-right text-gray-700">${c.industry}</span></div><div class="py-1 flex flex-col sm:flex-row sm:justify-between text-sm"><span class="font-medium text-gray-500">Sector</span><span class="font-bold block text-left sm:text-right text-gray-700">${c.sector}</span></div></div><div class="flex justify-between text-sm items-center pt-3 mt-3 border-t border-gray-200"><span class="font-medium text-gray-500">Equity Transactions</span><span>${filingsLink}</span></div>`;
-                dom.ceoCardView.appendChild(card);
-                });
-            };
-            
-            // --- INITIALIZATION ---
-            
-            // Event Delegation for Follow Stars (Best Practice)
-            dom.ceoCardView.addEventListener('click', (e) => {
-                const star = e.target.closest('.follow-star');
-                if (star) {
-                    const ticker = star.dataset.ticker;
-                    if (ticker) {
-                        if (!appState.isPremium) {
-                            showModal(dom.premiumModal, true);
-                            return;
-                        }
-                        if (appState.followedCeos.has(ticker)) {
-                            appState.followedCeos.delete(ticker);
-                        } else {
-                            appState.followedCeos.add(ticker);
-                        }
-                        renderDisplay();
+            return data.table.rows.map(row => {
+                // Helper to safely get cell value. Defaults to null if not found.
+                const getCellVal = (index, property = 'v') => {
+                    const cell = row.c[index];
+                    if (cell && cell[property] !== null && typeof cell[property] !== 'undefined') {
+                        return cell[property];
                     }
+                    return null;
+                };
+
+                const getNumericVal = (index) => {
+                    const cell = row.c[index];
+                    if (!cell) return 0;
+                    if (typeof cell.v === 'number') return cell.v;
+                    let val = cell.v !== null && typeof cell.v !== 'undefined' ? cell.v : cell.f;
+                    if (val === null || typeof val === 'undefined' || val === "") return 0;
+                    if (typeof val === 'string') {
+                        const match = val.match(/^-?\d*\.?\d+/);
+                        if (match) val = match[0];
+                    }
+                    const num = parseFloat(val);
+                    return isNaN(num) ? 0 : num;
+                };
+                
+                // Mapping based on the C6:S107 range from the Google Sheet
+                return {
+                    company: getCellVal(0) || '',
+                    ticker: getCellVal(1) || '',
+                    industry: getCellVal(2) || '',
+                    sector: getCellVal(3) || '',
+                    ceo: getCellVal(5) || '',
+                    founder: getCellVal(6) || '',
+                    compensation: getNumericVal(7),
+                    equityTransactions: getCellVal(8) || '',
+                    tsrValue: getNumericVal(13),
+                    tenure: getNumericVal(14),
+                    avgAnnualTsr: getNumericVal(15),
+                    compensationCost: getNumericVal(16)
+                };
+            });
+        }
+
+        function formatPercentage(value) {
+            if (typeof value !== 'number') return 'N/A';
+            return (value * 100).toLocaleString('en-US', { maximumFractionDigits: 0 }) + '%';
+        }
+        
+        /**
+         * Formats a number into a currency string in millions with a specified number of decimal places.
+         * @param {number} value The number to format.
+         * @param {number} decimalPlaces The number of decimal places to show.
+         * @returns {string} Formatted currency string.
+         */
+        function formatMillions(value, decimalPlaces = 2) {
+            if (typeof value !== 'number') return 'N/A';
+            return value.toLocaleString('en-US', { 
+                minimumFractionDigits: decimalPlaces, 
+                maximumFractionDigits: decimalPlaces 
+            });
+        }
+
+        function displayData(data) {
+            ceoCardView.innerHTML = '';
+            if (data.length === 0) {
+                noResults.classList.remove('hidden');
+                return;
+            }
+            noResults.classList.add('hidden');
+            renderCards(data);
+        }
+        
+        function renderCards(data) {
+            data.forEach(ceo => {
+                const card = document.createElement('div');
+                card.className = 'bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col justify-between';
+                
+                const founderBadge = ceo.founder.toUpperCase() === 'Y' 
+                    ? `<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
+
+                const filingsLink = ceo.equityTransactions
+                    ? `<a href="${ceo.equityTransactions}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline">View Filings</a>` : `<span class="text-gray-400">N/A</span>`;
+                
+                const tsrTextColor = ceo.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
+                const avgTsrTextColor = ceo.avgAnnualTsr >= 0 ? 'text-green-600' : 'text-red-600';
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-900">${ceo.ceo}${founderBadge}</h3>
+                                <p class="text-sm text-gray-600">${ceo.company} (${ceo.ticker})</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 space-y-2">
+                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Total Stock Return (TSR) During CEO's Tenure</span><span class="font-bold ${tsrTextColor}">${formatPercentage(ceo.tsrValue)}</span></div>
+                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Avg. Annual TSR</span><span class="font-bold ${avgTsrTextColor}">${formatPercentage(ceo.avgAnnualTsr)}</span></div>
+                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">CEO Compensation ($MM)</span><span class="text-gray-700 text-right">$${formatMillions(ceo.compensation, 1)}</span></div>
+                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500 text-left">Comp. Cost / 1% Avg. Annual TSR ($MM)</span><span class="text-gray-700 text-right">$${formatMillions(ceo.compensationCost, 3)}</span></div>
+                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Tenure (Yrs.)</span><span class="text-gray-700 text-right">${ceo.tenure.toFixed(1)}</span></div>
+                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Industry</span><span class="text-gray-700 text-right">${ceo.industry}</span></div>
+                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Sector</span><span class="text-gray-700 text-right">${ceo.sector}</span></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between text-sm items-center pt-3 mt-3 border-t">
+                        <span class="font-medium text-gray-500">Equity Transactions</span>
+                        <span>${filingsLink}</span>
+                    </div>
+                `;
+                ceoCardView.appendChild(card);
+            });
+        }
+
+        function sortData() {
+            const { key, direction } = currentSort;
+            displayedCeoData.sort((a, b) => {
+                const valA = a[key];
+                const valB = b[key];
+                let comparison = 0;
+                if (typeof valA === 'number' && typeof valB === 'number') {
+                    comparison = valA - valB;
+                } else {
+                    comparison = String(valA).localeCompare(String(valB), 'en', { sensitivity: 'base' });
                 }
+                return direction === 'asc' ? comparison : -comparison;
+            });
+            displayData(displayedCeoData);
+        }
+        
+        function handleSortChange(e) {
+            const [key, direction] = e.target.value.split('-');
+            if (key && direction) {
+                currentSort = { key, direction };
+                sortData();
+            }
+        }
+
+        function filterAndSortData() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const selectedIndustry = industryFilter.value;
+            const selectedSector = sectorFilter.value;
+
+            displayedCeoData = masterCeoData.filter(ceo => {
+                const searchMatch = (ceo.ceo.toLowerCase().includes(searchTerm)) ||
+                       (ceo.company.toLowerCase().includes(searchTerm)) ||
+                       (ceo.ticker.toLowerCase().includes(searchTerm));
+                const industryMatch = !selectedIndustry || ceo.industry === selectedIndustry;
+                const sectorMatch = !selectedSector || ceo.sector === selectedSector;
+                return searchMatch && industryMatch && sectorMatch;
+            });
+            sortData();
+        }
+
+        function populateFilters(data) {
+            const industries = [...new Set(data.map(ceo => ceo.industry).filter(Boolean))].sort();
+            const sectors = [...new Set(data.map(ceo => ceo.sector).filter(Boolean))].sort();
+
+            industryFilter.innerHTML = '<option value="">All Industries</option>';
+            industries.forEach(industry => {
+                const option = document.createElement('option');
+                option.value = industry;
+                option.textContent = industry;
+                industryFilter.appendChild(option);
             });
 
-            dom.watchlistToggle.addEventListener('change', (e) => {
-                if (!appState.isPremium) { e.target.checked = false; showModal(dom.premiumModal, true); return; }
-                appState.watchlistMode = e.target.checked;
-                renderDisplay();
+            sectorFilter.innerHTML = '<option value="">All Sectors</option>';
+            sectors.forEach(sector => {
+                const option = document.createElement('option');
+                option.value = sector;
+                option.textContent = sector;
+                sectorFilter.appendChild(option);
             });
+        }
+        
+        async function fetchAndUpdateData(isInitialLoad = false) {
+             try {
+                const response = await fetch(`${sheetUrl}&t=${new Date().getTime()}`); // Cache-busting
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const responseText = await response.text();
+                masterCeoData = parseJSONResponse(responseText);
 
-            firebase.auth().onAuthStateChanged(user => updateUIForAuthState(user));
+                if (masterCeoData.length === 0) {
+                   if (isInitialLoad) throw new Error("No data parsed from the sheet.");
+                   return;
+                }
+                
+                if (isInitialLoad) {
+                    populateFilters(masterCeoData);
+                }
+                
+                filterAndSortData();
+                
+                const now = new Date();
+                lastUpdated.textContent = `Last updated: ${now.toLocaleTimeString()}`;
 
-            ['input', 'change'].forEach(evt => {
-                dom.searchInput.addEventListener(evt, () => { appState.filters.searchTerm = dom.searchInput.value.toLowerCase(); renderDisplay(); });
-                dom.industryFilter.addEventListener(evt, () => { appState.filters.industry = dom.industryFilter.value; renderDisplay(); });
-                dom.sectorFilter.addEventListener(evt, () => { appState.filters.sector = dom.sectorFilter.value; renderDisplay(); });
-                dom.sortControl.addEventListener(evt, () => {
-                    const [k, d] = dom.sortControl.value.split('-');
-                    if (k && d) appState.sort = { key: k, direction: d };
-                    renderDisplay();
-                });
-            });
-            
-            dom.mainAuthButton.addEventListener('click', () => {
-                if(appState.currentUser) { firebase.auth().signOut(); }
-                else { showModal(dom.authModal, true); }
-            });
-            dom.emailForm.addEventListener('submit', handleEmailAuth);
-            dom.googleSigninButton.addEventListener('click', () => handleOAuth(new firebase.auth.GoogleAuthProvider()));
-            dom.microsoftSigninButton.addEventListener('click', () => handleOAuth(new firebase.auth.OAuthProvider('microsoft.com')));
-            
-            dom.closePremiumModal.addEventListener('click', () => showModal(dom.premiumModal, false));
-            dom.closeAuthModal.addEventListener('click', () => showModal(dom.authModal, false));
-            dom.upgradeButton.addEventListener('click', () => { showModal(dom.premiumModal, false); showModal(dom.authModal, true); });
+            } catch (error) {
+                console.error("Error fetching or processing data: ", error);
+                if (isInitialLoad) errorMessage.classList.remove('hidden');
+            } finally {
+                if (isInitialLoad) loading.style.display = 'none';
+            }
+        }
 
-            // --- FETCH INITIAL DATA ---
-            fetch(`${sheetUrl}&t=${new Date().getTime()}`)
-                .then(res => res.text())
-                .then(text => {
-                    masterCeoData = parseJSONResponse(text);
-                    const industries = [...new Set(masterCeoData.map(c => c.industry).filter(Boolean))].sort();
-                    const sectors = [...new Set(masterCeoData.map(c => c.sector).filter(Boolean))].sort();
-                    dom.industryFilter.innerHTML='<option value="">All Industries</option>';industries.forEach(i=>{const o=document.createElement('option');o.value=o.textContent=i;dom.industryFilter.appendChild(o);});
-                    dom.sectorFilter.innerHTML='<option value="">All Sectors</option>';sectors.forEach(s=>{const o=document.createElement('option');o.value=o.textContent=s;dom.sectorFilter.appendChild(o);});
-                    renderDisplay();
-                    dom.lastUpdated.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
-                })
-                .catch(err => {
-                    console.error("Error:", err);
-                    document.getElementById('error-message').classList.remove('hidden');
-                })
-                .finally(() => {
-                    dom.loading.style.display = 'none';
-                });
+        async function init() {
+            await fetchAndUpdateData(true);
+            searchInput.addEventListener('input', filterAndSortData);
+            industryFilter.addEventListener('change', filterAndSortData);
+            sectorFilter.addEventListener('change', filterAndSortData);
+            sortControl.addEventListener('change', handleSortChange);
+            setInterval(() => fetchAndUpdateData(false), REFRESH_INTERVAL_MS);
+        }
 
-        });
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
-```
