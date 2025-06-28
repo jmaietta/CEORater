@@ -22,8 +22,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -85,9 +83,6 @@
             <div class="flex justify-end mb-4 space-x-2">
                 <button id="downloadExcelButton" class="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition">
                     Export to Excel
-                </button>
-                <button id="downloadPdfButton" class="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition">
-                    Download as PDF
                 </button>
             </div>
             
@@ -404,79 +399,6 @@
             const downloadExcelButton = document.getElementById('downloadExcelButton');
             downloadExcelButton.addEventListener('click', () => {
                 exportToCsv('CEORater_Data.csv', displayedCeoData);
-            });
-
-            const downloadPdfButton = document.getElementById('downloadPdfButton');
-            downloadPdfButton.addEventListener('click', () => {
-                const printContainer = document.createElement('div');
-
-                // 1. Add Header
-                const header = document.createElement('div');
-                header.className = 'text-center p-8';
-                header.innerHTML = `
-                    <h1 class="text-4xl font-orbitron font-bold italic text-blue-600">CEORater</h1>
-                    <p class="text-gray-600 mt-2 text-lg">NASDAQ 100 CEO Performance & Compensation Analytics</p>
-                `;
-                printContainer.appendChild(header);
-
-                // 2. Create a single container for all cards
-                const cardsContainer = document.createElement('div');
-                // Use inline styles for a simple flow layout that the PDF generator can handle
-                cardsContainer.style.padding = '2rem';
-                
-                displayedCeoData.forEach(ceo => {
-                    const card = document.createElement('div');
-                    // This styling is crucial for page break control
-                    card.style.border = '1px solid #e5e7eb';
-                    card.style.borderRadius = '0.5rem';
-                    card.style.padding = '1rem';
-                    card.style.marginBottom = '1rem';
-                    card.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
-                    card.style.backgroundColor = 'white';
-                    card.style.breakInside = 'avoid'; // This is the key property
-
-                    const founderBadge = ceo.founder && ceo.founder.toUpperCase() === 'Y' 
-                        ? `<span style="margin-left: 0.5rem; display: inline-flex; align-items: center; padding: 0.125rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; background-color: #d1fae5; color: #065f46;">Founder</span>` : '';
-                    const filingsLink = ceo.equityTransactions
-                        ? `<a href="${ceo.equityTransactions}" target="_blank" style="color: #2563eb;">View Filings</a>` : `<span style="color: #9ca3af;">N/A</span>`;
-                    const tsrTextColor = ceo.tsrValue >= 0 ? '#16a34a' : '#dc2626';
-                    const avgTsrTextColor = ceo.avgAnnualTsr >= 0 ? '#16a34a' : '#dc2626';
-
-                    // Manually build the card with inline styles to avoid Tailwind dependency in PDF renderer
-                    card.innerHTML = `
-                        <div style="font-family: 'Inter', sans-serif;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                <div>
-                                    <h3 style="font-weight: 700; font-size: 1.125rem; color: #111827;">${ceo.ceo}${founderBadge}</h3>
-                                    <p style="font-size: 0.875rem; color: #4b5563;">${ceo.company} (${ceo.ticker})</p>
-                                </div>
-                            </div>
-                            <div style="margin-top: 1rem; font-size: 0.875rem;">
-                                <div style="display: flex; justify-content: space-between; padding: 0.25rem 0;"><span style="font-weight: 500; color: #6b7280;">Total Stock Return (TSR)</span><span style="font-weight: 700; color: ${tsrTextColor};">${formatPercentage(ceo.tsrValue)}</span></div>
-                                <div style="display: flex; justify-content: space-between; padding: 0.25rem 0;"><span style="font-weight: 500; color: #6b7280;">Avg. Annual TSR</span><span style="font-weight: 700; color: ${avgTsrTextColor};">${formatPercentage(ceo.avgAnnualTsr)}</span></div>
-                                <div style="display: flex; justify-content: space-between; padding: 0.25rem 0;"><span style="font-weight: 500; color: #6b7280;">Compensation ($MM)</span><span style="color: #374151;">$${formatMillions(ceo.compensation, 1)}</span></div>
-                                <div style="display: flex; justify-content: space-between; padding: 0.25rem 0;"><span style="font-weight: 500; color: #6b7280;">Tenure (Yrs.)</span><span style="color: #374151;">${ceo.tenure.toFixed(1)}</span></div>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.75rem; margin-top: 0.75rem; border-top: 1px solid #e5e7eb; font-size: 0.875rem;">
-                                <span style="font-weight: 500; color: #6b7280;">Equity Transactions</span>
-                                <span>${filingsLink}</span>
-                            </div>
-                        </div>
-                    `;
-                    cardsContainer.appendChild(card);
-                });
-                printContainer.appendChild(cardsContainer);
-                
-                // 3. Set options and generate PDF
-                const opt = {
-                  margin:       0.5,
-                  filename:     'CEORater_Report.pdf',
-                  image:        { type: 'jpeg', quality: 0.98 },
-                  html2canvas:  { scale: 2 },
-                  jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
-                };
-                
-                html2pdf().from(printContainer).set(opt).save();
             });
         }
 
