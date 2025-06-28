@@ -45,6 +45,10 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        /* Style for forcing a page break in the PDF */
+        .pdf-page-break {
+            page-break-before: always;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -118,7 +122,6 @@
         // Configuration
         const sheetId = '17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA';
         const sheetGid = '0';
-        // Corrected range to include all required columns up to S
         const range = 'C6:S107'; 
         const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${sheetGid}&range=${range}`;
         const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
@@ -140,7 +143,6 @@
         let currentSort = { key: 'tsrValue', direction: 'desc' };
         
         function parseJSONResponse(text) {
-            // Added safety check for the match function
             const match = text.match(/google\.visualization\.Query\.setResponse\((.*)\)/s);
             if (!match || !match[1]) {
                 console.error("Could not parse JSON response from Google Sheets.");
@@ -204,31 +206,34 @@
         }
         
         function exportToCsv(filename, data) {
+            const title = '"CEORater"';
+            const tagline = '"NASDAQ 100 CEO Performance & Compensation Analytics"';
+            
             const headers = [
                 "CEO", "Company", "Ticker", "Founder", "Tenure (Yrs.)", 
-                "TSR", "Avg. Annual TSR", "Compensation ($MM)", 
+                "Total Stock Return (TSR)", "Avg. Annual TSR", "CEO Compensation ($MM)", 
                 "Comp. Cost / 1% Avg. Annual TSR ($MM)", "Industry", "Sector"
             ];
             
-            const csvRows = [headers.join(',')];
-            data.forEach(ceo => {
+            const dataRows = data.map(ceo => {
                 const values = [
                     `"${String(ceo.ceo || '').replace(/"/g, '""')}"`,
                     `"${String(ceo.company || '').replace(/"/g, '""')}"`,
                     ceo.ticker,
                     ceo.founder,
-                    ceo.tenure,
-                    ceo.tsrValue,
-                    ceo.avgAnnualTsr,
-                    ceo.compensation,
-                    ceo.compensationCost,
+                    ceo.tenure.toFixed(1),
+                    `"${formatPercentage(ceo.tsrValue)}"`,
+                    `"${formatPercentage(ceo.avgAnnualTsr)}"`,
+                    `"$${formatMillions(ceo.compensation, 1)}"`,
+                    `"$${formatMillions(ceo.compensationCost, 3)}"`,
                     `"${String(ceo.industry || '').replace(/"/g, '""')}"`,
                     `"${String(ceo.sector || '').replace(/"/g, '""')}"`
                 ];
-                csvRows.push(values.join(','));
+                return values.join(',');
             });
             
-            const csvString = csvRows.join('\n');
+            const csvString = [title, tagline, '', headers.join(',')].concat(dataRows).join('\n');
+            
             const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             if (link.download !== undefined) {
@@ -400,7 +405,6 @@
             sortControl.addEventListener('change', handleSortChange);
             setInterval(() => fetchAndUpdateData(false), REFRESH_INTERVAL_MS);
 
-            // Added Event Listeners for new buttons
             const downloadExcelButton = document.getElementById('downloadExcelButton');
             downloadExcelButton.addEventListener('click', () => {
                 exportToCsv('CEORater_Data.csv', displayedCeoData);
@@ -408,7 +412,67 @@
 
             const downloadPdfButton = document.getElementById('downloadPdfButton');
             downloadPdfButton.addEventListener('click', () => {
-                const element = document.getElementById('ceoCardView');
+                // Create a container for the printable content
+                const printContainer = document.createElement('div');
+                printContainer.className = 'p-8'; 
+
+                // 1. Add Header
+                const header = document.createElement('div');
+                header.className = 'text-center mb-8';
+                header.innerHTML = `
+                    <h1 class="text-4xl font-orbitron font-bold italic text-blue-600">CEORater</h1>
+                    <p class="text-gray-600 mt-2 text-lg">NASDAQ 100 CEO Performance & Compensation Analytics</p>
+                `;
+                printContainer.appendChild(header);
+
+                // 2. Add CEO Cards in a print-friendly layout
+                const cardsContainer = document.createElement('div');
+                cardsContainer.className = 'grid grid-cols-2 gap-4'; 
+                
+                displayedCeoData.forEach((ceo, index) => {
+                    // After every 6 cards (3 rows in a 2-column grid), insert a page break for the next element.
+                    if (index > 0 && index % 6 === 0) {
+                        const pageBreak = document.createElement('div');
+                        pageBreak.className = 'pdf-page-break';
+                        cardsContainer.appendChild(pageBreak);
+                    }
+                    
+                    const card = document.createElement('div');
+                    card.className = 'bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col justify-between h-full';
+                    
+                    const founderBadge = ceo.founder && ceo.founder.toUpperCase() === 'Y' 
+                        ? `<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
+                    const filingsLink = ceo.equityTransactions
+                        ? `<a href="${ceo.equityTransactions}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline">View Filings</a>` : `<span class="text-gray-400">N/A</span>`;
+                    const tsrTextColor = ceo.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
+                    const avgTsrTextColor = ceo.avgAnnualTsr >= 0 ? 'text-green-600' : 'text-red-600';
+
+                    card.innerHTML = `
+                        <div>
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="font-bold text-lg text-gray-900">${ceo.ceo}${founderBadge}</h3>
+                                    <p class="text-sm text-gray-600">${ceo.company} (${ceo.ticker})</p>
+                                </div>
+                            </div>
+                            <div class="mt-4 space-y-2">
+                                <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">TSR During Tenure</span><span class="font-bold ${tsrTextColor}">${formatPercentage(ceo.tsrValue)}</span></div>
+                                <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Avg. Annual TSR</span><span class="font-bold ${avgTsrTextColor}">${formatPercentage(ceo.avgAnnualTsr)}</span></div>
+                                <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Compensation ($MM)</span><span class="text-gray-700 text-right">$${formatMillions(ceo.compensation, 1)}</span></div>
+                                <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Comp. Cost / TSR (%)</span><span class="text-gray-700 text-right">$${formatMillions(ceo.compensationCost, 3)}</span></div>
+                                <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Tenure (Yrs.)</span><span class="text-gray-700 text-right">${ceo.tenure.toFixed(1)}</span></div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between text-sm items-center pt-3 mt-3 border-t">
+                            <span class="font-medium text-gray-500">Equity Transactions</span>
+                            <span>${filingsLink}</span>
+                        </div>
+                    `;
+                    cardsContainer.appendChild(card);
+                });
+                printContainer.appendChild(cardsContainer);
+
+                // 3. Set options and generate PDF from the constructed element
                 const opt = {
                   margin:       0.5,
                   filename:     'CEORater_Report.pdf',
@@ -416,7 +480,8 @@
                   html2canvas:  { scale: 2, useCORS: true },
                   jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
                 };
-                html2pdf().from(element).set(opt).save();
+                
+                html2pdf().from(printContainer).set(opt).save();
             });
         }
 
