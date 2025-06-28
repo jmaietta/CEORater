@@ -9,11 +9,10 @@
     <link rel="icon" type="image/png" sizes="512x512" href="android-chrome-512x512.png">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
 
-    <meta property="og:description" content="NASDAQ 100 CEO Performance & Compensation Analytics">
-    <meta property="og:image" content="https://your-username.github.io/your-repo/android-chrome-512x512.png">
-
     <meta property="og:title" content="CEORater">
-    <meta property="og:url" content="https://your-username.github.io/your-repo/">
+    <meta property="og:description" content="NASDAQ 100 CEO Performance & Compensation Analytics">
+    <meta property="og:image" content="https://www.ceorater.com/android-chrome-512x512.png">
+    <meta property="og:url" content="https://www.ceorater.com/">
     
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -22,6 +21,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <style>
         body {
@@ -80,6 +81,16 @@
                     <option value="company-desc">Sort by: Company (Z-A)</option>
                 </select>
             </div>
+            
+            <div class="flex justify-end mb-4 space-x-2">
+                <button id="downloadExcelButton" class="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition">
+                    Export to Excel
+                </button>
+                <button id="downloadPdfButton" class="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition">
+                    Download as PDF
+                </button>
+            </div>
+            
             <div id="lastUpdated" class="text-xs text-gray-500 text-right mb-6 h-4"></div>
 
 
@@ -93,7 +104,7 @@
 
             <div>
                 <div id="ceoCardView" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    </div>
+                </div>
 
                 <p id="noResults" class="text-center text-gray-500 py-8 hidden">No results found.</p>
             </div>
@@ -193,158 +204,41 @@
                 maximumFractionDigits: decimalPlaces 
             });
         }
-
-        function displayData(data) {
-            ceoCardView.innerHTML = '';
-            if (data.length === 0) {
-                noResults.classList.remove('hidden');
-                return;
-            }
-            noResults.classList.add('hidden');
-            renderCards(data);
-        }
         
-        function renderCards(data) {
+        // Added function to handle exporting data to a CSV file
+        function exportToCsv(filename, data) {
+            // Define the headers for your CSV file
+            const headers = [
+                "CEO", "Company", "Ticker", "Founder", "Tenure (Yrs.)", 
+                "TSR", "Avg. Annual TSR", "Compensation ($MM)", 
+                "Comp. Cost / 1% Avg. Annual TSR ($MM)", "Industry", "Sector"
+            ];
+            
+            // Convert the array of objects to a CSV string
+            const csvRows = [headers.join(',')]; // Start with the header row
             data.forEach(ceo => {
-                const card = document.createElement('div');
-                card.className = 'bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col justify-between';
-                
-                const founderBadge = ceo.founder.toUpperCase() === 'Y' 
-                    ? `<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
-
-                const filingsLink = ceo.equityTransactions
-                    ? `<a href="${ceo.equityTransactions}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline">View Filings</a>` : `<span class="text-gray-400">N/A</span>`;
-                
-                const tsrTextColor = ceo.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
-                const avgTsrTextColor = ceo.avgAnnualTsr >= 0 ? 'text-green-600' : 'text-red-600';
-
-                card.innerHTML = `
-                    <div>
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h3 class="font-bold text-lg text-gray-900">${ceo.ceo}${founderBadge}</h3>
-                                <p class="text-sm text-gray-600">${ceo.company} (${ceo.ticker})</p>
-                            </div>
-                        </div>
-                        <div class="mt-4 space-y-2">
-                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Total Stock Return (TSR) During CEO's Tenure</span><span class="font-bold ${tsrTextColor}">${formatPercentage(ceo.tsrValue)}</span></div>
-                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Avg. Annual TSR</span><span class="font-bold ${avgTsrTextColor}">${formatPercentage(ceo.avgAnnualTsr)}</span></div>
-                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">CEO Compensation ($MM)</span><span class="text-gray-700 text-right">$${formatMillions(ceo.compensation, 1)}</span></div>
-                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500 text-left">Comp. Cost / 1% Avg. Annual TSR ($MM)</span><span class="text-gray-700 text-right">$${formatMillions(ceo.compensationCost, 3)}</span></div>
-                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Tenure (Yrs.)</span><span class="text-gray-700 text-right">${ceo.tenure.toFixed(1)}</span></div>
-                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Industry</span><span class="text-gray-700 text-right">${ceo.industry}</span></div>
-                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Sector</span><span class="text-gray-700 text-right">${ceo.sector}</span></div>
-                        </div>
-                    </div>
-                    <div class="flex justify-between text-sm items-center pt-3 mt-3 border-t">
-                        <span class="font-medium text-gray-500">Equity Transactions</span>
-                        <span>${filingsLink}</span>
-                    </div>
-                `;
-                ceoCardView.appendChild(card);
+                const values = [
+                    `"${ceo.ceo}"`, // Enclose in quotes to handle commas in names
+                    `"${ceo.company}"`,
+                    ceo.ticker,
+                    ceo.founder,
+                    ceo.tenure,
+                    ceo.tsrValue,
+                    ceo.avgAnnualTsr,
+                    ceo.compensation,
+                    ceo.compensationCost,
+                    `"${ceo.industry}"`,
+                    `"${ceo.sector}"`
+                ];
+                csvRows.push(values.join(','));
             });
-        }
-
-        function sortData() {
-            const { key, direction } = currentSort;
-            displayedCeoData.sort((a, b) => {
-                const valA = a[key];
-                const valB = b[key];
-                let comparison = 0;
-                if (typeof valA === 'number' && typeof valB === 'number') {
-                    comparison = valA - valB;
-                } else {
-                    comparison = String(valA).localeCompare(String(valB), 'en', { sensitivity: 'base' });
-                }
-                return direction === 'asc' ? comparison : -comparison;
-            });
-            displayData(displayedCeoData);
-        }
-        
-        function handleSortChange(e) {
-            const [key, direction] = e.target.value.split('-');
-            if (key && direction) {
-                currentSort = { key, direction };
-                sortData();
-            }
-        }
-
-        function filterAndSortData() {
-            const searchTerm = searchInput.value.toLowerCase();
-            const selectedIndustry = industryFilter.value;
-            const selectedSector = sectorFilter.value;
-
-            displayedCeoData = masterCeoData.filter(ceo => {
-                const searchMatch = (ceo.ceo.toLowerCase().includes(searchTerm)) ||
-                       (ceo.company.toLowerCase().includes(searchTerm)) ||
-                       (ceo.ticker.toLowerCase().includes(searchTerm));
-                const industryMatch = !selectedIndustry || ceo.industry === selectedIndustry;
-                const sectorMatch = !selectedSector || ceo.sector === selectedSector;
-                return searchMatch && industryMatch && sectorMatch;
-            });
-            sortData();
-        }
-
-        function populateFilters(data) {
-            const industries = [...new Set(data.map(ceo => ceo.industry).filter(Boolean))].sort();
-            const sectors = [...new Set(data.map(ceo => ceo.sector).filter(Boolean))].sort();
-
-            industryFilter.innerHTML = '<option value="">All Industries</option>';
-            industries.forEach(industry => {
-                const option = document.createElement('option');
-                option.value = industry;
-                option.textContent = industry;
-                industryFilter.appendChild(option);
-            });
-
-            sectorFilter.innerHTML = '<option value="">All Sectors</option>';
-            sectors.forEach(sector => {
-                const option = document.createElement('option');
-                option.value = sector;
-                option.textContent = sector;
-                sectorFilter.appendChild(option);
-            });
-        }
-        
-        async function fetchAndUpdateData(isInitialLoad = false) {
-             try {
-                const response = await fetch(`${sheetUrl}&t=${new Date().getTime()}`); // Cache-busting
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const responseText = await response.text();
-                masterCeoData = parseJSONResponse(responseText);
-
-                if (masterCeoData.length === 0) {
-                   if (isInitialLoad) throw new Error("No data parsed from the sheet.");
-                   return;
-                }
-                
-                if (isInitialLoad) {
-                    populateFilters(masterCeoData);
-                }
-                
-                filterAndSortData();
-                
-                const now = new Date();
-                lastUpdated.textContent = `Last updated: ${now.toLocaleTimeString()}`;
-
-            } catch (error) {
-                console.error("Error fetching or processing data: ", error);
-                if (isInitialLoad) errorMessage.classList.remove('hidden');
-            } finally {
-                if (isInitialLoad) loading.style.display = 'none';
-            }
-        }
-
-        async function init() {
-            await fetchAndUpdateData(true);
-            searchInput.addEventListener('input', filterAndSortData);
-            industryFilter.addEventListener('change', filterAndSortData);
-            sectorFilter.addEventListener('change', filterAndSortData);
-            sortControl.addEventListener('change', handleSortChange);
-            setInterval(() => fetchAndUpdateData(false), REFRESH_INTERVAL_MS);
-        }
-
-        document.addEventListener('DOMContentLoaded', init);
-    </script>
-</body>
-</html>
+            
+            const csvString = csvRows.join('\n');
+            
+            // Create a Blob and trigger the download
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', filename
