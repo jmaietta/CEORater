@@ -45,15 +45,6 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        /* UPDATED: Added proper print styles for page breaking */
-        @media print {
-            .pdf-page {
-                page-break-after: always;
-            }
-            .pdf-card {
-                page-break-inside: avoid;
-            }
-        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -428,57 +419,54 @@
                 `;
                 printContainer.appendChild(header);
 
-                // 2. Build pages with controlled number of cards
-                const CARDS_PER_PAGE = 6; // 3 rows of 2 cards in landscape
-                for (let i = 0; i < displayedCeoData.length; i += CARDS_PER_PAGE) {
-                    const pageData = displayedCeoData.slice(i, i + CARDS_PER_PAGE);
-                    
-                    const pageElement = document.createElement('div');
-                    // Add a class that our print CSS will use to force a break
-                    if (i > 0) {
-                        pageElement.className = 'pdf-page';
-                    }
-                    
-                    const cardsContainer = document.createElement('div');
-                    cardsContainer.className = 'grid grid-cols-2 gap-4 p-8';
-                    
-                    pageData.forEach(ceo => {
-                        const card = document.createElement('div');
-                        // Add a class to suggest the renderer avoid breaking a card in half
-                        card.className = 'bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col justify-between h-full pdf-card';
-                        
-                        const founderBadge = ceo.founder && ceo.founder.toUpperCase() === 'Y' 
-                            ? `<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
-                        const filingsLink = ceo.equityTransactions
-                            ? `<a href="${ceo.equityTransactions}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline">View Filings</a>` : `<span class="text-gray-400">N/A</span>`;
-                        const tsrTextColor = ceo.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
-                        const avgTsrTextColor = ceo.avgAnnualTsr >= 0 ? 'text-green-600' : 'text-red-600';
+                // 2. Create a single container for all cards
+                const cardsContainer = document.createElement('div');
+                // Use inline styles for a simple flow layout that the PDF generator can handle
+                cardsContainer.style.padding = '2rem';
+                
+                displayedCeoData.forEach(ceo => {
+                    const card = document.createElement('div');
+                    // This styling is crucial for page break control
+                    card.style.border = '1px solid #e5e7eb';
+                    card.style.borderRadius = '0.5rem';
+                    card.style.padding = '1rem';
+                    card.style.marginBottom = '1rem';
+                    card.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+                    card.style.backgroundColor = 'white';
+                    card.style.breakInside = 'avoid'; // This is the key property
 
-                        card.innerHTML = `
-                            <div>
-                                <div class="flex justify-between items-start">
-                                    <div>
-                                        <h3 class="font-bold text-lg text-gray-900">${ceo.ceo}${founderBadge}</h3>
-                                        <p class="text-sm text-gray-600">${ceo.company} (${ceo.ticker})</p>
-                                    </div>
-                                </div>
-                                <div class="mt-4 space-y-2">
-                                    <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">TSR During Tenure</span><span class="font-bold ${tsrTextColor}">${formatPercentage(ceo.tsrValue)}</span></div>
-                                    <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Avg. Annual TSR</span><span class="font-bold ${avgTsrTextColor}">${formatPercentage(ceo.avgAnnualTsr)}</span></div>
-                                    <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Compensation ($MM)</span><span class="text-gray-700 text-right">$${formatMillions(ceo.compensation, 1)}</span></div>
+                    const founderBadge = ceo.founder && ceo.founder.toUpperCase() === 'Y' 
+                        ? `<span style="margin-left: 0.5rem; display: inline-flex; align-items: center; padding: 0.125rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; background-color: #d1fae5; color: #065f46;">Founder</span>` : '';
+                    const filingsLink = ceo.equityTransactions
+                        ? `<a href="${ceo.equityTransactions}" target="_blank" style="color: #2563eb;">View Filings</a>` : `<span style="color: #9ca3af;">N/A</span>`;
+                    const tsrTextColor = ceo.tsrValue >= 0 ? '#16a34a' : '#dc2626';
+                    const avgTsrTextColor = ceo.avgAnnualTsr >= 0 ? '#16a34a' : '#dc2626';
+
+                    // Manually build the card with inline styles to avoid Tailwind dependency in PDF renderer
+                    card.innerHTML = `
+                        <div style="font-family: 'Inter', sans-serif;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div>
+                                    <h3 style="font-weight: 700; font-size: 1.125rem; color: #111827;">${ceo.ceo}${founderBadge}</h3>
+                                    <p style="font-size: 0.875rem; color: #4b5563;">${ceo.company} (${ceo.ticker})</p>
                                 </div>
                             </div>
-                            <div class="flex justify-between text-sm items-center pt-3 mt-3 border-t">
-                                <span class="font-medium text-gray-500">Equity Transactions</span>
+                            <div style="margin-top: 1rem; font-size: 0.875rem;">
+                                <div style="display: flex; justify-content: space-between; padding: 0.25rem 0;"><span style="font-weight: 500; color: #6b7280;">Total Stock Return (TSR)</span><span style="font-weight: 700; color: ${tsrTextColor};">${formatPercentage(ceo.tsrValue)}</span></div>
+                                <div style="display: flex; justify-content: space-between; padding: 0.25rem 0;"><span style="font-weight: 500; color: #6b7280;">Avg. Annual TSR</span><span style="font-weight: 700; color: ${avgTsrTextColor};">${formatPercentage(ceo.avgAnnualTsr)}</span></div>
+                                <div style="display: flex; justify-content: space-between; padding: 0.25rem 0;"><span style="font-weight: 500; color: #6b7280;">Compensation ($MM)</span><span style="color: #374151;">$${formatMillions(ceo.compensation, 1)}</span></div>
+                                <div style="display: flex; justify-content: space-between; padding: 0.25rem 0;"><span style="font-weight: 500; color: #6b7280;">Tenure (Yrs.)</span><span style="color: #374151;">${ceo.tenure.toFixed(1)}</span></div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.75rem; margin-top: 0.75rem; border-top: 1px solid #e5e7eb; font-size: 0.875rem;">
+                                <span style="font-weight: 500; color: #6b7280;">Equity Transactions</span>
                                 <span>${filingsLink}</span>
                             </div>
-                        `;
-                        cardsContainer.appendChild(card);
-                    });
-                    pageElement.appendChild(cardsContainer);
-                    printContainer.appendChild(pageElement);
-                }
-
+                        </div>
+                    `;
+                    cardsContainer.appendChild(card);
+                });
+                printContainer.appendChild(cardsContainer);
+                
                 // 3. Set options and generate PDF
                 const opt = {
                   margin:       0.5,
