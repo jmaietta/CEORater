@@ -79,6 +79,13 @@
                     <option value="company-desc">Sort by: Company (Z-A)</option>
                 </select>
             </div>
+            
+            <div class="flex justify-end mb-4 space-x-2">
+                <button id="downloadExcelButton" class="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition">
+                    Export to Excel
+                </button>
+            </div>
+            
             <div id="lastUpdated" class="text-xs text-gray-500 text-right mb-6 h-4"></div>
 
 
@@ -92,7 +99,7 @@
 
             <div>
                 <div id="ceoCardView" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    </div>
+                </div>
 
                 <p id="noResults" class="text-center text-gray-500 py-8 hidden">No results found.</p>
             </div>
@@ -106,7 +113,6 @@
         // Configuration
         const sheetId = '17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA';
         const sheetGid = '0';
-        // Corrected range to include all required columns up to S
         const range = 'C6:S107'; 
         const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${sheetGid}&range=${range}`;
         const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
@@ -128,12 +134,16 @@
         let currentSort = { key: 'tsrValue', direction: 'desc' };
         
         function parseJSONResponse(text) {
-            const jsonString = text.match(/google\.visualization\.Query\.setResponse\((.*)\)/s)[1];
+            const match = text.match(/google\.visualization\.Query\.setResponse\((.*)\)/s);
+            if (!match || !match[1]) {
+                console.error("Could not parse JSON response from Google Sheets.");
+                return [];
+            }
+            const jsonString = match[1];
             const data = JSON.parse(jsonString);
             if (!data.table || !data.table.rows) return [];
             
             return data.table.rows.map(row => {
-                // Helper to safely get cell value. Defaults to null if not found.
                 const getCellVal = (index, property = 'v') => {
                     const cell = row.c[index];
                     if (cell && cell[property] !== null && typeof cell[property] !== 'undefined') {
@@ -156,7 +166,6 @@
                     return isNaN(num) ? 0 : num;
                 };
                 
-                // Mapping based on the C6:S107 range from the Google Sheet
                 return {
                     company: getCellVal(0) || '',
                     ticker: getCellVal(1) || '',
@@ -179,18 +188,54 @@
             return (value * 100).toLocaleString('en-US', { maximumFractionDigits: 0 }) + '%';
         }
         
-        /**
-         * Formats a number into a currency string in millions with a specified number of decimal places.
-         * @param {number} value The number to format.
-         * @param {number} decimalPlaces The number of decimal places to show.
-         * @returns {string} Formatted currency string.
-         */
         function formatMillions(value, decimalPlaces = 2) {
             if (typeof value !== 'number') return 'N/A';
             return value.toLocaleString('en-US', { 
                 minimumFractionDigits: decimalPlaces, 
                 maximumFractionDigits: decimalPlaces 
             });
+        }
+        
+        function exportToCsv(filename, data) {
+            const title = '"CEORater"';
+            const tagline = '"NASDAQ 100 CEO Performance & Compensation Analytics"';
+            
+            const headers = [
+                "CEO", "Company", "Ticker", "Founder", "Tenure (Yrs.)", 
+                "Total Stock Return (TSR)", "Avg. Annual TSR", "CEO Compensation ($MM)", 
+                "Comp. Cost / 1% Avg. Annual TSR ($MM)", "Industry", "Sector"
+            ];
+            
+            const dataRows = data.map(ceo => {
+                const values = [
+                    `"${String(ceo.ceo || '').replace(/"/g, '""')}"`,
+                    `"${String(ceo.company || '').replace(/"/g, '""')}"`,
+                    ceo.ticker,
+                    ceo.founder,
+                    ceo.tenure.toFixed(1),
+                    `"${formatPercentage(ceo.tsrValue)}"`,
+                    `"${formatPercentage(ceo.avgAnnualTsr)}"`,
+                    `"$${formatMillions(ceo.compensation, 1)}"`,
+                    `"$${formatMillions(ceo.compensationCost, 3)}"`,
+                    `"${String(ceo.industry || '').replace(/"/g, '""')}"`,
+                    `"${String(ceo.sector || '').replace(/"/g, '""')}"`
+                ];
+                return values.join(',');
+            });
+            
+            const csvString = [title, tagline, '', headers.join(',')].concat(dataRows).join('\n');
+            
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
         }
 
         function displayData(data) {
@@ -208,7 +253,7 @@
                 const card = document.createElement('div');
                 card.className = 'bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col justify-between';
                 
-                const founderBadge = ceo.founder.toUpperCase() === 'Y' 
+                const founderBadge = ceo.founder && ceo.founder.toUpperCase() === 'Y' 
                     ? `<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
 
                 const filingsLink = ceo.equityTransactions
@@ -231,8 +276,8 @@
                             <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">CEO Compensation ($MM)</span><span class="text-gray-700 text-right">$${formatMillions(ceo.compensation, 1)}</span></div>
                             <div class="flex justify-between text-sm"><span class="font-medium text-gray-500 text-left">Comp. Cost / 1% Avg. Annual TSR ($MM)</span><span class="text-gray-700 text-right">$${formatMillions(ceo.compensationCost, 3)}</span></div>
                             <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Tenure (Yrs.)</span><span class="text-gray-700 text-right">${ceo.tenure.toFixed(1)}</span></div>
-                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Industry</span><span class="text-gray-700 text-right">${ceo.industry}</span></div>
-                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Sector</span><span class="text-gray-700 text-right">${ceo.sector}</span></div>
+                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Industry</span><span class="text-gray-700 text-right">${ceo.industry || 'N/A'}</span></div>
+                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Sector</span><span class="text-gray-700 text-right">${ceo.sector || 'N/A'}</span></div>
                         </div>
                     </div>
                     <div class="flex justify-between text-sm items-center pt-3 mt-3 border-t">
@@ -253,7 +298,7 @@
                 if (typeof valA === 'number' && typeof valB === 'number') {
                     comparison = valA - valB;
                 } else {
-                    comparison = String(valA).localeCompare(String(valB), 'en', { sensitivity: 'base' });
+                    comparison = String(valA || '').localeCompare(String(valB || ''), 'en', { sensitivity: 'base' });
                 }
                 return direction === 'asc' ? comparison : -comparison;
             });
@@ -334,13 +379,27 @@
             }
         }
 
+        function debounce(func, delay) {
+            let timeout;
+            return function(...args) {
+                const context = this;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), delay);
+            };
+        }
+
         async function init() {
             await fetchAndUpdateData(true);
-            searchInput.addEventListener('input', filterAndSortData);
+            searchInput.addEventListener('input', debounce(filterAndSortData, 300));
             industryFilter.addEventListener('change', filterAndSortData);
             sectorFilter.addEventListener('change', filterAndSortData);
             sortControl.addEventListener('change', handleSortChange);
             setInterval(() => fetchAndUpdateData(false), REFRESH_INTERVAL_MS);
+
+            const downloadExcelButton = document.getElementById('downloadExcelButton');
+            downloadExcelButton.addEventListener('click', () => {
+                exportToCsv('CEORater_Data.csv', displayedCeoData);
+            });
         }
 
         document.addEventListener('DOMContentLoaded', init);
