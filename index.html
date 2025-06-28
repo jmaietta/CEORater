@@ -45,10 +45,6 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        /* Style for forcing a page break in the PDF */
-        .pdf-page-break {
-            page-break-before: always;
-        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -412,33 +408,27 @@
 
             const downloadPdfButton = document.getElementById('downloadPdfButton');
             downloadPdfButton.addEventListener('click', () => {
-                // Create a container for the printable content
-                const printContainer = document.createElement('div');
-                printContainer.className = 'p-8'; 
+                const elementToPrint = document.createElement('div');
 
                 // 1. Add Header
                 const header = document.createElement('div');
-                header.className = 'text-center mb-8';
+                header.className = 'text-center p-8';
                 header.innerHTML = `
                     <h1 class="text-4xl font-orbitron font-bold italic text-blue-600">CEORater</h1>
                     <p class="text-gray-600 mt-2 text-lg">NASDAQ 100 CEO Performance & Compensation Analytics</p>
                 `;
-                printContainer.appendChild(header);
-
-                // 2. Add CEO Cards in a print-friendly layout
+                elementToPrint.appendChild(header);
+                
+                // Use the library's page-break feature
+                const pageBreak = document.createElement('div');
+                pageBreak.className = 'html2pdf__page-break';
+                
                 const cardsContainer = document.createElement('div');
-                cardsContainer.className = 'grid grid-cols-2 gap-4'; 
+                cardsContainer.className = 'grid grid-cols-2 gap-4 p-8';
                 
                 displayedCeoData.forEach((ceo, index) => {
-                    // After every 6 cards (3 rows in a 2-column grid), insert a page break for the next element.
-                    if (index > 0 && index % 6 === 0) {
-                        const pageBreak = document.createElement('div');
-                        pageBreak.className = 'pdf-page-break';
-                        cardsContainer.appendChild(pageBreak);
-                    }
-                    
                     const card = document.createElement('div');
-                    card.className = 'bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col justify-between h-full';
+                    card.className = 'bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col justify-between h-full break-inside-avoid';
                     
                     const founderBadge = ceo.founder && ceo.founder.toUpperCase() === 'Y' 
                         ? `<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
@@ -459,8 +449,6 @@
                                 <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">TSR During Tenure</span><span class="font-bold ${tsrTextColor}">${formatPercentage(ceo.tsrValue)}</span></div>
                                 <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Avg. Annual TSR</span><span class="font-bold ${avgTsrTextColor}">${formatPercentage(ceo.avgAnnualTsr)}</span></div>
                                 <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Compensation ($MM)</span><span class="text-gray-700 text-right">$${formatMillions(ceo.compensation, 1)}</span></div>
-                                <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Comp. Cost / TSR (%)</span><span class="text-gray-700 text-right">$${formatMillions(ceo.compensationCost, 3)}</span></div>
-                                <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Tenure (Yrs.)</span><span class="text-gray-700 text-right">${ceo.tenure.toFixed(1)}</span></div>
                             </div>
                         </div>
                         <div class="flex justify-between text-sm items-center pt-3 mt-3 border-t">
@@ -470,18 +458,19 @@
                     `;
                     cardsContainer.appendChild(card);
                 });
-                printContainer.appendChild(cardsContainer);
 
-                // 3. Set options and generate PDF from the constructed element
+                elementToPrint.appendChild(cardsContainer);
+
                 const opt = {
                   margin:       0.5,
                   filename:     'CEORater_Report.pdf',
                   image:        { type: 'jpeg', quality: 0.98 },
                   html2canvas:  { scale: 2, useCORS: true },
-                  jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+                  jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }, // Set to landscape
+                  pagebreak:    { mode: 'css', before: '.html2pdf__page-break' } // Use library's page break feature
                 };
                 
-                html2pdf().from(printContainer).set(opt).save();
+                html2pdf().from(elementToPrint).set(opt).save();
             });
         }
 
