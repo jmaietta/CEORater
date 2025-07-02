@@ -1,231 +1,214 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Favicons & Meta -->
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="android-chrome-192x192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="android-chrome-512x512.png">
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <!-- ====== Meta / Icons ====== -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CEORater</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <meta property="og:title" content="CEORater">
+  <meta property="og:description" content="NASDAQ 100 CEO Performance & Compensation Analytics" />
+  <meta property="og:image" content="https://www.ceorater.com/android-chrome-512x512.png" />
+  <meta property="og:url" content="https://www.ceorater.com/" />
 
-    <meta property="og:title" content="CEORater">
-    <meta property="og:description" content="NASDAQ 100 CEO Performance & Compensation Analytics">
-    <meta property="og:image" content="https://www.ceorater.com/android-chrome-512x512.png">
-    <meta property="og:url" content="https://www.ceorater.com/">
-
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CEORater</title>
-
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
-
-    <style>
-        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-        .font-orbitron { font-family: 'Orbitron', sans-serif; }
-        #loading-spinner { border: 4px solid rgba(0,0,0,.1); width: 36px; height: 36px; border-radius: 50%; border-left-color:#09f; animation: spin 1s ease infinite; }
-        @keyframes spin { 0%{transform:rotate(0)} 100%{transform:rotate(360deg)} }
-    </style>
+  <!-- ====== Tailwind & Fonts ====== -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .font-orbitron { font-family: 'Orbitron', sans-serif; }
+    #loading-spinner{border:4px solid rgba(0,0,0,.1);width:36px;height:36px;border-radius:50%;border-left-color:#09f;animation:spin 1s linear infinite}@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
-    <div class="container mx-auto p-4 md:p-8">
-        <!-- 🔐 AUTH / WATCHLIST NAV -->
-        <nav id="authNav" class="flex justify-end gap-3 mb-4">
-            <a href="#" id="watchlistLink" class="hidden text-blue-600 hover:underline">My Watchlist</a>
-            <button id="loginBtn"  class="px-3 py-1 bg-blue-600 text-white rounded-lg">Log in</button>
-            <button id="logoutBtn" class="hidden px-3 py-1 border rounded-lg">Log out</button>
-        </nav>
+  <div class="container mx-auto p-4 md:p-8">
+    <!-- ===== Auth / Watchlist bar ===== -->
+    <nav class="flex justify-end gap-3 mb-4">
+      <a id="watchlistLink" href="#" class="hidden text-blue-600 hover:underline">My Watchlist</a>
+      <button id="loginBtn"  class="px-3 py-1 bg-blue-600 text-white rounded-lg">Log in</button>
+      <button id="logoutBtn" class="hidden px-3 py-1 border rounded-lg">Log out</button>
+    </nav>
 
-        <header class="text-center mb-8">
-            <h1 class="text-4xl md:text-5xl font-orbitron font-bold italic text-blue-600">CEORater</h1>
-            <p class="text-gray-600 mt-2 text-lg">NASDAQ 100 CEO Performance & Compensation Analytics</p>
-        </header>
+    <header class="text-center mb-8">
+      <h1 class="text-4xl md:text-5xl font-orbitron italic font-bold text-blue-600">CEORater</h1>
+      <p class="text-gray-600 mt-2 text-lg">NASDAQ 100 CEO Performance & Compensation Analytics</p>
+    </header>
 
-        <!-- MAIN APP CARD -->
-        <main class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                <input type="text" id="searchInput" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow lg:col-span-1" placeholder="Search by CEO, Company, or Ticker.">
-                <select id="industryFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"><option value="">All Industries</option></select>
-                <select id="sectorFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"><option value="">All Sectors</option></select>
-                <select id="sortControl" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                    <option value="tsrValue-desc">Sort by: TSR (High to Low)</option>
-                    <option value="tsrValue-asc">Sort by: TSR (Low to High)</option>
-                    <option value="avgAnnualTsr-desc">Sort by: Avg. Annual TSR (High to Low)</option>
-                    <option value="avgAnnualTsr-asc">Sort by: Avg. Annual TSR (Low to High)</option>
-                    <option value="compensation-desc">Sort by: CEO Compensation (High to Low)</option>
-                    <option value="compensation-asc">Sort by: CEO Compensation (Low to High)</option>
-                    <option value="tenure-desc">Sort by: Tenure (High to Low)</option>
-                    <option value="tenure-asc">Sort by: Tenure (Low to High)</option>
-                    <option value="ceo-asc">Sort by: CEO (A-Z)</option>
-                    <option value="ceo-desc">Sort by: CEO (Z-A)</option>
-                    <option value="company-asc">Sort by: Company (A-Z)</option>
-                    <option value="company-desc">Sort by: Company (Z-A)</option>
-                </select>
-            </div>
+    <!-- ===== Main Card ===== -->
+    <main class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+      <!-- Filters -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        <input id="searchInput" type="text" placeholder="Search by CEO, Company, or Ticker." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
+        <select id="industryFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white"></select>
+        <select id="sectorFilter"   class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white"></select>
+        <select id="sortControl"    class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white">
+          <option value="tsrValue-desc">Sort: TSR ↓</option>
+          <option value="tsrValue-asc">Sort: TSR ↑</option>
+          <option value="avgAnnualTsr-desc">Avg Annual TSR ↓</option>
+          <option value="avgAnnualTsr-asc">Avg Annual TSR ↑</option>
+          <option value="compensation-desc">Compensation ↓</option>
+          <option value="compensation-asc">Compensation ↑</option>
+          <option value="tenure-desc">Tenure ↓</option>
+          <option value="tenure-asc">Tenure ↑</option>
+          <option value="ceo-asc">CEO A‑Z</option>
+          <option value="ceo-desc">CEO Z‑A</option>
+          <option value="company-asc">Company A‑Z</option>
+          <option value="company-desc">Company Z‑A</option>
+        </select>
+      </div>
 
-            <div class="flex justify-end mb-4 space-x-2">
-                <button id="downloadExcelButton" class="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition">Export to Excel</button>
-            </div>
+      <div class="flex justify-end mb-4">
+        <button id="downloadExcelButton" class="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition">Export to Excel</button>
+      </div>
 
-            <div id="lastUpdated" class="text-xs text-gray-500 text-right mb-6 h-4"></div>
+      <div id="lastUpdated" class="text-xs text-gray-500 text-right mb-4 h-4"></div>
+      <div id="loading" class="flex justify-center items-center h-64"><div id="loading-spinner"></div></div>
+      <div id="error-message" class="hidden text-center text-red-500 py-8">Could not load data from Google Sheets.</div>
 
-            <div id="loading" class="flex justify-center items-center h-64"><div id="loading-spinner"></div></div>
-            <div id="error-message" class="hidden text-center text-red-500 font-medium py-8"><p>Could not load data from Google Sheets. Please ensure the sheet is published to the web and the link is correct.</p></div>
+      <div>
+        <div id="ceoCardView" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+        <p id="noResults" class="hidden text-center text-gray-500 py-8">No results found.</p>
+      </div>
+    </main>
 
-            <div>
-                <div id="ceoCardView" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
-                <p id="noResults" class="text-center text-gray-500 py-8 hidden">No results found.</p>
-            </div>
-        </main>
+    <footer class="text-center mt-8 text-sm text-gray-500">TSR is Total Stock Return during CEO tenure · CEORater 2025</footer>
+  </div>
 
-        <footer class="text-center mt-8 text-sm text-gray-500"><p>TSR is Total Stock Return during CEO tenure. CEORater 2025.</p></footer>
-    </div>
+  <!-- ======= Core UI / Google‑Sheets loader ======= -->
+  <script>
+    // ---------- Google Sheet Config ----------
+    const sheetId   = '17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA';
+    const sheetGid  = '0';
+    const range     = 'C6:S107';
+    const sheetUrl  = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${sheetGid}&range=${range}`;
+    const REFRESH   = 5 * 60 * 1000; // 5 min
 
-    <!-- ================= EXISTING LOGIC (unchanged) ================= -->
-    <script>
-        // Google Sheet Config
-        const sheetId = '17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA';
-        const sheetGid = '0';
-        const range = 'C6:S107';
-        const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${sheetGid}&range=${range}`;
-        const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+    // ---------- DOM ----------
+    const $ = id=>document.getElementById(id);
+    const searchInput  = $("searchInput");
+    const industryFilter=$("industryFilter");
+    const sectorFilter =$("sectorFilter");
+    const sortControl  =$("sortControl");
+    const lastUpdated  =$("lastUpdated");
+    const ceoCardView  =$("ceoCardView");
+    const noResults    =$("noResults");
+    const loading      =$("loading");
+    const errorMessage =$("error-message");
 
-        // DOM
-        const searchInput   = document.getElementById('searchInput');
-        const industryFilter= document.getElementById('industryFilter');
-        const sectorFilter  = document.getElementById('sectorFilter');
-        const sortControl   = document.getElementById('sortControl');
-        const lastUpdated   = document.getElementById('lastUpdated');
-        const ceoCardView   = document.getElementById('ceoCardView');
-        const noResults     = document.getElementById('noResults');
-        const loading       = document.getElementById('loading');
-        const errorMessage  = document.getElementById('error-message');
+    // ---------- State ----------
+    let master = [];
+    let view   = [];
+    let currentSort = { key:'tsrValue', dir:'desc' };
 
-        // State
-        let masterCeoData   = [];
-        let displayedCeoData= [];
-        let currentSort     = { key: 'tsrValue', direction: 'desc' };
+    // ---------- Helpers ----------
+    const pct = v=> typeof v==='number'? (v*100).toLocaleString('en-US',{maximumFractionDigits:0})+'%':'N/A';
+    const money=(v,d=2)=> typeof v==='number'? v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}):'N/A';
 
-        function parseJSONResponse(text){ const match=text.match(/google\.visualization\.Query\.setResponse\((.*)\)/s); if(!match||!match[1]){console.error('Bad JSON');return [];} const data=JSON.parse(match[1]); if(!data.table||!data.table.rows) return []; return data.table.rows.map(r=>{ const gc=(i,p='v')=>{const c=r.c[i]; return c&&c[p]!=null?c[p]:null}; const gn=i=>{const c=r.c[i]; if(!c) return 0; if(typeof c.v==='number') return c.v; let v=c.v!=null?c.v:c.f; if(v==null||v==='') return 0; if(typeof v==='string'){const m=v.match(/^-?\d*\.?\d+/); if(m) v=m[0];} const n=parseFloat(v); return isNaN(n)?0:n}; return { company:gc(0)||'', ticker:gc(1)||'', industry:gc(2)||'', sector:gc(3)||'', ceo:gc(5)||'', founder:gc(6)||'', compensation:gn(7), equityTransactions:gc(8)||'', tsrValue:gn(13), tenure:gn(14), avgAnnualTsr:gn(15), compensationCost:gn(16) }; }); }
-
-        const pct = v=> typeof v==='number'? (v*100).toLocaleString('en-US',{maximumFractionDigits:0})+'%':'N/A';
-        const mm  = (v,d=2)=> typeof v==='number'? v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d }):'N/A';
-
-        function displayData(data){ ceoCardView.innerHTML=''; if(!data.length){ noResults.classList.remove('hidden'); return;} noResults.classList.add('hidden'); renderCards(data); }
-
-        function sortData(){ const {key,direction}=currentSort; displayedCeoData.sort((a,b)=>{ const A=a[key], B=b[key]; let cmp=0; if(typeof A==='number'&&typeof B==='number') cmp=A-B; else cmp=String(A||'').localeCompare(String(B||''),'en',{sensitivity:'base'}); return direction==='asc'?cmp:-cmp; }); displayData(displayedCeoData); }
-
-        function filterAndSortData(){ const term=searchInput.value.toLowerCase(); const ind=industryFilter.value; const sec=sectorFilter.value; displayedCeoData=masterCeoData.filter(c=>{ const s=(c.ceo+c.company+c.ticker).toLowerCase().includes(term); const i=!ind||c.industry===ind; const se=!sec||c.sector===sec; return s&&i&&se; }); sortData(); }
-
-        function populateFilters(data){ const inds=[...new Set(data.map(c=>c.industry).filter(Boolean))].sort(); const secs=[...new Set(data.map(c=>c.sector).filter(Boolean))].sort(); industryFilter.innerHTML='<option value="">All Industries</option>'; inds.forEach(i=>industryFilter.insertAdjacentHTML('beforeend',`<option>${i}</option>`)); sectorFilter.innerHTML='<option value="">All Sectors</option>'; secs.forEach(s=>sectorFilter.insertAdjacentHTML('beforeend',`<option>${s}</option>`)); }
-
-        async function fetchAndUpdateData(init=false){ try{ const res=await fetch(`${sheetUrl}&t=${Date.now()}`); if(!res.ok) throw new Error(res.status); const txt=await res.text(); masterCeoData=parseJSONResponse(txt); if(!masterCeoData.length){ if(init) throw new Error('No data'); return;} if(init) populateFilters(masterCeoData); filterAndSortData(); lastUpdated.textContent=`Last updated: ${new Date().toLocaleTimeString()}`; }catch(err){ console.error(err); if(init) errorMessage.classList.remove('hidden'); }finally{ if(init) loading.style.display='none'; }}
-
-        function debounce(fn,d){ let t; return(...args)=>{clearTimeout(t); t=setTimeout(()=>fn(...args),d);} }
-
-        async function init(){ await fetchAndUpdateData(true); searchInput.addEventListener('input',debounce(filterAndSortData,300)); industryFilter.addEventListener('change',filterAndSortData); sectorFilter.addEventListener('change',filterAndSortData); sortControl.addEventListener('change',e=>{ const [k,d]=e.target.value.split('-'); currentSort={key:k,direction:d}; sortData(); }); setInterval(()=>fetchAndUpdateData(false),REFRESH_INTERVAL_MS);
-            document.getElementById('downloadExcelButton').addEventListener('click',()=>exportCsv('CEORater_Data.csv',displayedCeoData)); }
-
-        document.addEventListener('DOMContentLoaded',init);
-
-        // CSV Export helper (same as original)
-        function exportCsv(fname,data){ const title='"CEORater"'; const tag='"NASDAQ 100 CEO Performance & Compensation Analytics"'; const headers=["CEO","Company","Ticker","Founder","Tenure (Yrs.)","Total Stock Return (TSR)","Avg. Annual TSR","CEO Compensation ($MM)","Comp. Cost / 1% Avg. Annual TSR ($MM)","Industry","Sector"]; const rows=data.map(c=>[`"${c.ceo.replace(/"/g,'""')}"`,`"${c.company.replace(/"/g,'""')}"`,c.ticker,c.founder,c.tenure.toFixed(1),`"${pct(c.tsrValue)}"`,`"${pct(c.avgAnnualTsr)}"`,`"$${mm(c.compensation,1)}"`,`"$${mm(c.compensationCost,3)}"`,`"${c.industry.replace(/"/g,'""')}"`,`"${c.sector.replace(/"/g,'""')}"`].join(',')); const csv=[title,tag,'',headers.join(',')].concat(rows).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.hidden=true; document.body.appendChild(a); a.click(); a.remove(); }
-    </script>
-
-    <!-- ================= FIREBASE AUTH + WATCHLIST ================= -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        // 👉 Replace with your real config (or use env vars)
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
+    function parseRows(txt){
+      const m = txt.match(/google\.visualization\.Query\.setResponse\((.*)\)/s);
+      if(!m) return [];
+      const data = JSON.parse(m[1]);
+      if(!data.table?.rows) return [];
+      return data.table.rows.map(r=>{
+        const gv=(i)=>{const c=r.c[i];return c&&c.v!=null?c.v:""};
+        const gn=(i)=>{const c=r.c[i];if(!c) return 0;return parseFloat((c.v??c.f??"0").toString().replace(/[^\d.-]/g,''))||0};
+        return {
+          company: gv(0), ticker: gv(1), industry: gv(2), sector: gv(3),
+          ceo: gv(5), founder: gv(6), compensation: gn(7), equityTransactions: gv(8),
+          tsrValue: gn(13), tenure: gn(14), avgAnnualTsr: gn(15), compensationCost: gn(16)
         };
+      });
+    }
 
-        // Init Firebase
-        const app   = initializeApp(firebaseConfig);
-        const auth  = getAuth(app);
-        const db    = getFirestore(app);
+    function renderCards(data){
+      ceoCardView.innerHTML='';
+      data.forEach(c=>{
+        const saved = cachedWatchlist.has(c.ticker);
+        const card=document.createElement('div');
+        card.className='bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col justify-between';
+        const founder = (c.founder?.toUpperCase()==='Y')?'<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>':'';
+        const filings = c.equityTransactions?`<a href="${c.equityTransactions}" target="_blank" class="text-blue-600 hover:underline">View Filings</a>`:'<span class="text-gray-400">N/A</span>';
+        const tsrCol  = c.tsrValue>=0?'text-green-600':'text-red-600';
+        const avgCol  = c.avgAnnualTsr>=0?'text-green-600':'text-red-600';
+        card.innerHTML=`
+          <div>
+            <div class="flex justify-between items-start">
+              <div>
+                <h3 class="font-bold text-lg text-gray-900">${c.ceo}${founder}</h3>
+                <p class="text-sm text-gray-600">${c.company} (${c.ticker})</p>
+              </div>
+              <button data-ticker="${c.ticker}" title="${saved?'Remove':'Add'} watchlist" class="text-xl ${saved?'text-yellow-400':'text-gray-300'}">${saved?'★':'☆'}</button>
+            </div>
+            <div class="mt-4 space-y-2 text-sm">
+              <div class="flex justify-between"><span class="text-gray-500">TSR During Tenure</span><span class="font-bold ${tsrCol}">${pct(c.tsrValue)}</span></div>
+              <div class="flex justify-between"><span class="text-gray-500">Avg Annual TSR</span><span class="font-bold ${avgCol}">${pct(c.avgAnnualTsr)}</span></div>
+              <div class="flex justify-between"><span class="text-gray-500">CEO Compensation ($MM)</span><span>$${money(c.compensation,1)}</span></div>
+              <div class="flex justify-between"><span class="text-gray-500">Comp Cost / 1% Avg TSR ($MM)</span><span>$${money(c.compensationCost,3)}</span></div>
+              <div class="flex justify-between"><span class="text-gray-500">Tenure (yrs)</span><span>${c.tenure.toFixed(1)}</span></div>
+              <div class="flex justify-between"><span class="text-gray-500">Industry</span><span>${c.industry||'N/A'}</span></div>
+              <div class="flex justify-between"><span class="text-gray-500">Sector</span><span>${c.sector||'N/A'}</span></div>
+            </div>
+          </div>
+          <div class="flex justify-between text-sm items-center pt-3 mt-3 border-t"><span class="text-gray-500">Equity Transactions</span><span>${filings}</span></div>`;
+        ceoCardView.appendChild(card);
+      });
+    }
 
-        // Cached user + watchlist
-        let currentUser = null;
-        let cachedWatchlist = new Set();
+    function refreshFilters(){
+      const inds=[...new Set(master.map(c=>c.industry).filter(Boolean))].sort();
+      const secs=[...new Set(master.map(c=>c.sector).filter(Boolean))].sort();
+      industryFilter.innerHTML='<option value="">All Industries</option>'+inds.map(i=>`<option>${i}</option>`).join('');
+      sectorFilter.innerHTML  ='<option value="">All Sectors</option>'+secs.map(s=>`<option>${s}</option>`).join('');
+    }
 
-        const loginBtn       = document.getElementById('loginBtn');
-        const logoutBtn      = document.getElementById('logoutBtn');
-        const watchlistLink  = document.getElementById('watchlistLink');
+    function applyFilters(){
+      const term=searchInput.value.toLowerCase();
+      const ind =industryFilter.value;
+      const sec =sectorFilter.value;
+      view = master.filter(c=>{
+        const matchTerm=(c.ceo+c.company+c.ticker).toLowerCase().includes(term);
+        const matchInd =!ind||c.industry===ind;
+        const matchSec =!sec||c.sector===sec;
+        return matchTerm&&matchInd&&matchSec;
+      });
+      sortAndRender();
+    }
 
-        loginBtn.addEventListener('click', async()=>{
-            const provider = new GoogleAuthProvider();
-            await signInWithPopup(auth, provider);
-        });
-        logoutBtn.addEventListener('click', ()=>signOut(auth));
+    function sortAndRender(){
+      view.sort((a,b)=>{
+        const A=a[currentSort.key];
+        const B=b[currentSort.key];
+        let cmp=(typeof A==='number'&&typeof B==='number')?A-B:String(A).localeCompare(String(B));
+        return currentSort.dir==='asc'?cmp:-cmp;
+      });
+      if(view.length===0) noResults.classList.remove('hidden'); else noResults.classList.add('hidden');
+      renderCards(view);
+    }
 
-        onAuthStateChanged(auth, user=>{
-            currentUser=user;
-            loginBtn.classList.toggle('hidden', !!user);
-            logoutBtn.classList.toggle('hidden', !user);
-            watchlistLink.classList.toggle('hidden', !user);
-            if(user)   loadWatchlist();
-            else       { cachedWatchlist=new Set(); renderCards(displayedCeoData); }
-        });
+    function fetchData(initial){
+      fetch(sheetUrl+`&t=${Date.now()}`)
+        .then(r=>r.text())
+        .then(txt=>{
+          master=parseRows(txt);
+          if(initial) refreshFilters();
+          applyFilters();
+          lastUpdated.textContent='Last updated: '+new Date().toLocaleTimeString();
+        })
+        .catch(()=> initial && errorMessage.classList.remove('hidden'))
+        .finally(()=> initial && (loading.style.display='none'));
+    }
 
-        function loadWatchlist(){ const q=collection(db,`users/${currentUser.uid}/watchlist`); onSnapshot(q,snap=>{ cachedWatchlist=new Set(snap.docs.map(d=>d.id)); renderCards(displayedCeoData); }); }
-        async function toggleWatchlist(tkr){ if(!currentUser){ loginBtn.click(); return;} const ref=doc(db,'users',currentUser.uid,'watchlist',tkr); if(cachedWatchlist.has(tkr)) await deleteDoc(ref); else await setDoc(ref,{added:Date.now()}); }
+    function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}}
 
-        watchlistLink.addEventListener('click',e=>{ e.preventDefault(); industryFilter.value=sectorFilter.value=''; searchInput.value=''; displayedCeoData=masterCeoData.filter(c=>cachedWatchlist.has(c.ticker)); sortData(); });
-
-        // Replace original renderCards with star-enabled version
-        const originalRender=window.renderCards;
-        window.renderCards=function(data){ ceoCardView.innerHTML=''; data.forEach(ceo=>{
-            const saved=cachedWatchlist.has(ceo.ticker);
-            const card=document.createElement('div');
-            card.className='bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col justify-between';
-            const founderBadge=ceo.founder&&ceo.founder.toUpperCase()==='Y'?'<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>':'';
-            const filingsLink=ceo.equityTransactions?`<a href="${ceo.equityTransactions}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">View Filings</a>`:'<span class="text-gray-400">N/A</span>';
-            const tsrColor=ceo.tsrValue>=0?'text-green-600':'text-red-600';
-            const avgColor=ceo.avgAnnualTsr>=0?'text-green-600':'text-red-600';
-            card.innerHTML=`
-                <div>
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h3 class="font-bold text-lg text-gray-900">${ceo.ceo}${founderBadge}</h3>
-                            <p class="text-sm text-gray-600">${ceo.company} (${ceo.ticker})</p>
-                        </div>
-                        <button data-ticker="${ceo.ticker}" title="${saved?'Remove from':'Add to'} watchlist" class="text-xl ${saved?'text-yellow-400':'text-gray-300'}">${saved?'★':'☆'}</button>
-                    </div>
-                    <div class="mt-4 space-y-2">
-                        <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Total Stock Return (TSR) During CEO's Tenure</span><span class="font-bold ${tsrColor}">${pct(ceo.tsrValue)}</span></div>
-                        <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Avg. Annual TSR</span><span class="font-bold ${avgColor}">${pct(ceo.avgAnnualTsr)}</span></div>
-                        <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">CEO Compensation ($MM)</span><span class="text-gray-700 text-right">$${mm(ceo.compensation,1)}</span></div>
-                        <div class="flex justify-between text-sm"><span class="font-medium text-gray-500 text-left">Comp. Cost / 1% Avg. Annual TSR ($MM)</span><span class="text-gray-700 text-right">$${mm(ceo.compensationCost,3)}</span></div>
-                        <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Tenure (Yrs.)</span><span class="text-gray-700 text-right">${ceo.tenure.toFixed(1)}</span></div>
-                        <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Industry</span><span class="text-gray-700 text-right">${ceo.industry||'N/A'}</span></div>
-                        <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Sector</span><span class="text-gray-700 text-right">${ceo.sector||'N/A'}</span></div>
-                    </div>
-                </div>
-                <div class="flex justify-between text-sm items-center pt-3 mt-3 border-t">
-                    <span class="font-medium text-gray-500">Equity Transactions</span><span>${filingsLink}</span>
-                </div>`;
-            ceoCardView.appendChild(card);
-        }); };
-
-        // Event delegation for star button
-        ceoCardView.addEventListener('click',e=>{ if(e.target.matches('button[data-ticker]')) toggleWatchlist(e.target.dataset.ticker); });
-
-        // Re-render once after override (in case init already loaded data)
-        if(displayedCeoData.length) renderCards(displayedCeoData);
-    </script>
-</body>
-</html>
+    // Event wiring
+    document.addEventListener('DOMContentLoaded',()=>{
+      fetchData(true);
+      setInterval(()=>fetchData(false),REFRESH);
+      searchInput.addEventListener('input',debounce(applyFilters,300));
+      industryFilter.addEventListener('change',applyFilters);
+      sectorFilter.addEventListener('change',applyFilters);
+      sortControl.addEventListener('change',e=>{const [k,d]=e.target.value.split('-');currentSort={key:k,dir:d};sortAndRender();});
+      $("download
