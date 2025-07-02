@@ -491,6 +491,9 @@
 
       microsoftSignIn.addEventListener('click', () => {
         const provider = new firebase.auth.OAuthProvider('microsoft.com');
+
+        provider.setCustomParameters({ prompt: 'select_account' });
+        
         auth.signInWithPopup(provider).then(() => {
           loginModal.classList.add('hidden');
         }).catch(error => {
