@@ -504,9 +504,57 @@
         });
       });
 
-      // Excel download (placeholder)
+      // Excel download (placeholder - you can implement this later)
       $("downloadExcelButton").addEventListener('click', () => {
-        alert('Excel download feature coming soon!');
+        // Create CSV content from current view
+        if (view.length === 0) {
+          alert('No data to export');
+          return;
+        }
+        
+        const headers = ['CEO', 'Company', 'Ticker', 'Industry', 'Sector', 'TSR During Tenure', 'Avg Annual TSR', 'Compensation ($MM)', 'Comp Cost / 1% Avg TSR ($MM)', 'Tenure (yrs)', 'Founder'];
+        const csvContent = [
+          headers.join(','),
+          ...view.map(c => [
+            `"${c.ceo}"`,
+            `"${c.company}"`,
+            c.ticker,
+            `"${c.industry || ''}"`,
+            `"${c.sector || ''}"`,
+            c.tsrValue,
+            c.avgAnnualTsr,
+            c.compensation,
+            c.compensationCost,
+            c.tenure,
+            c.founder === 'Y' ? 'Yes' : 'No'
+          ].join(','))
+        ].join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ceorater-${currentView}-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      });
+
+      // Handle keyboard shortcuts
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !loginModal.classList.contains('hidden')) {
+          loginModal.classList.add('hidden');
+        }
+      });
+
+      // Handle enter key in login form
+      emailInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') signInEmail.click();
+      });
+      
+      passwordInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') signInEmail.click();
       });
     });
   </script>
