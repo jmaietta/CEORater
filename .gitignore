@@ -1,2 +1,1 @@
-# keep env files private
-.env*
+firebase-config.js
