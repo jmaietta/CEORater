@@ -490,7 +490,7 @@
       });
 
       microsoftSignIn.addEventListener('click', () => {
-        const provider = new firebase.auth.MicrosoftAuthProvider();
+        const provider = new firebase.auth.OAuthProvider('microsoft.com');
         auth.signInWithPopup(provider).then(() => {
           loginModal.classList.add('hidden');
         }).catch(error => {
