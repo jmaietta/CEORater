@@ -22,6 +22,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
     
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    
+    <script src="firebase-config.js"></script>
+    
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -43,6 +49,12 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .modal { background-color: rgba(0, 0, 0, 0.5); }
+        .modal.hidden { display: none; }
+        .follow-star { cursor: pointer; color: #d1d5db; transition: color 0.2s, transform 0.2s; }
+        .follow-star:hover { transform: scale(1.1); }
+        .follow-star.following { color: #f59e0b; }
+        .follow-star.disabled { cursor: not-allowed; opacity: 0.5; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -54,6 +66,10 @@
         </header>
 
         <main class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+            <div class="flex justify-end mb-4">
+                <button id="mainAuthButton" class="px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700">Log In / Sign Up</button>
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 <input type="text" id="searchInput"
                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow lg:col-span-1"
@@ -64,28 +80,11 @@
                 <select id="sectorFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                     <option value="">All Sectors</option>
                 </select>
-                <select id="sortControl" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                    <option value="tsrValue-desc">Sort by: TSR (High to Low)</option>
-                    <option value="tsrValue-asc">Sort by: TSR (Low to High)</option>
-                    <option value="avgAnnualTsr-desc">Sort by: Avg. Annual TSR (High to Low)</option>
-                    <option value="avgAnnualTsr-asc">Sort by: Avg. Annual TSR (Low to High)</option>
-                    <option value="compensation-desc">Sort by: CEO Compensation (High to Low)</option>
-                    <option value="compensation-asc">Sort by: CEO Compensation (Low to High)</option>
-                    <option value="tenure-desc">Sort by: Tenure (High to Low)</option>
-                    <option value="tenure-asc">Sort by: Tenure (Low to High)</option>
-                    <option value="ceo-asc">Sort by: CEO (A-Z)</option>
-                    <option value="ceo-desc">Sort by: CEO (Z-A)</option>
-                    <option value="company-asc">Sort by: Company (A-Z)</option>
-                    <option value="company-desc">Sort by: Company (Z-A)</option>
-                </select>
+                <div class="flex items-center justify-center space-x-2 p-2 border border-gray-300 rounded-lg h-full">
+                    <label for="watchlistToggle" class="text-sm font-medium text-gray-700">My Watchlist</label>
+                    <div class="relative"><input type="checkbox" id="watchlistToggle" class="sr-only peer" disabled><div class="w-10 h-6 bg-gray-200 rounded-full peer-checked:bg-blue-600"></div><div class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full transition-transform peer-checked:translate-x-full"></div></div>
+                </div>
             </div>
-            
-            <div class="flex justify-end mb-4 space-x-2">
-                <button id="downloadExcelButton" class="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition">
-                    Export to Excel
-                </button>
-            </div>
-            
             <div id="lastUpdated" class="text-xs text-gray-500 text-right mb-6 h-4"></div>
 
 
@@ -109,300 +108,307 @@
         </footer>
     </div>
 
+    <div id="authModal" class="modal hidden fixed inset-0 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl p-8 max-w-sm w-full text-center relative">
+            <button id="closeAuthModal" class="absolute top-2 right-4 text-gray-400 hover:text-gray-600 text-3xl">&times;</button>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Welcome</h2>
+            <p class="text-gray-600 mb-6">Sign up or log in to access your watchlist.</p>
+            <div id="authError" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 hidden" role="alert"></div>
+            <form id="emailForm" class="space-y-4">
+                <input type="email" id="emailInput" placeholder="Email Address" required class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                <input type="password" id="passwordInput" placeholder="Password (6+ characters)" required class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                <button type="submit" class="w-full px-4 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700">Continue with Email</button>
+            </form>
+            <div class="relative flex py-4 items-center"><div class="flex-grow border-t border-gray-300"></div><span class="flex-shrink mx-4 text-gray-400 text-sm">OR</span><div class="flex-grow border-t border-gray-300"></div></div>
+            <div class="space-y-3">
+                <button id="google-signin" class="w-full px-4 py-3 flex items-center justify-center bg-white border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-100">
+                    <img src="https://www.google.com/favicon.ico" alt="Google" class="w-5 h-5 mr-3"> Continue with Google
+                </button>
+                <button id="microsoft-signin" class="w-full px-4 py-3 flex items-center justify-center bg-white border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-100">
+                    <img src="https://www.microsoft.com/favicon.ico" alt="Microsoft" class="w-5 h-5 mr-3"> Continue with Microsoft
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Configuration
-        const sheetId = '17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA';
-        const sheetGid = '0';
-        const range = 'C6:S107'; 
-        const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${sheetGid}&range=${range}`;
-        const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
-
-        // DOM Elements
-        const searchInput = document.getElementById('searchInput');
-        const industryFilter = document.getElementById('industryFilter');
-        const sectorFilter = document.getElementById('sectorFilter');
-        const sortControl = document.getElementById('sortControl');
-        const lastUpdated = document.getElementById('lastUpdated');
-        const ceoCardView = document.getElementById('ceoCardView');
-        const noResults = document.getElementById('noResults');
-        const loading = document.getElementById('loading');
-        const errorMessage = document.getElementById('error-message');
-
-        // State
-        let masterCeoData = [];
-        let displayedCeoData = [];
-        let currentSort = { key: 'tsrValue', direction: 'desc' };
-        
-        function parseJSONResponse(text) {
-            const match = text.match(/google\.visualization\.Query\.setResponse\((.*)\)/s);
-            if (!match || !match[1]) {
-                console.error("Could not parse JSON response from Google Sheets.");
-                return [];
-            }
-            const jsonString = match[1];
-            const data = JSON.parse(jsonString);
-            if (!data.table || !data.table.rows) return [];
-            
-            return data.table.rows.map(row => {
-                const getCellVal = (index, property = 'v') => {
-                    const cell = row.c[index];
-                    if (cell && cell[property] !== null && typeof cell[property] !== 'undefined') {
-                        return cell[property];
-                    }
-                    return null;
-                };
-
-                const getNumericVal = (index) => {
-                    const cell = row.c[index];
-                    if (!cell) return 0;
-                    if (typeof cell.v === 'number') return cell.v;
-                    let val = cell.v !== null && typeof cell.v !== 'undefined' ? cell.v : cell.f;
-                    if (val === null || typeof val === 'undefined' || val === "") return 0;
-                    if (typeof val === 'string') {
-                        const match = val.match(/^-?\d*\.?\d+/);
-                        if (match) val = match[0];
-                    }
-                    const num = parseFloat(val);
-                    return isNaN(num) ? 0 : num;
-                };
-                
-                return {
-                    company: getCellVal(0) || '',
-                    ticker: getCellVal(1) || '',
-                    industry: getCellVal(2) || '',
-                    sector: getCellVal(3) || '',
-                    ceo: getCellVal(5) || '',
-                    founder: getCellVal(6) || '',
-                    compensation: getNumericVal(7),
-                    equityTransactions: getCellVal(8) || '',
-                    tsrValue: getNumericVal(13),
-                    tenure: getNumericVal(14),
-                    avgAnnualTsr: getNumericVal(15),
-                    compensationCost: getNumericVal(16)
-                };
-            });
-        }
-
-        function formatPercentage(value) {
-            if (typeof value !== 'number') return 'N/A';
-            return (value * 100).toLocaleString('en-US', { maximumFractionDigits: 0 }) + '%';
-        }
-        
-        function formatMillions(value, decimalPlaces = 2) {
-            if (typeof value !== 'number') return 'N/A';
-            return value.toLocaleString('en-US', { 
-                minimumFractionDigits: decimalPlaces, 
-                maximumFractionDigits: decimalPlaces 
-            });
-        }
-        
-        function exportToCsv(filename, data) {
-            const title = '"CEORater"';
-            const tagline = '"NASDAQ 100 CEO Performance & Compensation Analytics"';
-            
-            const headers = [
-                "CEO", "Company", "Ticker", "Founder", "Tenure (Yrs.)", 
-                "Total Stock Return (TSR)", "Avg. Annual TSR", "CEO Compensation ($MM)", 
-                "Comp. Cost / 1% Avg. Annual TSR ($MM)", "Industry", "Sector"
-            ];
-            
-            const dataRows = data.map(ceo => {
-                const values = [
-                    `"${String(ceo.ceo || '').replace(/"/g, '""')}"`,
-                    `"${String(ceo.company || '').replace(/"/g, '""')}"`,
-                    ceo.ticker,
-                    ceo.founder,
-                    ceo.tenure.toFixed(1),
-                    `"${formatPercentage(ceo.tsrValue)}"`,
-                    `"${formatPercentage(ceo.avgAnnualTsr)}"`,
-                    `"$${formatMillions(ceo.compensation, 1)}"`,
-                    `"$${formatMillions(ceo.compensationCost, 3)}"`,
-                    `"${String(ceo.industry || '').replace(/"/g, '""')}"`,
-                    `"${String(ceo.sector || '').replace(/"/g, '""')}"`
-                ];
-                return values.join(',');
-            });
-            
-            const csvString = [title, tagline, '', headers.join(',')].concat(dataRows).join('\n');
-            
-            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            if (link.download !== undefined) {
-                const url = URL.createObjectURL(blob);
-                link.setAttribute('href', url);
-                link.setAttribute('download', filename);
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
-        }
-
-        function displayData(data) {
-            ceoCardView.innerHTML = '';
-            if (data.length === 0) {
-                noResults.classList.remove('hidden');
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof firebaseConfig === 'undefined') {
+                alert("CRITICAL ERROR: Firebase configuration is missing. Create firebase-config.js and ensure it is included before this script.");
                 return;
             }
-            noResults.classList.add('hidden');
-            renderCards(data);
-        }
-        
-        function renderCards(data) {
-            data.forEach(ceo => {
-                const card = document.createElement('div');
-                card.className = 'bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col justify-between';
-                
-                const founderBadge = ceo.founder && ceo.founder.toUpperCase() === 'Y' 
-                    ? `<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
+            
+            // Initialize Firebase
+            firebase.initializeApp(firebaseConfig);
+            const auth = firebase.auth();
+            const db = firebase.firestore();
 
-                const filingsLink = ceo.equityTransactions
-                    ? `<a href="${ceo.equityTransactions}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline">View Filings</a>` : `<span class="text-gray-400">N/A</span>`;
-                
-                const tsrTextColor = ceo.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
-                const avgTsrTextColor = ceo.avgAnnualTsr >= 0 ? 'text-green-600' : 'text-red-600';
+            // App State
+            const appState = { currentUser: null, watchlistMode: false, followedCeos: new Set() };
+            
+            // DOM Elements
+            const dom = {
+                mainAuthButton: document.getElementById('mainAuthButton'),
+                authModal: document.getElementById('authModal'),
+                closeAuthModal: document.getElementById('closeAuthModal'),
+                emailForm: document.getElementById('emailForm'),
+                emailInput: document.getElementById('emailInput'),
+                passwordInput: document.getElementById('passwordInput'),
+                authError: document.getElementById('authError'),
+                googleSigninButton: document.getElementById('google-signin'),
+                microsoftSigninButton: document.getElementById('microsoft-signin'),
+                searchInput: document.getElementById('searchInput'),
+                industryFilter: document.getElementById('industryFilter'),
+                sectorFilter: document.getElementById('sectorFilter'),
+                sortControl: document.getElementById('sortControl'),
+                lastUpdated: document.getElementById('lastUpdated'),
+                ceoCardView: document.getElementById('ceoCardView'),
+                noResults: document.getElementById('noResults'),
+                loading: document.getElementById('loading'),
+                errorMessage: document.getElementById('error-message'),
+                watchlistToggle: document.getElementById('watchlistToggle'),
+            };
 
-                card.innerHTML = `
-                    <div>
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h3 class="font-bold text-lg text-gray-900">${ceo.ceo}${founderBadge}</h3>
-                                <p class="text-sm text-gray-600">${ceo.company} (${ceo.ticker})</p>
+            // Data & Core App Logic
+            const sheetId = '17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA';
+            const sheetGid = '0';
+            const range = 'C6:S107'; 
+            const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${sheetGid}&range=${range}`;
+            let masterCeoData = [];
+            let displayedCeoData = [];
+            let currentSort = { key: 'tsrValue', direction: 'desc' };
+            
+            function parseJSONResponse(text) {
+                const match = text.match(/google\.visualization\.Query\.setResponse\((.*)\)/s);
+                if (!match || !match[1]) { console.error("Could not parse JSON response."); return []; }
+                const data = JSON.parse(match[1]);
+                if (!data.table || !data.table.rows) return [];
+                return data.table.rows.map(row => {
+                    const getCellVal = (i, p = 'v') => (row.c[i] && row.c[i][p] != null) ? row.c[i][p] : null;
+                    const getNum = (i) => {
+                        const cell = row.c[i]; if (!cell) return 0; if (typeof cell.v === 'number') return cell.v;
+                        let val = cell.v != null ? cell.v : cell.f; if (val == null || val === "") return 0;
+                        const n = parseFloat(String(val).match(/^-?\d*\.?\d+/)); return isNaN(n) ? 0 : n;
+                    };
+                    return { company: getCellVal(0) || '', ticker: getCellVal(1) || '', industry: getCellVal(2) || '', sector: getCellVal(3) || '', ceo: getCellVal(5) || '', founder: getCellVal(6) || '', compensation: getNum(7), equityTransactions: getCellVal(8) || '', tsrValue: getNum(13), tenure: getNum(14), avgAnnualTsr: getNum(15), compensationCost: getNum(16) };
+                });
+            }
+
+            function formatPercentage(value) {
+                if (typeof value !== 'number') return 'N/A';
+                return (value * 100).toLocaleString('en-US', { maximumFractionDigits: 0 }) + '%';
+            }
+            
+            function formatMillions(value, decimalPlaces = 2) {
+                if (typeof value !== 'number') return 'N/A';
+                return value.toLocaleString('en-US', { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces });
+            }
+
+            function renderCards(data) {
+                dom.ceoCardView.innerHTML = '';
+                data.forEach(ceo => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col justify-between';
+                    const isFollowing = appState.followedCeos.has(ceo.ticker);
+                    const starClass = isFollowing ? 'following' : '';
+                    const disabledClass = !appState.currentUser ? 'disabled' : '';
+                    const founderBadge = ceo.founder.toUpperCase() === 'Y' ? `<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
+                    const filingsLink = ceo.equityTransactions ? `<a href="${ceo.equityTransactions}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline">View Filings</a>` : `<span class="text-gray-400">N/A</span>`;
+                    const tsrTextColor = ceo.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
+                    const avgTsrTextColor = ceo.avgAnnualTsr >= 0 ? 'text-green-600' : 'text-red-600';
+
+                    card.innerHTML = `
+                        <div>
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="font-bold text-lg text-gray-900">${ceo.ceo}${founderBadge}</h3>
+                                    <p class="text-sm text-gray-600">${ceo.company} (${ceo.ticker})</p>
+                                </div>
+                                <svg class="follow-star w-6 h-6 ${starClass} ${disabledClass}" data-ticker="${ceo.ticker}" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                            </div>
+                            <div class="mt-4 space-y-2">
+                                <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Total Stock Return (TSR) During CEO's Tenure</span><span class="font-bold ${tsrTextColor}">${formatPercentage(ceo.tsrValue)}</span></div>
+                                <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Avg. Annual TSR</span><span class="font-bold ${avgTsrTextColor}">${formatPercentage(ceo.avgAnnualTsr)}</span></div>
+                                <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">CEO Compensation ($MM)</span><span class="text-gray-700 text-right">$${formatMillions(ceo.compensation, 1)}</span></div>
+                                <div class="flex justify-between text-sm"><span class="font-medium text-gray-500 text-left">Comp. Cost / 1% Avg. Annual TSR ($MM)</span><span class="text-gray-700 text-right">$${formatMillions(ceo.compensationCost, 3)}</span></div>
+                                <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Tenure (Yrs.)</span><span class="text-gray-700 text-right">${ceo.tenure.toFixed(1)}</span></div>
+                                <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Industry</span><span class="text-gray-700 text-right">${ceo.industry}</span></div>
+                                <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Sector</span><span class="text-gray-700 text-right">${ceo.sector}</span></div>
                             </div>
                         </div>
-                        <div class="mt-4 space-y-2">
-                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Total Stock Return (TSR) During CEO's Tenure</span><span class="font-bold ${tsrTextColor}">${formatPercentage(ceo.tsrValue)}</span></div>
-                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Avg. Annual TSR</span><span class="font-bold ${avgTsrTextColor}">${formatPercentage(ceo.avgAnnualTsr)}</span></div>
-                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">CEO Compensation ($MM)</span><span class="text-gray-700 text-right">$${formatMillions(ceo.compensation, 1)}</span></div>
-                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500 text-left">Comp. Cost / 1% Avg. Annual TSR ($MM)</span><span class="text-gray-700 text-right">$${formatMillions(ceo.compensationCost, 3)}</span></div>
-                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Tenure (Yrs.)</span><span class="text-gray-700 text-right">${ceo.tenure.toFixed(1)}</span></div>
-                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Industry</span><span class="text-gray-700 text-right">${ceo.industry || 'N/A'}</span></div>
-                            <div class="flex justify-between text-sm"><span class="font-medium text-gray-500">Sector</span><span class="text-gray-700 text-right">${ceo.sector || 'N/A'}</span></div>
+                        <div class="flex justify-between text-sm items-center pt-3 mt-3 border-t">
+                            <span class="font-medium text-gray-500">Equity Transactions</span>
+                            <span>${filingsLink}</span>
                         </div>
-                    </div>
-                    <div class="flex justify-between text-sm items-center pt-3 mt-3 border-t">
-                        <span class="font-medium text-gray-500">Equity Transactions</span>
-                        <span>${filingsLink}</span>
-                    </div>
-                `;
-                ceoCardView.appendChild(card);
-            });
-        }
+                    `;
+                    dom.ceoCardView.appendChild(card);
+                });
+            }
 
-        function sortData() {
-            const { key, direction } = currentSort;
-            displayedCeoData.sort((a, b) => {
-                const valA = a[key];
-                const valB = b[key];
-                let comparison = 0;
-                if (typeof valA === 'number' && typeof valB === 'number') {
-                    comparison = valA - valB;
+            function filterAndSortData() {
+                let data = [...masterCeoData];
+                if (appState.watchlistMode && appState.currentUser) {
+                    data = data.filter(ceo => appState.followedCeos.has(ceo.ticker));
+                }
+                const searchTerm = dom.searchInput.value.toLowerCase();
+                const selectedIndustry = dom.industryFilter.value;
+                const selectedSector = dom.sectorFilter.value;
+                if (searchTerm || selectedIndustry || selectedSector) {
+                    data = data.filter(ceo => 
+                        (ceo.ceo.toLowerCase().includes(searchTerm) || ceo.company.toLowerCase().includes(searchTerm) || ceo.ticker.toLowerCase().includes(searchTerm)) &&
+                        (!selectedIndustry || ceo.industry === selectedIndustry) &&
+                        (!selectedSector || ceo.sector === selectedSector)
+                    );
+                }
+                const [sortKey, sortDir] = dom.sortControl.value.split('-');
+                if (sortKey && sortDir) {
+                    data.sort((a, b) => {
+                        const valA = a[sortKey]; const valB = b[key]; let comparison = 0;
+                        if (typeof valA === 'number' && typeof valB === 'number') { comparison = valA - valB; } 
+                        else { comparison = String(valA || '').localeCompare(String(valB || ''), 'en', { sensitivity: 'base' }); }
+                        return direction === 'asc' ? comparison : -comparison;
+                    });
+                }
+                displayedCeoData = data;
+                renderCards(displayedCeoData);
+                dom.noResults.classList.toggle('hidden', displayedCeoData.length === 0);
+            }
+
+            function populateFilters(data) {
+                const industries = [...new Set(data.map(ceo => ceo.industry).filter(Boolean))].sort();
+                const sectors = [...new Set(data.map(ceo => ceo.sector).filter(Boolean))].sort();
+                dom.industryFilter.innerHTML = '<option value="">All Industries</option>';
+                industries.forEach(i => { const o = document.createElement('option'); o.value = o.textContent = i; dom.industryFilter.appendChild(o); });
+                dom.sectorFilter.innerHTML = '<option value="">All Sectors</option>';
+                sectors.forEach(s => { const o = document.createElement('option'); o.value = o.textContent = s; dom.sectorFilter.appendChild(o); });
+            }
+            
+            async function fetchAndUpdateData(isInitialLoad = false) {
+                 if(isInitialLoad) dom.loading.style.display = 'flex';
+                 dom.errorMessage.classList.add('hidden');
+                 try {
+                    const response = await fetch(`${sheetUrl}&t=${new Date().getTime()}`);
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    const responseText = await response.text();
+                    masterCeoData = parseJSONResponse(responseText);
+                    if (masterCeoData.length === 0 && isInitialLoad) throw new Error("No data parsed.");
+                    if (isInitialLoad) {
+                        populateFilters(masterCeoData);
+                    }
+                    filterAndSortData();
+                    dom.lastUpdated.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+                } catch (error) {
+                    console.error("Error fetching or processing data: ", error);
+                    if (isInitialLoad) dom.errorMessage.classList.remove('hidden');
+                } finally {
+                    if (isInitialLoad) dom.loading.style.display = 'none';
+                }
+            }
+
+            function debounce(func, delay) { let timeout; return function(...args) { const context = this; clearTimeout(timeout); timeout = setTimeout(() => func.apply(context, args), delay); }; }
+            
+            // --- AUTHENTICATION & WATCHLIST LOGIC ---
+
+            auth.onAuthStateChanged(async (user) => {
+                dom.watchlistToggle.disabled = !user;
+                if (user) {
+                    appState.currentUser = user;
+                    dom.mainAuthButton.textContent = 'Log Out';
+                    showModal(dom.authModal, false);
+                    await loadWatchlist(user.uid);
+                    filterAndSortData();
                 } else {
-                    comparison = String(valA || '').localeCompare(String(valB || ''), 'en', { sensitivity: 'base' });
+                    appState.currentUser = null;
+                    appState.followedCeos.clear();
+                    appState.watchlistMode = false;
+                    dom.watchlistToggle.checked = false;
+                    dom.mainAuthButton.textContent = 'Log In / Sign Up';
+                    filterAndSortData();
                 }
-                return direction === 'asc' ? comparison : -comparison;
             });
-            displayData(displayedCeoData);
-        }
-        
-        function handleSortChange(e) {
-            const [key, direction] = e.target.value.split('-');
-            if (key && direction) {
-                currentSort = { key, direction };
-                sortData();
+
+            dom.emailForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                showAuthError(false);
+                const email = dom.emailInput.value;
+                const password = dom.passwordInput.value;
+                try {
+                    await auth.signInWithEmailAndPassword(email, password);
+                } catch (error) {
+                    if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+                        auth.createUserWithEmailAndPassword(email, password)
+                            .catch(signupError => showAuthError(signupError.message));
+                    } else {
+                        showAuthError(error.message);
+                    }
+                }
+            });
+            
+            dom.googleSigninButton.addEventListener('click', () => { showAuthError(false); auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(err => showAuthError(err.message)); });
+            dom.microsoftSigninButton.addEventListener('click', () => { showAuthError(false); auth.signInWithPopup(new firebase.auth.OAuthProvider('microsoft.com')).catch(err => showAuthError(err.message)); });
+
+            async function loadWatchlist(userId) {
+                try {
+                    const doc = await db.collection('watchlists').doc(userId).get();
+                    appState.followedCeos = doc.exists ? new Set(doc.data().tickers || []) : new Set();
+                } catch (error) { console.error("Error loading watchlist:", error); }
             }
-        }
 
-        function filterAndSortData() {
-            const searchTerm = searchInput.value.toLowerCase();
-            const selectedIndustry = industryFilter.value;
-            const selectedSector = sectorFilter.value;
-
-            displayedCeoData = masterCeoData.filter(ceo => {
-                const searchMatch = (ceo.ceo.toLowerCase().includes(searchTerm)) ||
-                       (ceo.company.toLowerCase().includes(searchTerm)) ||
-                       (ceo.ticker.toLowerCase().includes(searchTerm));
-                const industryMatch = !selectedIndustry || ceo.industry === selectedIndustry;
-                const sectorMatch = !selectedSector || ceo.sector === selectedSector;
-                return searchMatch && industryMatch && sectorMatch;
-            });
-            sortData();
-        }
-
-        function populateFilters(data) {
-            const industries = [...new Set(data.map(ceo => ceo.industry).filter(Boolean))].sort();
-            const sectors = [...new Set(data.map(ceo => ceo.sector).filter(Boolean))].sort();
-
-            industryFilter.innerHTML = '<option value="">All Industries</option>';
-            industries.forEach(industry => {
-                const option = document.createElement('option');
-                option.value = industry;
-                option.textContent = industry;
-                industryFilter.appendChild(option);
-            });
-
-            sectorFilter.innerHTML = '<option value="">All Sectors</option>';
-            sectors.forEach(sector => {
-                const option = document.createElement('option');
-                option.value = sector;
-                option.textContent = sector;
-                sectorFilter.appendChild(option);
-            });
-        }
-        
-        async function fetchAndUpdateData(isInitialLoad = false) {
-             try {
-                const response = await fetch(`${sheetUrl}&t=${new Date().getTime()}`); // Cache-busting
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const responseText = await response.text();
-                masterCeoData = parseJSONResponse(responseText);
-
-                if (masterCeoData.length === 0) {
-                   if (isInitialLoad) throw new Error("No data parsed from the sheet.");
-                   return;
+            async function saveWatchlist(userId, followedSet) {
+                if (!userId) return;
+                try {
+                    await db.collection('watchlists').doc(userId).set({ tickers: Array.from(followedSet) });
+                } catch (error) { console.error("Error saving watchlist:", error); }
+            }
+            
+            dom.ceoCardView.addEventListener('click', (e) => {
+                const star = e.target.closest('.follow-star');
+                if (!star) return;
+                if (!appState.currentUser) {
+                    showModal(dom.authModal, true);
+                    return;
                 }
-                
-                if (isInitialLoad) {
-                    populateFilters(masterCeoData);
+                const ticker = star.dataset.ticker;
+                if (appState.followedCeos.has(ticker)) {
+                    appState.followedCeos.delete(ticker);
+                } else {
+                    appState.followedCeos.add(ticker);
                 }
-                
+                saveWatchlist(appState.currentUser.uid, appState.followedCeos);
                 filterAndSortData();
-                
-                const now = new Date();
-                lastUpdated.textContent = `Last updated: ${now.toLocaleTimeString()}`;
-
-            } catch (error) {
-                console.error("Error fetching or processing data: ", error);
-                if (isInitialLoad) errorMessage.classList.remove('hidden');
-            } finally {
-                if (isInitialLoad) loading.style.display = 'none';
-            }
-        }
-
-        function debounce(func, delay) {
-            let timeout;
-            return function(...args) {
-                const context = this;
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func.apply(context, args), delay);
-            };
-        }
-
-        async function init() {
-            await fetchAndUpdateData(true);
-            searchInput.addEventListener('input', debounce(filterAndSortData, 300));
-            industryFilter.addEventListener('change', filterAndSortData);
-            sectorFilter.addEventListener('change', filterAndSortData);
-            sortControl.addEventListener('change', handleSortChange);
-            setInterval(() => fetchAndUpdateData(false), REFRESH_INTERVAL_MS);
-
-            const downloadExcelButton = document.getElementById('downloadExcelButton');
-            downloadExcelButton.addEventListener('click', () => {
-                exportToCsv('CEORater_Data.csv', displayedCeoData);
             });
-        }
 
-        document.addEventListener('DOMContentLoaded', init);
+            dom.watchlistToggle.addEventListener('change', (e) => {
+                if (!appState.currentUser) {
+                    e.target.checked = false;
+                    showModal(dom.authModal, true);
+                    return;
+                }
+                appState.watchlistMode = e.target.checked;
+                filterAndSortData();
+            });
+
+            function showModal(modal, show) { modal.classList.toggle('hidden', !show); }
+            function showAuthError(message) {
+                if (message) { dom.authError.textContent = message; dom.authError.classList.remove('hidden'); }
+                else { dom.authError.classList.add('hidden'); }
+            }
+            dom.closeAuthModal.addEventListener('click', () => showModal(dom.authModal, false));
+            dom.mainAuthButton.addEventListener('click', () => {
+                if (auth.currentUser) { auth.signOut(); }
+                else { showAuthError(false); showModal(dom.authModal, true); }
+            });
+            
+            async function init() {
+                dom.searchInput.addEventListener('input', debounce(filterAndSortData, 300));
+                dom.sortControl.addEventListener('change', filterAndSortData);
+                dom.industryFilter.addEventListener('change', filterAndSortData);
+                dom.sectorFilter.addEventListener('change', filterAndSortData);
+                await fetchAndUpdateData(true);
+            }
+
+            init();
+        });
     </script>
 </body>
 </html>
