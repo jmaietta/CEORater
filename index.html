@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- ====== Meta / Icons ====== -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CEORater</title>
@@ -12,13 +11,11 @@
   <meta property="og:image" content="https://www.ceorater.com/android-chrome-512x512.png" />
   <meta property="og:url" content="https://www.ceorater.com/" />
 
-  <!-- ====== Tailwind & Fonts ====== -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
   
-  <!-- ====== Firebase ====== -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
@@ -35,7 +32,6 @@
 </head>
 <body class="bg-gray-100 text-gray-800">
   <div class="container mx-auto p-4 md:p-8">
-    <!-- ===== Auth / Watchlist bar ===== -->
     <nav class="flex justify-end gap-3 mb-4">
       <button id="watchlistBtn" class="hidden px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">My Watchlist (<span id="watchlistCount">0</span>)</button>
       <span id="userEmail" class="hidden text-sm text-gray-600 px-3 py-1"></span>
@@ -48,7 +44,6 @@
       <p class="text-gray-600 mt-2 text-lg">NASDAQ 100 CEO Performance & Compensation Analytics</p>
     </header>
 
-    <!-- ===== View Toggle ===== -->
     <div class="flex justify-center mb-6">
       <div class="bg-white rounded-lg p-1 shadow-sm border">
         <button id="allCeosTab" class="watchlist-tab px-4 py-2 rounded-md font-medium active">All CEOs</button>
@@ -56,16 +51,20 @@
       </div>
     </div>
 
-    <!-- ===== Main Card ===== -->
     <main class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
-      <!-- Filters -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <input id="searchInput" type="text" placeholder="Search by CEO, Company, or Ticker." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
         <select id="industryFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white"></select>
         <select id="sectorFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white"></select>
         <select id="sortControl" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white">
-          <option value="tsrValue-desc">Sort: TSR ↓</option>
-          <option value="tsrValue-asc">Sort: TSR ↑</option>
+          <option value="alphaScore-desc">Sort: AlphaScore ↓</option>
+          <option value="alphaScore-asc">Sort: AlphaScore ↑</option>
+          <option value="tsrAlpha-desc">TSR Alpha ↓</option>
+          <option value="tsrAlpha-asc">TSR Alpha ↑</option>
+          <option value="avgAnnualTsrAlpha-desc">Avg Annual TSR Alpha ↓</option>
+          <option value="avgAnnualTsrAlpha-asc">Avg Annual TSR Alpha ↑</option>
+          <option value="tsrValue-desc">TSR ↓</option>
+          <option value="tsrValue-asc">TSR ↑</option>
           <option value="avgAnnualTsr-desc">Avg Annual TSR ↓</option>
           <option value="avgAnnualTsr-asc">Avg Annual TSR ↑</option>
           <option value="compensation-desc">Compensation ↓</option>
@@ -101,7 +100,6 @@
     <footer class="text-center mt-8 text-sm text-gray-500">CEORater 2025. A TEK2day Holdings company.</footer>
   </div>
 
-  <!-- ===== Login Modal ===== -->
   <div id="loginModal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-lg p-6 w-full max-w-md">
       <h2 class="text-xl font-bold mb-4">Sign In to CEORater</h2>
@@ -158,10 +156,8 @@
     </div>
   </div>
 
-  <!-- ===== Firebase Config (Load from external file) ===== -->
   <script src="firebase-config.js"></script>
 
-  <!-- ======= Main Application Script ======= -->
   <script>
     // ---------- Initialize Firebase ----------
     firebase.initializeApp(firebaseConfig);
@@ -171,7 +167,7 @@
     // ---------- Google Sheet Config ----------
     const sheetId = '17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA';
     const sheetGid = '0';
-    const range = 'C6:S107';
+    const range = 'C6:Y107'; // EXTENDED range to include new AlphaScore columns
     const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${sheetGid}&range=${range}`;
     const REFRESH = 5 * 60 * 1000; // 5 min
 
@@ -211,7 +207,7 @@
     // ---------- State ----------
     let master = [];
     let view = [];
-    let currentSort = { key: 'tsrValue', dir: 'desc' };
+    let currentSort = { key: 'alphaScore', dir: 'desc' }; // UPDATED default sort
     let currentUser = null;
     let userWatchlist = new Set();
     let currentView = 'all'; // 'all' or 'watchlist'
@@ -231,7 +227,11 @@
         return {
           company: gv(0), ticker: gv(1), industry: gv(2), sector: gv(3),
           ceo: gv(5), founder: gv(6), compensation: gn(7), equityTransactions: gv(8),
-          tsrValue: gn(13), tenure: gn(14), avgAnnualTsr: gn(15), compensationCost: gn(16)
+          tsrValue: gn(13), tenure: gn(14), avgAnnualTsr: gn(15), compensationCost: gn(16),
+          // ADDED new AlphaScore fields
+          tsrAlpha: gn(18), // Column U
+          avgAnnualTsrAlpha: gn(19), // Column V
+          alphaScore: gn(22) // Column Y
         };
       });
     }
@@ -253,7 +253,6 @@
         watchlistBtn.classList.add('hidden');
         userWatchlist.clear();
         updateWatchlistCount();
-        // Switch back to all CEOs view if logged out
         if (currentView === 'watchlist') {
           switchToAllView();
         }
@@ -329,11 +328,7 @@
     }
 
     function refreshView() {
-      if (currentView === 'all') {
-        applyFilters();
-      } else {
-        applyFilters(); // This will filter to watchlist items
-      }
+      applyFilters();
     }
 
     // ---------- Card Rendering ----------
@@ -356,24 +351,33 @@
         const filings = c.equityTransactions ? `<a href="${c.equityTransactions}" target="_blank" class="text-blue-600 hover:underline">View Filings</a>` : '<span class="text-gray-400">N/A</span>';
         const tsrCol = c.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
         const avgCol = c.avgAnnualTsr >= 0 ? 'text-green-600' : 'text-red-600';
-        
+        const tsrAlphaCol = c.tsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
+        const avgAlphaCol = c.avgAnnualTsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
+        const alphaScoreValue = c.alphaScore * 100;
+        const alphaScoreColor = 'text-blue-600';
+
         card.innerHTML = `
           <div>
-            <div class="flex justify-between items-start">
-              <div>
-                <h3 class="font-bold text-lg text-gray-900">${c.ceo}${founder}</h3>
+            <div class="flex justify-between items-start mb-4">
+              <div class="flex-1">
+                <h3 class="font-bold text-lg text-gray-900">
+                  ${c.ceo}
+                  <button class="watchlist-star text-2xl align-middle mx-2 -mt-1 transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? '★' : '☆'}</button>
+                  ${founder}
+                </h3>
                 <p class="text-sm text-gray-600">${c.company} (${c.ticker})</p>
               </div>
-              <button class="watchlist-star text-2xl transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" 
-                      data-ticker="${c.ticker}" 
-                      title="${saved ? 'Remove from' : 'Add to'} watchlist">
-                ${saved ? '★' : '☆'}
-              </button>
+              <div class="text-right pl-2">
+                <p class="text-xs text-gray-800 font-bold uppercase tracking-wider">AlphaScore</p>
+                <p class="text-3xl font-orbitron font-bold ${alphaScoreColor}">${Math.round(alphaScoreValue)}</p>
+              </div>
             </div>
             <div class="mt-4 space-y-2 text-sm">
               <div class="flex justify-between"><span class="text-gray-500">TSR During Tenure</span><span class="font-bold ${tsrCol}">${pct(c.tsrValue)}</span></div>
+              <div class="flex justify-between"><span class="text-gray-500">Relative TSR (Alpha)</span><span class="font-bold ${tsrAlphaCol}">${pct(c.tsrAlpha)}</span></div>
               <div class="flex justify-between"><span class="text-gray-500">Avg Annual TSR</span><span class="font-bold ${avgCol}">${pct(c.avgAnnualTsr)}</span></div>
-              <div class="flex justify-between"><span class="text-gray-500">CEO Compensation ($MM)</span><span>$${money(c.compensation, 1)}</span></div>
+              <div class="flex justify-between"><span class="text-gray-500">Relative Avg Annual TSR (Alpha)</span><span class="font-bold ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</span></div>
+              <div class="flex justify-between border-t mt-2 pt-2"><span class="text-gray-500">CEO Compensation ($MM)</span><span>$${money(c.compensation, 1)}</span></div>
               <div class="flex justify-between"><span class="text-gray-500">Comp Cost / 1% Avg TSR ($MM)</span><span>$${money(c.compensationCost, 3)}</span></div>
               <div class="flex justify-between"><span class="text-gray-500">Tenure (yrs)</span><span>${c.tenure.toFixed(1)}</span></div>
               <div class="flex justify-between"><span class="text-gray-500">Industry</span><span>${c.industry || 'N/A'}</span></div>
@@ -413,7 +417,6 @@
         return matchTerm && matchInd && matchSec;
       });
 
-      // Additional filter for watchlist view
       if (currentView === 'watchlist') {
         filteredData = filteredData.filter(c => userWatchlist.has(c.ticker));
       }
@@ -459,7 +462,6 @@
       fetchData(true);
       setInterval(() => fetchData(false), REFRESH);
       
-      // Filters
       searchInput.addEventListener('input', debounce(applyFilters, 300));
       industryFilter.addEventListener('change', applyFilters);
       sectorFilter.addEventListener('change', applyFilters);
@@ -469,19 +471,16 @@
         sortAndRender();
       });
 
-      // View toggle
       allCeosTab.addEventListener('click', switchToAllView);
       watchlistTab.addEventListener('click', switchToWatchlistView);
       watchlistBtn.addEventListener('click', switchToWatchlistView);
 
-      // Auth modal
       loginBtn.addEventListener('click', () => loginModal.classList.remove('hidden'));
       closeModal.addEventListener('click', () => loginModal.classList.add('hidden'));
       loginModal.addEventListener('click', e => {
         if (e.target === loginModal) loginModal.classList.add('hidden');
       });
 
-      // Auth actions
       logoutBtn.addEventListener('click', () => auth.signOut());
       
       googleSignIn.addEventListener('click', () => {
@@ -496,9 +495,7 @@
 
       microsoftSignIn.addEventListener('click', () => {
         const provider = new firebase.auth.OAuthProvider('microsoft.com');
-
         provider.setCustomParameters({ prompt: 'select_account' });
-        
         auth.signInWithPopup(provider).then(() => {
           loginModal.classList.add('hidden');
         }).catch(error => {
@@ -508,13 +505,12 @@
       });
       
       forgotPasswordLink.addEventListener('click', (e) => {
-        e.preventDefault(); // Prevents the link from navigating
+        e.preventDefault();
         const email = emailInput.value;
         if (!email) {
           alert('Please enter your email address to reset your password.');
           return;
         }
-
         auth.sendPasswordResetEmail(email)
           .then(() => {
             alert('Password reset email sent! Please check your inbox.');
@@ -555,21 +551,22 @@
         });
       });
 
-      // Excel download (placeholder - you can implement this later)
       $("downloadExcelButton").addEventListener('click', () => {
-        // Create CSV content from current view
         if (view.length === 0) {
           alert('No data to export');
           return;
         }
         
-        const headers = ['CEO', 'Company', 'Ticker', 'Industry', 'Sector', 'TSR During Tenure', 'Avg Annual TSR', 'Compensation ($MM)', 'Comp Cost / 1% Avg TSR ($MM)', 'Tenure (yrs)', 'Founder'];
+        const headers = ['CEO', 'Company', 'Ticker', 'AlphaScore', 'TSR Alpha', 'Avg Annual TSR Alpha', 'Industry', 'Sector', 'TSR During Tenure', 'Avg Annual TSR', 'Compensation ($MM)', 'Comp Cost / 1% Avg TSR ($MM)', 'Tenure (yrs)', 'Founder'];
         const csvContent = [
           headers.join(','),
           ...view.map(c => [
             `"${c.ceo}"`,
             `"${c.company}"`,
             c.ticker,
+            c.alphaScore,
+            c.tsrAlpha,
+            c.avgAnnualTsrAlpha,
             `"${c.industry || ''}"`,
             `"${c.sector || ''}"`,
             c.tsrValue,
@@ -592,14 +589,12 @@
         window.URL.revokeObjectURL(url);
       });
 
-      // Handle keyboard shortcuts
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !loginModal.classList.contains('hidden')) {
           loginModal.classList.add('hidden');
         }
       });
 
-      // Handle enter key in login form
       emailInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') signInEmail.click();
       });
