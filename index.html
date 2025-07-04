@@ -374,9 +374,9 @@
             </div>
             <div class="mt-4 space-y-2 text-sm">
               <div class="flex justify-between"><span class="text-gray-500">TSR During Tenure</span><span class="font-bold ${tsrCol}">${pct(c.tsrValue)}</span></div>
-              <div class="flex justify-between"><span class="text-gray-500">Relative TSR (Alpha)</span><span class="font-bold ${tsrAlphaCol}">${pct(c.tsrAlpha)}</span></div>
+              <div class="flex justify-between"><span class="text-gray-500">Relative TSR vs. QQQ</span><span class="font-bold ${tsrAlphaCol}">${pct(c.tsrAlpha)}</span></div>
               <div class="flex justify-between"><span class="text-gray-500">Avg Annual TSR</span><span class="font-bold ${avgCol}">${pct(c.avgAnnualTsr)}</span></div>
-              <div class="flex justify-between"><span class="text-gray-500">Relative Avg Annual TSR (Alpha)</span><span class="font-bold ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</span></div>
+              <div class="flex justify-between"><span class="text-gray-500">Avg Annual TSR vs. QQQ</span><span class="font-bold ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</span></div>
               <div class="flex justify-between border-t mt-2 pt-2"><span class="text-gray-500">CEO Compensation ($MM)</span><span>$${money(c.compensation, 1)}</span></div>
               <div class="flex justify-between"><span class="text-gray-500">Comp Cost / 1% Avg TSR ($MM)</span><span>$${money(c.compensationCost, 3)}</span></div>
               <div class="flex justify-between"><span class="text-gray-500">Tenure (yrs)</span><span>${c.tenure.toFixed(1)}</span></div>
