@@ -360,7 +360,11 @@
           <div>
             <div class="flex justify-between items-start mb-4">
               <div class="flex-1">
-                <h3 class="font-bold text-lg text-gray-900">${c.ceo}${founder}</h3>
+                <h3 class="font-bold text-lg text-gray-900">
+                  ${c.ceo}
+                  <button class="watchlist-star text-2xl align-middle mx-2 -mt-1 transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? '★' : '☆'}</button>
+                  ${founder}
+                </h3>
                 <p class="text-sm text-gray-600">${c.company} (${c.ticker})</p>
               </div>
               <div class="text-right pl-2">
