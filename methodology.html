@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CEORater - Definitions & Methodologies</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <meta property="og:title" content="CEORater - Definitions & Methodologies">
+  <meta property="og:description" content="Understanding the metrics behind NASDAQ 100 CEO Performance & Compensation Analytics." />
+  <meta property="og:image" content="https://www.ceorater.com/android-chrome-512x512.png" />
+  <meta property="og:url" content="https://www.ceorater.com/methodology.html" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+  
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .font-orbitron { font-family: 'Orbitron', sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+  <div class="container mx-auto p-4 md:p-8">
+    <header class="text-center mb-8">
+      <a href="/" class="text-4xl md:text-5xl font-orbitron italic font-bold text-blue-600 hover:text-blue-700 transition">CEORater</a>
+      <p class="text-gray-600 mt-2 text-lg">NASDAQ 100 CEO Performance & Compensation Analytics</p>
+    </header>
+
+    <main class="bg-white rounded-xl shadow-lg p-6 sm:p-8 max-w-4xl mx-auto">
+      <h2 class="text-3xl font-bold text-gray-900 mb-6 border-b pb-4">CEORater Definitions and Methodologies</h2>
+      
+      <div class="space-y-6 text-gray-700 leading-relaxed">
+        <div>
+          <h3 class="text-xl font-semibold text-gray-800 mb-2">Core Principle</h3>
+          <p>
+            CEORater believes a CEO's primary responsibility is to generate returns for shareholders that outperform the broader market. Our core metrics are designed to measure this outperformance, or "alpha," in a clear and objective way.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-xl font-semibold text-gray-800 mb-2">Key Performance Metrics:</h3>
+          <ul class="list-disc list-outside space-y-3 pl-5">
+            <li>
+              <strong class="font-semibold text-gray-900">TSR During Tenure:</strong> The total return of a stock to an investor, including stock price appreciation and dividends, over a specific period. We calculate TSR for the entirety of a CEO's tenure.
+            </li>
+            <li>
+              <strong class="font-semibold text-gray-900">TSR vs. QQQ:</strong> Measures the CEO's TSR during their tenure compared to the QQQ Total Return over the same period. It is calculated by subtracting the Total Return of the Invesco QQQ Trust (a proxy for the NASDAQ 100 Index) from the CEO's "TSR During Tenure" over the same period. A positive value indicates the CEO has outperformed the market.
+            </li>
+            <li>
+              <strong class="font-semibold text-gray-900">Avg Annual TSR:</strong> "TSR During Tenure" divided by that CEO's tenure.
+            </li>
+            <li>
+              <strong class="font-semibold text-gray-900">Avg Annual TSR vs. QQQ:</strong> Measures the CEO's Average Annual TSR compared to QQQ Average Annual Total Return over the same period. A positive value indicates outperformance against the market.
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 class="text-xl font-semibold text-gray-800 mb-2">AlphaScore:</h3>
+          <p>
+            The AlphaScore is CEORater's proprietary 0-100 rating of a CEO's performance, ranked relative to their NASDAQ 100 peers. A higher score indicates superior, risk-adjusted value creation.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-xl font-semibold text-gray-800 mb-2">Methodology:</h3>
+          <p class="mb-3">
+            The AlphaScore is a blended metric designed to balance the total magnitude of outperformance with the consistency of that outperformance. It is calculated in two steps:
+          </p>
+          <ol class="list-decimal list-outside space-y-3 pl-5">
+            <li>
+              <strong class="font-semibold text-gray-900">Percentile Ranking:</strong> Each CEO is ranked against all other NASDAQ 100 CEOs on two key metrics:
+              <ul class="list-disc list-outside space-y-1 pl-6 mt-1">
+                <li>The percentile rank of their total TSR vs. QQQ</li>
+                <li>The percentile rank of their Avg Annual TSR vs. QQQ.</li>
+              </ul>
+            </li>
+            <li>
+              <strong class="font-semibold text-gray-900">Blended Score:</strong> The AlphaScore is the average of these two percentile ranks, resulting in a single, comprehensive score from 0 to 100.
+            </li>
+          </ol>
+          <p class="mt-3">
+            This methodology ensures that the AlphaScore rewards both long-term value creation and the year-over-year skill required to outperform the market.
+          </p>
+        </div>
+      </div>
+
+      <div class="text-center mt-8 pt-6 border-t">
+          <a href="/" class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition">Back to CEO Rankings</a>
+      </div>
+
+    </main>
+
+    <footer class="text-center mt-8 text-sm text-gray-500">CEORater 2025. A TEK2day Holdings company.</footer>
+  </div>
+</body>
+</html>
