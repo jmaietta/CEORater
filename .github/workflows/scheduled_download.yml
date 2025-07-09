@@ -6,6 +6,9 @@ on:
     # Runs at 5:00 PM EST (21:00 UTC) every Monday through Friday
     - cron: '0 21 * * 1-5'
 
+permissions:
+  contents: write
+
 jobs:
   download-data:
     runs-on: ubuntu-latest
