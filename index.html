@@ -355,7 +355,7 @@
         const saved = userWatchlist.has(c.ticker);
         const card = document.createElement('div');
         
-        // UPDATED: Quartile color-coding logic based on user feedback
+        // Quartile color-coding logic
         let quartileColorClass = 'border-gray-200';
         switch(c.quartile) {
             case 'Top Quartile': quartileColorClass = 'border-green-500'; break;
@@ -377,10 +377,11 @@
         // Quartile display element (styles will be applied based on quartileColorClass)
         const quartileBadge = c.quartile ? `<div class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full ${quartileColorClass.replace('border', 'bg').replace('-500', '-100')} ${quartileColorClass.replace('border', 'text')}">${c.quartile}</div>` : '';
 
+        // UPDATED: Card header layout for consistent alignment
         card.innerHTML = `
           <div>
-            <div class="flex justify-between items-start mb-2">
-              <div class="flex-1">
+            <div class="flex justify-between items-start mb-4">
+              <div class="flex-1 mr-2">
                 <h3 class="font-bold text-lg text-gray-900">
                   ${c.ceo}
                   <button class="watchlist-star text-2xl align-middle mx-2 -mt-1 transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? '★' : '☆'}</button>
@@ -388,12 +389,14 @@
                 </h3>
                 <p class="text-sm text-gray-600">${c.company} (${c.ticker})</p>
               </div>
-              <div class="text-right pl-2">
-                <p class="text-xs text-gray-800 font-bold uppercase tracking-wider">AlphaScore</p>
-                <p class="text-3xl font-orbitron font-bold ${alphaScoreColor}">${Math.round(alphaScoreValue)}</p>
+              <div class="text-right pl-2 flex flex-col items-end flex-shrink-0">
+                <div>
+                    <p class="text-xs text-gray-800 font-bold uppercase tracking-wider">AlphaScore</p>
+                    <p class="text-3xl font-orbitron font-bold ${alphaScoreColor}">${Math.round(alphaScoreValue)}</p>
+                </div>
+                <div class="mt-1 h-6">${quartileBadge}</div>
               </div>
             </div>
-            <div class="flex justify-end mb-4">${quartileBadge}</div>
             <div class="space-y-2 text-sm">
               <div class="flex justify-between"><span class="text-gray-500">TSR During Tenure</span><span class="font-bold ${tsrCol}">${pct(c.tsrValue)}</span></div>
               <div class="flex justify-between"><span class="text-gray-500">TSR vs. QQQ</span><span class="font-bold ${tsrAlphaCol}">${pct(c.tsrAlpha)}</span></div>
