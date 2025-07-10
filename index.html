@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -174,7 +173,8 @@
     // ---------- Google Sheet Config ----------
     const sheetId = '17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA';
     const sheetGid = '0';
-    const range = 'C6:Y107'; // EXTENDED range to include new AlphaScore columns
+    // UPDATED: Range extended to column AA for Quartile data
+    const range = 'C6:AA107'; 
     const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${sheetGid}&range=${range}`;
     const REFRESH = 5 * 60 * 1000; // 5 min
 
@@ -214,7 +214,7 @@
     // ---------- State ----------
     let master = [];
     let view = [];
-    let currentSort = { key: 'alphaScore', dir: 'desc' }; // UPDATED default sort
+    let currentSort = { key: 'alphaScore', dir: 'desc' };
     let currentUser = null;
     let userWatchlist = new Set();
     let currentView = 'all'; // 'all' or 'watchlist'
@@ -235,10 +235,11 @@
           company: gv(0), ticker: gv(1), industry: gv(2), sector: gv(3),
           ceo: gv(5), founder: gv(6), compensation: gn(7), equityTransactions: gv(8),
           tsrValue: gn(13), tenure: gn(14), avgAnnualTsr: gn(15), compensationCost: gn(16),
-          // ADDED new AlphaScore fields
-          tsrAlpha: gn(18), // Column U
-          avgAnnualTsrAlpha: gn(19), // Column V
-          alphaScore: gn(22) // Column Y
+          tsrAlpha: gn(18),
+          avgAnnualTsrAlpha: gn(19),
+          alphaScore: gn(22),
+          // ADDED: Quartile from column AA (index 24)
+          quartile: gv(24) 
         };
       });
     }
@@ -353,7 +354,17 @@
       data.forEach(c => {
         const saved = userWatchlist.has(c.ticker);
         const card = document.createElement('div');
-        card.className = 'bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow';
+        
+        // Quartile color-coding logic
+        let quartileColorClass = 'border-gray-200';
+        switch(c.quartile) {
+            case 'Top Quartile': quartileColorClass = 'border-green-500'; break;
+            case '3rd Quartile': quartileColorClass = 'border-orange-500'; break;
+            case '2nd Quartile': quartileColorClass = 'border-yellow-500'; break;
+            case 'Bottom Quartile': quartileColorClass = 'border-red-500'; break;
+        }
+
+        card.className = `bg-white border-l-4 ${quartileColorClass} rounded-lg p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow`;
         const founder = (c.founder?.toUpperCase() === 'Y') ? '<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>' : '';
         const filings = c.equityTransactions ? `<a href="${c.equityTransactions}" target="_blank" class="text-blue-600 hover:underline">View Filings</a>` : '<span class="text-gray-400">N/A</span>';
         const tsrCol = c.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
@@ -363,10 +374,14 @@
         const alphaScoreValue = c.alphaScore * 100;
         const alphaScoreColor = 'text-blue-600';
 
+        // Quartile display element (styles will be applied based on quartileColorClass)
+        const quartileBadge = c.quartile ? `<div class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full ${quartileColorClass.replace('border', 'bg').replace('-500', '-100')} ${quartileColorClass.replace('border', 'text')}">${c.quartile}</div>` : '';
+
+        // UPDATED: Card header layout for consistent alignment
         card.innerHTML = `
           <div>
             <div class="flex justify-between items-start mb-4">
-              <div class="flex-1">
+              <div class="flex-1 mr-2">
                 <h3 class="font-bold text-lg text-gray-900">
                   ${c.ceo}
                   <button class="watchlist-star text-2xl align-middle mx-2 -mt-1 transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? '★' : '☆'}</button>
@@ -374,12 +389,15 @@
                 </h3>
                 <p class="text-sm text-gray-600">${c.company} (${c.ticker})</p>
               </div>
-              <div class="text-right pl-2">
-                <p class="text-xs text-gray-800 font-bold uppercase tracking-wider">AlphaScore</p>
-                <p class="text-3xl font-orbitron font-bold ${alphaScoreColor}">${Math.round(alphaScoreValue)}</p>
+              <div class="text-right pl-2 flex flex-col items-end flex-shrink-0">
+                <div>
+                    <p class="text-xs text-gray-800 font-bold uppercase tracking-wider">AlphaScore</p>
+                    <p class="text-3xl font-orbitron font-bold ${alphaScoreColor}">${Math.round(alphaScoreValue)}</p>
+                </div>
+                <div class="mt-1 h-6">${quartileBadge}</div>
               </div>
             </div>
-            <div class="mt-4 space-y-2 text-sm">
+            <div class="space-y-2 text-sm">
               <div class="flex justify-between"><span class="text-gray-500">TSR During Tenure</span><span class="font-bold ${tsrCol}">${pct(c.tsrValue)}</span></div>
               <div class="flex justify-between"><span class="text-gray-500">TSR vs. QQQ</span><span class="font-bold ${tsrAlphaCol}">${pct(c.tsrAlpha)}</span></div>
               <div class="flex justify-between"><span class="text-gray-500">Avg Annual TSR</span><span class="font-bold ${avgCol}">${pct(c.avgAnnualTsr)}</span></div>
@@ -564,7 +582,7 @@
           return;
         }
         
-        const headers = ['CEO', 'Company', 'Ticker', 'AlphaScore', 'TSR Alpha', 'Avg Annual TSR Alpha', 'Industry', 'Sector', 'TSR During Tenure', 'Avg Annual TSR', 'Compensation ($MM)', 'Comp Cost / 1% Avg TSR ($MM)', 'Tenure (yrs)', 'Founder'];
+        const headers = ['CEO', 'Company', 'Ticker', 'AlphaScore', 'AlphaScore Quartile', 'TSR Alpha', 'Avg Annual TSR Alpha', 'Industry', 'Sector', 'TSR During Tenure', 'Avg Annual TSR', 'Compensation ($MM)', 'Comp Cost / 1% Avg TSR ($MM)', 'Tenure (yrs)', 'Founder'];
         const csvContent = [
           headers.join(','),
           ...view.map(c => [
@@ -572,6 +590,7 @@
             `"${c.company}"`,
             c.ticker,
             c.alphaScore,
+            c.quartile,
             c.tsrAlpha,
             c.avgAnnualTsrAlpha,
             `"${c.industry || ''}"`,
