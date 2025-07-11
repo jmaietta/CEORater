@@ -28,6 +28,11 @@
     .modal { backdrop-filter: blur(4px); }
     .watchlist-tab { transition: all 0.3s ease; }
     .watchlist-tab.active { background-color: #3b82f6; color: white; }
+    .truncate {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -154,10 +159,27 @@
         </div>
       </div>
       
-      <button id="closeModal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+      <button id="closeLoginModalBtn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="ceoDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg relative max-h-full overflow-y-auto">
+      <div id="modalHeader" class="pb-4 border-b">
+          </div>
+  
+      <div id="modalBody" class="py-4">
+          </div>
+  
+      <div id="modalFooter" class="pt-4 border-t">
+          </div>
+  
+      <button id="closeDetailModal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
       </button>
     </div>
   </div>
@@ -173,7 +195,6 @@
     // ---------- Google Sheet Config ----------
     const sheetId = '17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA';
     const sheetGid = '0';
-    // UPDATED: Range extended to column AA for Quartile data
     const range = 'C6:AA107'; 
     const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${sheetGid}&range=${range}`;
     const REFRESH = 5 * 60 * 1000; // 5 min
@@ -198,7 +219,7 @@
     const watchlistBtn = $("watchlistBtn");
     const watchlistCount = $("watchlistCount");
     const loginModal = $("loginModal");
-    const closeModal = $("closeModal");
+    const closeLoginModalBtn = $("closeLoginModalBtn");
     const googleSignIn = $("googleSignIn");
     const microsoftSignIn = $("microsoftSignIn");
     const signInEmail = $("signInEmail");
@@ -210,6 +231,13 @@
     // View toggle
     const allCeosTab = $("allCeosTab");
     const watchlistTab = $("watchlistTab");
+
+    // CEO Detail Modal Elements
+    const ceoDetailModal = $("ceoDetailModal");
+    const modalHeader = $("modalHeader");
+    const modalBody = $("modalBody");
+    const modalFooter = $("modalFooter");
+    const closeDetailModal = $("closeDetailModal");
 
     // ---------- State ----------
     let master = [];
@@ -238,7 +266,6 @@
           tsrAlpha: gn(18),
           avgAnnualTsrAlpha: gn(19),
           alphaScore: gn(22),
-          // ADDED: Quartile from column AA (index 24)
           quartile: gv(24) 
         };
       });
@@ -300,8 +327,11 @@
         loginModal.classList.remove('hidden');
         return;
       }
+      
+      const starInCard = document.querySelector(`.ceo-card[data-ticker="${ticker}"] .watchlist-star`);
+      const isSaved = userWatchlist.has(ticker);
 
-      if (userWatchlist.has(ticker)) {
+      if (isSaved) {
         userWatchlist.delete(ticker);
       } else {
         userWatchlist.add(ticker);
@@ -309,7 +339,18 @@
       
       await saveUserWatchlist();
       updateWatchlistCount();
-      refreshView();
+      
+      if (starInCard) {
+        starInCard.innerHTML = !isSaved ? '★' : '☆';
+        starInCard.classList.toggle('text-yellow-400', !isSaved);
+        starInCard.classList.toggle('hover:text-yellow-500', !isSaved);
+        starInCard.classList.toggle('text-gray-300', isSaved);
+        starInCard.classList.toggle('hover:text-yellow-400', isSaved);
+      }
+
+      if (currentView === 'watchlist') {
+        refreshView();
+      }
     }
 
     function updateWatchlistCount() {
@@ -339,23 +380,21 @@
       applyFilters();
     }
 
-    // ---------- Card Rendering ----------
+    // ---------- Card Rendering and Modal Logic ----------
     function renderCards(data) {
       ceoCardView.innerHTML = '';
-      
+
       if (currentView === 'watchlist' && data.length === 0) {
         watchlistEmpty.classList.remove('hidden');
         noResults.classList.add('hidden');
         return;
       }
-      
       watchlistEmpty.classList.add('hidden');
-      
+
       data.forEach(c => {
-        const saved = userWatchlist.has(c.ticker);
         const card = document.createElement('div');
-        
-        // Quartile color-coding logic
+        card.dataset.ticker = c.ticker; 
+
         let quartileColorClass = 'border-gray-200';
         switch(c.quartile) {
             case 'Top Quartile': quartileColorClass = 'border-green-500'; break;
@@ -364,63 +403,115 @@
             case 'Bottom Quartile': quartileColorClass = 'border-red-500'; break;
         }
 
-        card.className = `bg-white border-l-4 ${quartileColorClass} rounded-lg p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow`;
-        const founder = (c.founder?.toUpperCase() === 'Y') ? `<div class="mt-1"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span></div>` : '';
-        const filings = c.equityTransactions ? `<a href="${c.equityTransactions}" target="_blank" class="text-blue-600 hover:underline">View Filings</a>` : '<span class="text-gray-400">N/A</span>';
-        const tsrCol = c.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
-        const avgCol = c.avgAnnualTsr >= 0 ? 'text-green-600' : 'text-red-600';
-        const tsrAlphaCol = c.tsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
-        const avgAlphaCol = c.avgAnnualTsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
+        // Add 'relative' for positioning the star
+        card.className = `ceo-card relative bg-white border-l-4 ${quartileColorClass} rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer flex flex-col justify-between`;
+        
         const alphaScoreValue = c.alphaScore * 100;
         const alphaScoreColor = 'text-blue-600';
-
-        // Quartile display element (styles will be applied based on quartileColorClass)
         const quartileBadge = c.quartile ? `<div class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full ${quartileColorClass.replace('border', 'bg').replace('-500', '-100')} ${quartileColorClass.replace('border', 'text')}">${c.quartile}</div>` : '';
 
-        // UPDATED: Card header layout for consistent alignment
+        const tsrAlphaCol = c.tsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
+        const avgAlphaCol = c.avgAnnualTsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
+
+        // UPDATED: Founder badge is now a block-level div to appear on its own line
+        const founderBadge = (c.founder?.toUpperCase() === 'Y') ? `<div class="mt-1"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span></div>` : '';
+        
+        const saved = userWatchlist.has(c.ticker);
+        const watchlistStar = `<button class="watchlist-star text-2xl align-middle transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? '★' : '☆'}</button>`;
+
         card.innerHTML = `
-          <div>
-            <div class="flex justify-between items-start mb-4">
-              <div class="flex-1 mr-2">
-                <h3 class="font-bold text-lg text-gray-900">
-                  ${c.ceo}
-                  <button class="watchlist-star text-2xl align-middle mx-2 -mt-1 transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? '★' : '☆'}</button>
-                </h3>
-                ${founder}
-                <p class="text-sm text-gray-600 font-bold">${c.company} (${c.ticker})</p>
+          <div class="pt-6">
+            <div class="absolute top-1 left-1">
+                ${watchlistStar}
+            </div>
+
+            <div class="flex justify-between items-start space-x-2">
+              <div class="flex-1 min-w-0">
+                <h3 class="font-bold text-lg text-gray-900 truncate" title="${c.ceo}">${c.ceo}</h3>
+                ${founderBadge}
+                <p class="text-sm text-gray-600 font-bold truncate mt-1" title="${c.company} (${c.ticker})">${c.company} (${c.ticker})</p>
               </div>
-              <div class="text-right pl-2 flex flex-col items-end flex-shrink-0">
+              
+              <div class="flex flex-col items-end flex-shrink-0">
                 <div>
-                    <p class="text-xs text-gray-800 font-bold uppercase tracking-wider">AlphaScore</p>
-                    <p class="text-3xl font-orbitron font-bold ${alphaScoreColor}">${Math.round(alphaScoreValue)}</p>
+                  <p class="text-xs text-gray-800 font-bold uppercase tracking-wider">AlphaScore</p>
+                  <p class="text-3xl font-orbitron font-bold ${alphaScoreColor}">${Math.round(alphaScoreValue)}</p>
                 </div>
                 <div class="mt-1 h-6">${quartileBadge}</div>
               </div>
             </div>
-            <div class="space-y-2 text-sm">
-              <div class="flex justify-between"><span class="text-gray-500">TSR During Tenure</span><span class="font-bold ${tsrCol}">${pct(c.tsrValue)}</span></div>
-              <div class="flex justify-between"><span class="text-gray-500">TSR vs. QQQ</span><span class="font-bold ${tsrAlphaCol}">${pct(c.tsrAlpha)}</span></div>
-              <div class="flex justify-between"><span class="text-gray-500">Avg Annual TSR</span><span class="font-bold ${avgCol}">${pct(c.avgAnnualTsr)}</span></div>
-              <div class="flex justify-between"><span class="text-gray-500">Avg Annual TSR vs. QQQ</span><span class="font-bold ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</span></div>
-              <div class="flex justify-between border-t mt-2 pt-2"><span class="text-gray-500">CEO Compensation ($MM)</span><span>$${money(c.compensation, 1)}</span></div>
-              <div class="flex justify-between"><span class="text-gray-500">Comp Cost / 1% Avg TSR ($MM)</span><span>$${money(c.compensationCost, 3)}</span></div>
-             <div class="flex justify-between"><span class="text-gray-500">Tenure (yrs)</span><span>${c.tenure.toFixed(1)}</span></div>
-             <div class="flex justify-between"><span class="text-gray-500">Industry</span><span class="text-right">${c.industry || 'N/A'}</span></div>
-             <div class="flex justify-between"><span class="text-gray-500">Sector</span><span class="text-right">${c.sector || 'N/A'}</span></div>
+
+            <div class="mt-4 pt-3 border-t border-gray-200 flex justify-between text-center">
+              <div>
+                <p class="text-xs text-gray-500" title="Total Shareholder Return vs. QQQ">TSR vs QQQ</p>
+                <p class="font-semibold text-sm ${tsrAlphaCol}">${pct(c.tsrAlpha)}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500">Compensation</p>
+                <p class="font-semibold text-sm">$${money(c.compensation, 1)}M</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500" title="Average Annual TSR vs. QQQ">Avg Ann. TSR vs QQQ</p>
+                <p class="font-semibold text-sm ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</p>
+              </div>
             </div>
           </div>
-          <div class="flex justify-between text-sm items-center pt-3 mt-3 border-t">
-            <span class="text-gray-500">Equity Transactions</span>
-            <span>${filings}</span>
-          </div>`;
+
+          <div class="mt-4 pt-2 border-t border-gray-100 text-xs text-blue-600 font-semibold flex justify-between items-center">
+              <span>View Details</span>
+              <span class="text-lg">→</span>
+          </div>
+        `;
         
         ceoCardView.appendChild(card);
       });
+    }
 
-      // Add click handlers for watchlist stars
-      document.querySelectorAll('.watchlist-star').forEach(star => {
-        star.addEventListener('click', () => toggleWatchlist(star.dataset.ticker));
-      });
+    function openModal(ceoData) {
+      const c = ceoData;
+      // UPDATED: Founder badge is an inline span to appear beside the name
+      const founder = (c.founder?.toUpperCase() === 'Y') ? `<span class="ml-3 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Founder</span>` : '';
+      
+      // UPDATED: h3 is a flex container
+      modalHeader.innerHTML = `
+        <h3 class="font-bold text-xl text-gray-900 flex items-center">
+          ${c.ceo}
+          ${founder}
+        </h3>
+        <p class="text-sm text-gray-600 font-bold mt-1">${c.company} (${c.ticker})</p>`;
+
+      const tsrCol = c.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
+      const avgCol = c.avgAnnualTsr >= 0 ? 'text-green-600' : 'text-red-600';
+      const tsrAlphaCol = c.tsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
+      const avgAlphaCol = c.avgAnnualTsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
+      modalBody.innerHTML = `
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between"><span class="text-gray-500">TSR During Tenure</span><span class="font-bold ${tsrCol}">${pct(c.tsrValue)}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">TSR vs. QQQ</span><span class="font-bold ${tsrAlphaCol}">${pct(c.tsrAlpha)}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Avg Annual TSR</span><span class="font-bold ${avgCol}">${pct(c.avgAnnualTsr)}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Avg Annual TSR vs. QQQ</span><span class="font-bold ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</span></div>
+          <div class="flex justify-between border-t mt-2 pt-2"><span class="text-gray-500">CEO Compensation ($MM)</span><span>$${money(c.compensation, 1)}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Comp Cost / 1% Avg TSR ($MM)</span><span>$${money(c.compensationCost, 3)}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Tenure (yrs)</span><span>${c.tenure.toFixed(1)}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Industry</span><span class="text-right">${c.industry || 'N/A'}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Sector</span><span class="text-right">${c.sector || 'N/A'}</span></div>
+        </div>`;
+
+      const filings = c.equityTransactions ? `<a href="${c.equityTransactions}" target="_blank" class="text-blue-600 hover:underline">View Filings</a>` : '<span class="text-gray-400">N/A</span>';
+      modalFooter.innerHTML = `
+        <div class="flex justify-between text-sm items-center">
+          <span class="text-gray-500">Equity Transactions</span>
+          <span>${filings}</span>
+        </div>`;
+      
+      ceoDetailModal.classList.remove('hidden');
+    }
+
+    function closeDetailModalFunc() {
+      ceoDetailModal.classList.add('hidden');
+      modalHeader.innerHTML = '';
+      modalBody.innerHTML = '';
+      modalFooter.innerHTML = '';
     }
 
     function refreshFilters() {
@@ -501,9 +592,35 @@
       watchlistBtn.addEventListener('click', switchToWatchlistView);
 
       loginBtn.addEventListener('click', () => loginModal.classList.remove('hidden'));
-      closeModal.addEventListener('click', () => loginModal.classList.add('hidden'));
+      closeLoginModalBtn.addEventListener('click', () => loginModal.classList.add('hidden'));
       loginModal.addEventListener('click', e => {
         if (e.target === loginModal) loginModal.classList.add('hidden');
+      });
+
+      // --- UPDATED Modal and Card Click Listeners ---
+      ceoCardView.addEventListener('click', (e) => {
+          const star = e.target.closest('.watchlist-star');
+          if (star) {
+              e.stopPropagation(); // Prevent the card click from firing
+              toggleWatchlist(star.dataset.ticker);
+              return; 
+          }
+
+          const card = e.target.closest('.ceo-card');
+          if (card) {
+              const ticker = card.dataset.ticker;
+              const ceoData = master.find(c => c.ticker === ticker);
+              if (ceoData) {
+                  openModal(ceoData);
+              }
+          }
+      });
+
+      closeDetailModal.addEventListener('click', closeDetailModalFunc);
+      ceoDetailModal.addEventListener('click', e => {
+          if (e.target === ceoDetailModal) {
+              closeDetailModalFunc();
+          }
       });
 
       logoutBtn.addEventListener('click', () => auth.signOut());
@@ -618,6 +735,9 @@
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !loginModal.classList.contains('hidden')) {
           loginModal.classList.add('hidden');
+        }
+        if (e.key === 'Escape' && !ceoDetailModal.classList.contains('hidden')) {
+            closeDetailModalFunc();
         }
       });
 
