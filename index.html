@@ -214,7 +214,7 @@
     const watchlistBtn = $("watchlistBtn");
     const watchlistCount = $("watchlistCount");
     const loginModal = $("loginModal");
-    const closeModal = $("closeModal");
+    const closeLoginModalBtn = $("closeModal");
     const googleSignIn = $("googleSignIn");
     const microsoftSignIn = $("microsoftSignIn");
     const signInEmail = $("signInEmail");
@@ -458,7 +458,7 @@
       ceoDetailModal.classList.remove('hidden');
     }
 
-    function closeModal() {
+    function closeDetailModalFunc() {
       ceoDetailModal.classList.add('hidden');
       modalHeader.innerHTML = '';
       modalBody.innerHTML = '';
