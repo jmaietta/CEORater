@@ -400,12 +400,17 @@
         const tsrAlphaCol = c.tsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
         const avgAlphaCol = c.avgAnnualTsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
 
+        // Define the founder badge for the summary card
+        const founderBadge = (c.founder?.toUpperCase() === 'Y') ? `<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
+        
         card.innerHTML = `
           <div class="flex justify-between items-start">
             <div class="flex-1 mr-2">
               <h3 class="font-bold text-lg text-gray-900">${c.ceo}</h3>
-              <p class="text-sm text-gray-600 font-bold">${c.company} (${c.ticker})</p>
+              ${founderBadge}
             </div>
+            <p class="text-sm text-gray-600 font-bold">${c.company} (${c.ticker})</p>
+          </div>
             <div class="text-right pl-2 flex flex-col items-end flex-shrink-0">
               <div>
                 <p class="text-xs text-gray-800 font-bold uppercase tracking-wider">AlphaScore</p>
