@@ -154,7 +154,7 @@
         </div>
       </div>
       
-      <button id="closeModal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+      <button id="closeLoginModalBtn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>
@@ -214,7 +214,7 @@
     const watchlistBtn = $("watchlistBtn");
     const watchlistCount = $("watchlistCount");
     const loginModal = $("loginModal");
-    const closeLoginModalBtn = $("closeModal");
+    const closeLoginModalBtn = $("closeLoginModalBtn");
     const googleSignIn = $("googleSignIn");
     const microsoftSignIn = $("microsoftSignIn");
     const signInEmail = $("signInEmail");
@@ -331,8 +331,8 @@
       
       await saveUserWatchlist();
       updateWatchlistCount();
-      refreshView(); // This will re-render cards, which is slow.
-      // A better way is to update the star in the modal directly.
+      refreshView(); 
+      
       const modalStar = modalHeader.querySelector('.watchlist-star');
       if (modalStar && modalStar.dataset.ticker === ticker) {
         const saved = userWatchlist.has(ticker);
@@ -397,6 +397,9 @@
         const alphaScoreColor = 'text-blue-600';
         const quartileBadge = c.quartile ? `<div class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full ${quartileColorClass.replace('border', 'bg').replace('-500', '-100')} ${quartileColorClass.replace('border', 'text')}">${c.quartile}</div>` : '';
 
+        const tsrAlphaCol = c.tsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
+        const avgAlphaCol = c.avgAnnualTsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
+
         card.innerHTML = `
           <div class="flex justify-between items-start">
             <div class="flex-1 mr-2">
@@ -405,12 +408,28 @@
             </div>
             <div class="text-right pl-2 flex flex-col items-end flex-shrink-0">
               <div>
-                  <p class="text-xs text-gray-800 font-bold uppercase tracking-wider">AlphaScore</p>
-                  <p class="text-3xl font-orbitron font-bold ${alphaScoreColor}">${Math.round(alphaScoreValue)}</p>
+                <p class="text-xs text-gray-800 font-bold uppercase tracking-wider">AlphaScore</p>
+                <p class="text-3xl font-orbitron font-bold ${alphaScoreColor}">${Math.round(alphaScoreValue)}</p>
               </div>
               <div class="mt-1 h-6">${quartileBadge}</div>
             </div>
-          </div>`;
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-gray-200 flex justify-between text-center">
+            <div>
+              <p class="text-xs text-gray-500" title="Total Shareholder Return vs. QQQ">TSR vs QQQ</p>
+              <p class="font-semibold text-sm ${tsrAlphaCol}">${pct(c.tsrAlpha)}</p>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500">Compensation</p>
+              <p class="font-semibold text-sm">$${money(c.compensation, 1)}M</p>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500" title="Average Annual TSR vs. QQQ">Avg Ann. TSR vs QQQ</p>
+              <p class="font-semibold text-sm ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</p>
+            </div>
+          </div>
+        `;
         
         ceoCardView.appendChild(card);
       });
@@ -543,7 +562,7 @@
       watchlistBtn.addEventListener('click', switchToWatchlistView);
 
       loginBtn.addEventListener('click', () => loginModal.classList.remove('hidden'));
-      closeModal.addEventListener('click', () => loginModal.classList.add('hidden'));
+      closeLoginModalBtn.addEventListener('click', () => loginModal.classList.add('hidden'));
       loginModal.addEventListener('click', e => {
         if (e.target === loginModal) loginModal.classList.add('hidden');
       });
@@ -560,10 +579,10 @@
           }
       });
 
-      closeDetailModal.addEventListener('click', closeModal);
+      closeDetailModal.addEventListener('click', closeDetailModalFunc);
       ceoDetailModal.addEventListener('click', e => {
           if (e.target === ceoDetailModal) {
-              closeModal();
+              closeDetailModalFunc();
           }
       });
 
@@ -681,7 +700,7 @@
           loginModal.classList.add('hidden');
         }
         if (e.key === 'Escape' && !ceoDetailModal.classList.contains('hidden')) {
-            closeModal();
+            closeDetailModalFunc();
         }
       });
 
