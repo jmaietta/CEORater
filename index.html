@@ -250,6 +250,13 @@
     // ---------- Helper Functions ----------
     const pct = v => typeof v === 'number' ? (v * 100).toLocaleString('en-US', { maximumFractionDigits: 0 }) + '%' : 'N/A';
     const money = (v, d = 2) => typeof v === 'number' ? v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) : 'N/A';
+    const formatMarketCap = v => {
+        if (typeof v !== 'number' || v === 0) return 'N/A';
+        if (v >= 1e12) return `$${(v / 1e12).toFixed(2)}T`;
+        if (v >= 1e9) return `$${(v / 1e9).toFixed(0)}B`;
+        if (v >= 1e6) return `$${(v / 1e6).toFixed(0)}M`;
+        return `$${v.toLocaleString()}`;
+    };
 
     function parseRows(txt) {
       const m = txt.match(/google\.visualization\.Query\.setResponse\((.*)\)/s);
@@ -262,6 +269,7 @@
         return {
           company: gv(0), ticker: gv(1), industry: gv(2), sector: gv(3),
           ceo: gv(5), founder: gv(6), compensation: gn(7), equityTransactions: gv(8),
+          marketCap: gn(12),
           tsrValue: gn(13), tenure: gn(14), avgAnnualTsr: gn(15), compensationCost: gn(16),
           tsrAlpha: gn(18),
           avgAnnualTsrAlpha: gn(19),
@@ -436,7 +444,7 @@
                   <div class="mt-1 h-6">${quartileBadge}</div>
               </div>
             </div>
-            <div class="mt-4 pt-3 border-t border-gray-200 flex justify-between text-center">
+            <div class="mt-4 pt-3 border-t border-gray-200 flex justify-between text-right">
               <div>
                 <p class="text-xs text-gray-500" title="Total Shareholder Return vs. QQQ">TSR vs QQQ</p>
                 <p class="font-semibold text-sm ${tsrAlphaCol}">${pct(c.tsrAlpha)}</p>
@@ -470,7 +478,7 @@
           ${c.ceo}
           ${founder}
         </h3>
-        <p class="text-sm text-gray-600 font-bold mt-1">${c.company} (${c.ticker})</p>`;
+        <p class="text-sm text-gray-600 font-bold mt-1">${c.company} (${c.ticker}) <span class="text-gray-500 font-bold">&bull; Market Cap: ${formatMarketCap(c.marketCap)}</span></p>`;
 
       const tsrCol = c.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
       const avgCol = c.avgAnnualTsr >= 0 ? 'text-green-600' : 'text-red-600';
@@ -691,13 +699,14 @@
           return;
         }
         
-        const headers = ['CEO', 'Company', 'Ticker', 'AlphaScore', 'AlphaScore Quartile', 'TSR Alpha', 'Avg Annual TSR Alpha', 'Industry', 'Sector', 'TSR During Tenure', 'Avg Annual TSR', 'Compensation ($MM)', 'Comp Cost / 1% Avg TSR ($MM)', 'Tenure (yrs)', 'Founder'];
+        const headers = ['CEO', 'Company', 'Ticker', 'Market Cap ($B)', 'AlphaScore', 'AlphaScore Quartile', 'TSR Alpha', 'Avg Annual TSR Alpha', 'Industry', 'Sector', 'TSR During Tenure', 'Avg Annual TSR', 'Compensation ($MM)', 'Comp Cost / 1% Avg TSR ($MM)', 'Tenure (yrs)', 'Founder'];
         const csvContent = [
           headers.join(','),
           ...view.map(c => [
             `"${c.ceo}"`,
             `"${c.company}"`,
             c.ticker,
+            (c.marketCap / 1e9).toFixed(2),
             c.alphaScore,
             c.quartile,
             c.tsrAlpha,
