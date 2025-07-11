@@ -365,7 +365,7 @@
         }
 
         card.className = `bg-white border-l-4 ${quartileColorClass} rounded-lg p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow`;
-        const founder = (c.founder?.toUpperCase() === 'Y') ? '<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>' : '';
+        const founder = (c.founder?.toUpperCase() === 'Y') ? `<div class="mt-1"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span></div>` : '';
         const filings = c.equityTransactions ? `<a href="${c.equityTransactions}" target="_blank" class="text-blue-600 hover:underline">View Filings</a>` : '<span class="text-gray-400">N/A</span>';
         const tsrCol = c.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
         const avgCol = c.avgAnnualTsr >= 0 ? 'text-green-600' : 'text-red-600';
@@ -385,8 +385,8 @@
                 <h3 class="font-bold text-lg text-gray-900">
                   ${c.ceo}
                   <button class="watchlist-star text-2xl align-middle mx-2 -mt-1 transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? '★' : '☆'}</button>
-                  ${founder}
                 </h3>
+                ${founder}
                 <p class="text-sm text-gray-600 font-bold">${c.company} (${c.ticker})</p>
               </div>
               <div class="text-right pl-2 flex flex-col items-end flex-shrink-0">
