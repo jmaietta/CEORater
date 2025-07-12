@@ -445,16 +445,16 @@
                     <div class="mt-1 h-6">${quartileBadge}</div>
                 </div>
               </div>
-              <div class="mt-4 pt-3 border-t border-gray-200 flex justify-between sm:text-right">
-                <div class="text-left">
+              <div class="mt-4 pt-3 border-t border-gray-200 sm:flex sm:justify-between sm:text-right">
+                <div class="flex justify-between sm:block sm:text-left">
                   <p class="text-xs text-gray-500" title="Total Shareholder Return vs. QQQ">TSR vs QQQ</p>
                   <p class="font-semibold text-sm ${tsrAlphaCol}">${pct(c.tsrAlpha)}</p>
                 </div>
-                <div class="text-center">
+                <div class="flex justify-between sm:block sm:text-center">
                   <p class="text-xs text-gray-500">CEO Comp</p>
                   <p class="font-semibold text-sm">$${money(c.compensation, 1)}M</p>
                 </div>
-                <div class="text-right">
+                <div class="flex justify-between sm:block sm:text-right">
                   <p class="text-xs text-gray-500" title="Average Annual TSR vs. QQQ">Avg Ann. TSR vs QQQ</p>
                   <p class="font-semibold text-sm ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</p>
                 </div>
@@ -605,7 +605,7 @@
       ceoCardView.addEventListener('click', (e) => {
           const star = e.target.closest('.watchlist-star');
           if (star) {
-              e.stopPropagation();
+              e.stopPropagation(); // Prevent the card click from firing
               toggleWatchlist(star.dataset.ticker);
               return; 
           }
