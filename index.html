@@ -245,7 +245,6 @@
     let currentSort = { key: 'alphaScore', dir: 'desc' };
     let currentUser = null;
     let userWatchlist = new Set();
-    let comparisonSet = new Set(); // For CEO comparisons
     let currentView = 'all'; // 'all' or 'watchlist'
 
     // ---------- Helper Functions ----------
@@ -329,21 +328,6 @@
       } catch (error) {
         console.error('Error saving watchlist:', error);
       }
-    }
-
-    // ---------- Comparison Logic ----------
-    function toggleCompare(ticker) {
-      if (comparisonSet.has(ticker)) {
-        comparisonSet.delete(ticker);
-      } else {
-        if (comparisonSet.size >= 3) {
-          alert('You can compare a maximum of 3 CEOs at a time.');
-          return;
-        }
-        comparisonSet.add(ticker);
-      }
-      refreshView(); // Re-render to update button state
-      // We will add the comparison tray logic here later
     }
 
     async function toggleWatchlist(ticker) {
@@ -441,16 +425,6 @@
         const saved = userWatchlist.has(c.ticker);
         const watchlistStar = `<button class="watchlist-star text-2xl align-middle transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? '★' : '☆'}</button>`;
 
-        const isComparing = comparisonSet.has(c.ticker);
-        const compareIcon = isComparing 
-          ? `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>`
-          : `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>`;
-        const compareButton = `
-          <button class="compare-btn p-1 rounded-md ${isComparing ? 'bg-blue-100 text-blue-700' : 'text-gray-400 hover:bg-gray-100'}" data-ticker="${c.ticker}" title="${isComparing ? 'Remove from Compare' : 'Add to Compare'}">
-            ${compareIcon}
-          </button>
-        `;
-
         card.innerHTML = `
           <div>
             <div class="absolute top-1 left-1">
@@ -471,42 +445,23 @@
                     <div class="mt-1 h-6">${quartileBadge}</div>
                 </div>
               </div>
-              
-              <div class="mt-4 pt-3 border-t border-gray-200 text-sm">
-                  <div class="sm:hidden space-y-1">
-                      <div class="flex justify-between">
-                          <span class="text-gray-500">TSR vs QQQ</span>
-                          <span class="font-semibold ${tsrAlphaCol}">${pct(c.tsrAlpha)}</span>
-                      </div>
-                      <div class="flex justify-between">
-                          <span class="text-gray-500">CEO Comp</span>
-                          <span class="font-semibold">$${money(c.compensation, 1)}M</span>
-                      </div>
-                      <div class="flex justify-between">
-                          <span class="text-gray-500">Avg Ann. TSR vs QQQ</span>
-                          <span class="font-semibold ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</span>
-                      </div>
-                  </div>
-
-                  <div class="hidden sm:flex sm:justify-between sm:text-right">
-                      <div>
-                          <p class="text-xs text-gray-500" title="Total Shareholder Return vs. QQQ">TSR vs QQQ</p>
-                          <p class="font-semibold text-sm ${tsrAlphaCol}">${pct(c.tsrAlpha)}</p>
-                      </div>
-                      <div>
-                          <p class="text-xs text-gray-500">CEO Comp</p>
-                          <p class="font-semibold text-sm">$${money(c.compensation, 1)}M</p>
-                      </div>
-                      <div>
-                          <p class="text-xs text-gray-500" title="Average Annual TSR vs. QQQ">Avg Ann. TSR vs QQQ</p>
-                          <p class="font-semibold text-sm ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</p>
-                      </div>
-                  </div>
+              <div class="mt-4 pt-3 border-t border-gray-200 flex justify-between sm:text-right">
+                <div class="text-left">
+                  <p class="text-xs text-gray-500" title="Total Shareholder Return vs. QQQ">TSR vs QQQ</p>
+                  <p class="font-semibold text-sm ${tsrAlphaCol}">${pct(c.tsrAlpha)}</p>
+                </div>
+                <div class="text-center">
+                  <p class="text-xs text-gray-500">CEO Comp</p>
+                  <p class="font-semibold text-sm">$${money(c.compensation, 1)}M</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-xs text-gray-500" title="Average Annual TSR vs. QQQ">Avg Ann. TSR vs QQQ</p>
+                  <p class="font-semibold text-sm ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</p>
+                </div>
               </div>
             </div>
           </div>
-          <div class="mt-4 pt-2 border-t border-gray-100 text-xs flex justify-between items-center">
-              ${compareButton}
+          <div class="mt-4 pt-2 border-t border-gray-100 text-xs flex justify-end items-center">
               <a href="#" class="details-link text-blue-600 font-semibold flex items-center">
                 <span>View Details</span>
                 <span class="text-lg ml-1">→</span>
@@ -653,13 +608,6 @@
               e.stopPropagation();
               toggleWatchlist(star.dataset.ticker);
               return; 
-          }
-
-          const compareBtn = e.target.closest('.compare-btn');
-          if (compareBtn) {
-              e.stopPropagation();
-              toggleCompare(compareBtn.dataset.ticker);
-              return;
           }
 
           const card = e.target.closest('.ceo-card');
