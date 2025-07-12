@@ -471,19 +471,37 @@
                     <div class="mt-1 h-6">${quartileBadge}</div>
                 </div>
               </div>
-              <div class="mt-4 pt-3 border-t border-gray-200 space-y-2 sm:space-y-0 sm:flex sm:justify-between sm:text-right">
-                <div class="sm:text-left">
-                  <p class="text-xs text-gray-500" title="Total Shareholder Return vs. QQQ">TSR vs QQQ</p>
-                  <p class="font-semibold text-sm ${tsrAlphaCol}">${pct(c.tsrAlpha)}</p>
-                </div>
-                <div class="sm:text-center">
-                  <p class="text-xs text-gray-500">CEO Comp</p>
-                  <p class="font-semibold text-sm">$${money(c.compensation, 1)}M</p>
-                </div>
-                <div>
-                  <p class="text-xs text-gray-500" title="Average Annual TSR vs. QQQ">Avg Ann. TSR vs QQQ</p>
-                  <p class="font-semibold text-sm ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</p>
-                </div>
+              
+              <div class="mt-4 pt-3 border-t border-gray-200 text-sm">
+                  <div class="sm:hidden space-y-1">
+                      <div class="flex justify-between">
+                          <span class="text-gray-500">TSR vs QQQ</span>
+                          <span class="font-semibold ${tsrAlphaCol}">${pct(c.tsrAlpha)}</span>
+                      </div>
+                      <div class="flex justify-between">
+                          <span class="text-gray-500">CEO Comp</span>
+                          <span class="font-semibold">$${money(c.compensation, 1)}M</span>
+                      </div>
+                      <div class="flex justify-between">
+                          <span class="text-gray-500">Avg Ann. TSR vs QQQ</span>
+                          <span class="font-semibold ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</span>
+                      </div>
+                  </div>
+
+                  <div class="hidden sm:flex sm:justify-between sm:text-right">
+                      <div>
+                          <p class="text-xs text-gray-500" title="Total Shareholder Return vs. QQQ">TSR vs QQQ</p>
+                          <p class="font-semibold text-sm ${tsrAlphaCol}">${pct(c.tsrAlpha)}</p>
+                      </div>
+                      <div>
+                          <p class="text-xs text-gray-500">CEO Comp</p>
+                          <p class="font-semibold text-sm">$${money(c.compensation, 1)}M</p>
+                      </div>
+                      <div>
+                          <p class="text-xs text-gray-500" title="Average Annual TSR vs. QQQ">Avg Ann. TSR vs QQQ</p>
+                          <p class="font-semibold text-sm ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</p>
+                      </div>
+                  </div>
               </div>
             </div>
           </div>
