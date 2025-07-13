@@ -33,6 +33,9 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    #comparisonTray {
+      transition: transform 0.3s ease-in-out;
+    }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -184,6 +187,20 @@
     </div>
   </div>
 
+  <div id="comparisonTray" class="hidden fixed bottom-0 left-0 right-0 bg-white shadow-2xl border-t border-gray-200 z-40">
+    <div class="container mx-auto p-4 flex justify-between items-center">
+      <div class="flex items-center space-x-3">
+        <span id="comparisonTitle" class="font-semibold text-gray-700">Compare (0/3):</span>
+        <div id="trayTickers" class="flex items-center space-x-2">
+          </div>
+      </div>
+      <button id="compareNowBtn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition">
+        Compare Now →
+      </button>
+    </div>
+  </div>
+
+
   <script src="firebase-config.js"></script>
 
   <script>
@@ -239,13 +256,21 @@
     const modalFooter = $("modalFooter");
     const closeDetailModal = $("closeDetailModal");
 
+    // NEW: Comparison Tray Elements
+    const comparisonTray = $("comparisonTray");
+    const comparisonTitle = $("comparisonTitle");
+    const trayTickers = $("trayTickers");
+    const compareNowBtn = $("compareNowBtn");
+
+
     // ---------- State ----------
     let master = [];
     let view = [];
     let currentSort = { key: 'alphaScore', dir: 'desc' };
     let currentUser = null;
     let userWatchlist = new Set();
-    let currentView = 'all'; // 'all' or 'watchlist'
+    let comparisonSet = new Set(); 
+    let currentView = 'all'; 
 
     // ---------- Helper Functions ----------
     const pct = v => typeof v === 'number' ? (v * 100).toLocaleString('en-US', { maximumFractionDigits: 0 }) + '%' : 'N/A';
@@ -295,6 +320,8 @@
         userEmail.classList.add('hidden');
         watchlistBtn.classList.add('hidden');
         userWatchlist.clear();
+        comparisonSet.clear();
+        updateComparisonTray();
         updateWatchlistCount();
         if (currentView === 'watchlist') {
           switchToAllView();
@@ -328,6 +355,49 @@
       } catch (error) {
         console.error('Error saving watchlist:', error);
       }
+    }
+
+    // ---------- Comparison Logic ----------
+    function updateComparisonTray() {
+      if (comparisonSet.size > 0) {
+        comparisonTitle.textContent = `Compare (${comparisonSet.size}/3):`;
+        let tickerHTML = '';
+        comparisonSet.forEach(ticker => {
+          tickerHTML += `<span class="bg-gray-200 text-gray-800 text-sm font-bold px-2 py-1 rounded-md">${ticker}</span>`;
+        });
+        trayTickers.innerHTML = tickerHTML;
+        comparisonTray.classList.remove('hidden');
+      } else {
+        comparisonTray.classList.add('hidden');
+      }
+    }
+
+    function toggleCompare(ticker) {
+      const button = document.querySelector(`.compare-btn[data-ticker="${ticker}"]`);
+      
+      if (comparisonSet.has(ticker)) {
+        comparisonSet.delete(ticker);
+      } else {
+        if (comparisonSet.size >= 3) {
+          alert('You can compare a maximum of 3 CEOs at a time.');
+          return;
+        }
+        comparisonSet.add(ticker);
+      }
+      
+      // Update the button state directly instead of full re-render
+      const isComparing = comparisonSet.has(ticker);
+      const compareIcon = isComparing 
+          ? `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>`
+          : `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>`;
+      
+      if(button) {
+        button.innerHTML = compareIcon;
+        button.title = isComparing ? 'Remove from Compare' : 'Add to Compare';
+        button.className = `compare-btn p-1 rounded-md ${isComparing ? 'bg-blue-100 text-blue-700' : 'text-gray-400 hover:bg-gray-100'}`;
+      }
+
+      updateComparisonTray();
     }
 
     async function toggleWatchlist(ticker) {
@@ -425,6 +495,16 @@
         const saved = userWatchlist.has(c.ticker);
         const watchlistStar = `<button class="watchlist-star text-2xl align-middle transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? '★' : '☆'}</button>`;
 
+        const isComparing = comparisonSet.has(c.ticker);
+        const compareIcon = isComparing 
+          ? `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>`
+          : `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>`;
+        const compareButton = `
+          <button class="compare-btn p-1 rounded-md ${isComparing ? 'bg-blue-100 text-blue-700' : 'text-gray-400 hover:bg-gray-100'}" data-ticker="${c.ticker}" title="${isComparing ? 'Remove from Compare' : 'Add to Compare'}">
+            ${compareIcon}
+          </button>
+        `;
+
         card.innerHTML = `
           <div>
             <div class="absolute top-1 left-1">
@@ -445,23 +525,40 @@
                     <div class="mt-1 h-6">${quartileBadge}</div>
                 </div>
               </div>
-              <div class="mt-4 pt-3 border-t border-gray-200 sm:flex sm:justify-between sm:text-right">
-                <div class="flex justify-between sm:block sm:text-left">
-                  <p class="text-xs text-gray-500" title="Total Shareholder Return vs. QQQ">TSR vs QQQ</p>
-                  <p class="font-semibold text-sm ${tsrAlphaCol}">${pct(c.tsrAlpha)}</p>
-                </div>
-                <div class="flex justify-between sm:block sm:text-center">
-                  <p class="text-xs text-gray-500">CEO Comp</p>
-                  <p class="font-semibold text-sm">$${money(c.compensation, 1)}M</p>
-                </div>
-                <div class="flex justify-between sm:block sm:text-right">
-                  <p class="text-xs text-gray-500" title="Average Annual TSR vs. QQQ">Avg Ann. TSR vs QQQ</p>
-                  <p class="font-semibold text-sm ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</p>
-                </div>
+              <div class="mt-4 pt-3 border-t border-gray-200 text-sm">
+                  <div class="sm:hidden space-y-1">
+                      <div class="flex justify-between">
+                          <span class="text-gray-500">TSR vs QQQ</span>
+                          <span class="font-semibold ${tsrAlphaCol}">${pct(c.tsrAlpha)}</span>
+                      </div>
+                      <div class="flex justify-between">
+                          <span class="text-gray-500">CEO Comp</span>
+                          <span class="font-semibold">$${money(c.compensation, 1)}M</span>
+                      </div>
+                      <div class="flex justify-between">
+                          <span class="text-gray-500">Avg Ann. TSR vs QQQ</span>
+                          <span class="font-semibold ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</span>
+                      </div>
+                  </div>
+                  <div class="hidden sm:flex sm:justify-between sm:text-right">
+                      <div>
+                          <p class="text-xs text-gray-500" title="Total Shareholder Return vs. QQQ">TSR vs QQQ</p>
+                          <p class="font-semibold text-sm ${tsrAlphaCol}">${pct(c.tsrAlpha)}</p>
+                      </div>
+                      <div>
+                          <p class="text-xs text-gray-500">CEO Comp</p>
+                          <p class="font-semibold text-sm">$${money(c.compensation, 1)}M</p>
+                      </div>
+                      <div>
+                          <p class="text-xs text-gray-500" title="Average Annual TSR vs. QQQ">Avg Ann. TSR vs QQQ</p>
+                          <p class="font-semibold text-sm ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</p>
+                      </div>
+                  </div>
               </div>
             </div>
           </div>
-          <div class="mt-4 pt-2 border-t border-gray-100 text-xs flex justify-end items-center">
+          <div class="mt-4 pt-2 border-t border-gray-100 text-xs flex justify-between items-center">
+              ${compareButton}
               <a href="#" class="details-link text-blue-600 font-semibold flex items-center">
                 <span>View Details</span>
                 <span class="text-lg ml-1">→</span>
@@ -473,48 +570,46 @@
       });
     }
 
-function openModal(ceoData) {
-  const c = ceoData;
-  const founder = (c.founder?.toUpperCase() === 'Y') ? `<span class="ml-3 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Founder</span>` : '';
-  
-  modalHeader.innerHTML = `
-    <h3 class="font-bold text-xl text-gray-900 flex items-center">
-      ${c.ceo}
-      ${founder}
-    </h3>
-    <p class="text-sm text-gray-600 font-bold mt-1">${c.company} (${c.ticker}) <span class="text-gray-500 font-bold">&bull; Market Cap: ${formatMarketCap(c.marketCap)}</span></p>`;
-
-  const tsrCol = c.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
-  const avgCol = c.avgAnnualTsr >= 0 ? 'text-green-600' : 'text-red-600';
-  const tsrAlphaCol = c.tsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
-  const avgAlphaCol = c.avgAnnualTsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
-  
-  // UPDATED modalBody to include AlphaScore and Quartile
-  modalBody.innerHTML = `
-    <div class="space-y-2 text-sm">
-      <div class="flex justify-between"><span class="text-gray-500">AlphaScore</span><span class="font-bold text-lg text-blue-600">${Math.round(c.alphaScore * 100)}</span></div>
-      <div class="flex justify-between pb-2 mb-2 border-b"><span class="text-gray-500">Quartile</span><span class="font-bold">${c.quartile}</span></div>
+    function openModal(ceoData) {
+      const c = ceoData;
+      const founder = (c.founder?.toUpperCase() === 'Y') ? `<span class="ml-3 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Founder</span>` : '';
       
-      <div class="flex justify-between"><span class="text-gray-500">TSR During Tenure</span><span class="font-bold ${tsrCol}">${pct(c.tsrValue)}</span></div>
-      <div class="flex justify-between"><span class="text-gray-500">TSR vs. QQQ</span><span class="font-bold ${tsrAlphaCol}">${pct(c.tsrAlpha)}</span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Avg Annual TSR</span><span class="font-bold ${avgCol}">${pct(c.avgAnnualTsr)}</span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Avg Annual TSR vs. QQQ</span><span class="font-bold ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</span></div>
-      <div class="flex justify-between border-t mt-2 pt-2"><span class="text-gray-500">CEO Compensation ($MM)</span><span>$${money(c.compensation, 1)}</span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Comp Cost / 1% Avg TSR ($MM)</span><span>$${money(c.compensationCost, 3)}</span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Tenure (yrs)</span><span>${c.tenure.toFixed(1)}</span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Industry</span><span class="text-right">${c.industry || 'N/A'}</span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Sector</span><span class="text-right">${c.sector || 'N/A'}</span></div>
-    </div>`;
+      modalHeader.innerHTML = `
+        <h3 class="font-bold text-xl text-gray-900 flex items-center">
+          ${c.ceo}
+          ${founder}
+        </h3>
+        <p class="text-sm text-gray-600 font-bold mt-1">${c.company} (${c.ticker}) <span class="text-gray-500 font-bold">&bull; Market Cap: ${formatMarketCap(c.marketCap)}</span></p>`;
 
-  const filings = c.equityTransactions ? `<a href="${c.equityTransactions}" target="_blank" class="text-blue-600 hover:underline">View Filings</a>` : '<span class="text-gray-400">N/A</span>';
-  modalFooter.innerHTML = `
-    <div class="flex justify-between text-sm items-center">
-      <span class="text-gray-500">Equity Transactions</span>
-      <span>${filings}</span>
-    </div>`;
-  
-  ceoDetailModal.classList.remove('hidden');
-}
+      const tsrCol = c.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
+      const avgCol = c.avgAnnualTsr >= 0 ? 'text-green-600' : 'text-red-600';
+      const tsrAlphaCol = c.tsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
+      const avgAlphaCol = c.avgAnnualTsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
+      modalBody.innerHTML = `
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between"><span class="text-gray-500">AlphaScore</span><span class="font-bold text-lg text-blue-600">${Math.round(c.alphaScore * 100)}</span></div>
+          <div class="flex justify-between pb-2 mb-2 border-b"><span class="text-gray-500">Quartile</span><span class="font-bold">${c.quartile}</span></div>
+
+          <div class="flex justify-between"><span class="text-gray-500">TSR During Tenure</span><span class="font-bold ${tsrCol}">${pct(c.tsrValue)}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">TSR vs. QQQ</span><span class="font-bold ${tsrAlphaCol}">${pct(c.tsrAlpha)}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Avg Annual TSR</span><span class="font-bold ${avgCol}">${pct(c.avgAnnualTsr)}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Avg Annual TSR vs. QQQ</span><span class="font-bold ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</span></div>
+          <div class="flex justify-between border-t mt-2 pt-2"><span class="text-gray-500">CEO Compensation ($MM)</span><span>$${money(c.compensation, 1)}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Comp Cost / 1% Avg TSR ($MM)</span><span>$${money(c.compensationCost, 3)}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Tenure (yrs)</span><span>${c.tenure.toFixed(1)}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Industry</span><span class="text-right">${c.industry || 'N/A'}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Sector</span><span class="text-right">${c.sector || 'N/A'}</span></div>
+        </div>`;
+
+      const filings = c.equityTransactions ? `<a href="${c.equityTransactions}" target="_blank" class="text-blue-600 hover:underline">View Filings</a>` : '<span class="text-gray-400">N/A</span>';
+      modalFooter.innerHTML = `
+        <div class="flex justify-between text-sm items-center">
+          <span class="text-gray-500">Equity Transactions</span>
+          <span>${filings}</span>
+        </div>`;
+      
+      ceoDetailModal.classList.remove('hidden');
+    }
 
     function closeDetailModalFunc() {
       ceoDetailModal.classList.add('hidden');
@@ -610,9 +705,16 @@ function openModal(ceoData) {
       ceoCardView.addEventListener('click', (e) => {
           const star = e.target.closest('.watchlist-star');
           if (star) {
-              e.stopPropagation(); // Prevent the card click from firing
+              e.stopPropagation();
               toggleWatchlist(star.dataset.ticker);
               return; 
+          }
+
+          const compareBtn = e.target.closest('.compare-btn');
+          if (compareBtn) {
+              e.stopPropagation();
+              toggleCompare(compareBtn.dataset.ticker);
+              return;
           }
 
           const card = e.target.closest('.ceo-card');
