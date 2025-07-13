@@ -193,12 +193,26 @@
         <span id="comparisonTitle" class="font-semibold text-gray-700">Compare (0/3):</span>
         <div id="trayTickers" class="flex items-center space-x-2">
           </div>
+      </div>
+      <button id="compareNowBtn" class="w-full mt-2 sm:w-auto sm:mt-0 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition">
+        Compare Now →
+      </button>
     </div>
-    <button id="compareNowBtn" class="w-full mt-2 sm:w-auto sm:mt-0 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition">
-      Compare Now →
-    </button>
   </div>
-</div>
+
+  <div id="comparisonModal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal z-50 flex items-center justify-center p-4">
+    <div id="comparisonModalContent" class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+      <div class="p-4 border-b flex justify-between items-center">
+        <h2 class="text-xl font-bold">CEO Comparison</h2>
+        <button id="closeComparisonModalBtn" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div class="p-4 overflow-auto">
+        <p>Comparison table will be built here...</p>
+      </div>
+    </div>
+  </div>
 
   <script src="firebase-config.js"></script>
 
@@ -255,12 +269,15 @@
     const modalFooter = $("modalFooter");
     const closeDetailModal = $("closeDetailModal");
 
-    // NEW: Comparison Tray Elements
+    // Comparison Tray Elements
     const comparisonTray = $("comparisonTray");
     const comparisonTitle = $("comparisonTitle");
     const trayTickers = $("trayTickers");
     const compareNowBtn = $("compareNowBtn");
-
+    
+    // NEW: Comparison Modal Elements
+    const comparisonModal = $("comparisonModal");
+    const closeComparisonModalBtn = $("closeComparisonModalBtn");
 
     // ---------- State ----------
     let master = [];
@@ -357,6 +374,15 @@
     }
 
     // ---------- Comparison Logic ----------
+    function openComparisonModal() {
+      // For now, just show the modal. We'll build the table next.
+      comparisonModal.classList.remove('hidden');
+    }
+
+    function closeComparisonModal() {
+      comparisonModal.classList.add('hidden');
+    }
+
     function updateComparisonTray() {
       if (comparisonSet.size > 0) {
         comparisonTitle.textContent = `Compare (${comparisonSet.size}/3):`;
@@ -384,7 +410,6 @@
         comparisonSet.add(ticker);
       }
       
-      // Update the button state directly instead of full re-render
       const isComparing = comparisonSet.has(ticker);
       const compareIcon = isComparing 
           ? `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>`
@@ -732,6 +757,10 @@
               closeDetailModalFunc();
           }
       });
+      
+      // NEW: Comparison Modal Listeners
+      compareNowBtn.addEventListener('click', openComparisonModal);
+      closeComparisonModalBtn.addEventListener('click', closeComparisonModal);
 
       logoutBtn.addEventListener('click', () => auth.signOut());
       
