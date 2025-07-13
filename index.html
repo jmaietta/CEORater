@@ -201,18 +201,18 @@
   </div>
 
   <div id="comparisonModal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal z-50 flex items-center justify-center p-4">
-    <div id="comparisonModalContent" class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-      <div class="p-4 border-b flex justify-between items-center">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+      <div class="p-4 border-b flex justify-between items-center flex-shrink-0">
         <h2 class="text-xl font-bold">CEO Comparison</h2>
         <button id="closeComparisonModalBtn" class="text-gray-400 hover:text-gray-600">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
       </div>
-      <div class="p-4 overflow-auto">
-        <p>Comparison table will be built here...</p>
-      </div>
+      <div id="comparisonTableContainer" class="p-4 overflow-auto">
+        </div>
     </div>
   </div>
+
 
   <script src="firebase-config.js"></script>
 
@@ -275,9 +275,10 @@
     const trayTickers = $("trayTickers");
     const compareNowBtn = $("compareNowBtn");
     
-    // NEW: Comparison Modal Elements
+    // Comparison Modal Elements
     const comparisonModal = $("comparisonModal");
     const closeComparisonModalBtn = $("closeComparisonModalBtn");
+    const comparisonTableContainer = $("comparisonTableContainer");
 
     // ---------- State ----------
     let master = [];
@@ -375,12 +376,59 @@
 
     // ---------- Comparison Logic ----------
     function openComparisonModal() {
-      // For now, just show the modal. We'll build the table next.
+      const selectedCeos = master.filter(c => comparisonSet.has(c.ticker));
+      if (selectedCeos.length === 0) return;
+
+      // Define the metrics to display in the table
+      const metrics = [
+        { label: 'AlphaScore', key: 'alphaScore', format: v => Math.round(v * 100), higherIsBetter: true },
+        { label: 'Quartile', key: 'quartile', format: v => v, higherIsBetter: null },
+        { label: 'TSR vs QQQ', key: 'tsrAlpha', format: v => pct(v), higherIsBetter: true },
+        { label: 'Avg Ann. TSR vs QQQ', key: 'avgAnnualTsrAlpha', format: v => pct(v), higherIsBetter: true },
+        { label: 'CEO Comp ($M)', key: 'compensation', format: v => `$${money(v,1)}M`, higherIsBetter: false },
+        { label: 'Market Cap', key: 'marketCap', format: v => formatMarketCap(v), higherIsBetter: null },
+        { label: 'Tenure (Yrs)', key: 'tenure', format: v => v.toFixed(1), higherIsBetter: null },
+      ];
+
+      // Build table header
+      let tableHTML = `<table class="w-full text-sm text-left text-gray-500">`;
+      tableHTML += `<thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr>`;
+      tableHTML += `<th scope="col" class="px-6 py-3">Metric</th>`;
+      selectedCeos.forEach(ceo => {
+        tableHTML += `<th scope="col" class="px-6 py-3">${ceo.ceo}<br><span class="font-normal normal-case">${ceo.company}</span></th>`;
+      });
+      tableHTML += `</tr></thead><tbody>`;
+
+      // Build table body
+      metrics.forEach(metric => {
+        tableHTML += `<tr class="bg-white border-b">`;
+        tableHTML += `<th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${metric.label}</th>`;
+
+        // Find the best value for highlighting
+        let bestValue;
+        if (metric.higherIsBetter !== null) {
+          const values = selectedCeos.map(c => c[metric.key]);
+          bestValue = metric.higherIsBetter ? Math.max(...values) : Math.min(...values);
+        }
+
+        selectedCeos.forEach(ceo => {
+          const value = ceo[metric.key];
+          const isBest = value === bestValue;
+          const highlightClass = isBest ? 'bg-green-100 font-bold' : '';
+          tableHTML += `<td class="px-6 py-4 ${highlightClass}">${metric.format(value)}</td>`;
+        });
+        tableHTML += `</tr>`;
+      });
+
+      tableHTML += `</tbody></table>`;
+
+      comparisonTableContainer.innerHTML = tableHTML;
       comparisonModal.classList.remove('hidden');
     }
 
     function closeComparisonModal() {
       comparisonModal.classList.add('hidden');
+      comparisonTableContainer.innerHTML = ''; // Clear content
     }
 
     function updateComparisonTray() {
@@ -761,6 +809,12 @@
       // NEW: Comparison Modal Listeners
       compareNowBtn.addEventListener('click', openComparisonModal);
       closeComparisonModalBtn.addEventListener('click', closeComparisonModal);
+      comparisonModal.addEventListener('click', e => {
+        if (e.target === comparisonModal) {
+          closeComparisonModal();
+        }
+      });
+
 
       logoutBtn.addEventListener('click', () => auth.signOut());
       
@@ -878,6 +932,10 @@
         }
         if (e.key === 'Escape' && !ceoDetailModal.classList.contains('hidden')) {
             closeDetailModalFunc();
+        }
+        // NEW: Close comparison modal with Escape key
+        if (e.key === 'Escape' && !comparisonModal.classList.contains('hidden')) {
+            closeComparisonModal();
         }
       });
 
