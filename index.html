@@ -379,30 +379,45 @@
       const selectedCeos = master.filter(c => comparisonSet.has(c.ticker));
       if (selectedCeos.length === 0) return;
 
+      // UPDATED: Comprehensive list of metrics for comparison
       const metrics = [
-        { label: 'Founder', key: 'founder', format: v => (v?.toUpperCase() === 'Y' ? 'Yes' : 'No'), higherIsBetter: null },
+        { label: 'AlphaScore', key: 'alphaScore', format: v => Math.round(v * 100), higherIsBetter: true },
+        { label: 'Quartile', key: 'quartile', format: v => v, higherIsBetter: null },
         { label: 'Ticker', key: 'ticker', format: v => v, higherIsBetter: null },
+        { label: 'Founder', key: 'founder', format: v => (v?.toUpperCase() === 'Y' ? 'Yes' : 'No'), higherIsBetter: null },
+        { label: 'Market Cap', key: 'marketCap', format: formatMarketCap, higherIsBetter: true },
+        { label: 'Tenure (Yrs)', key: 'tenure', format: v => v.toFixed(1), higherIsBetter: true },
         { label: 'TSR During Tenure', key: 'tsrValue', format: pct, higherIsBetter: true },
         { label: 'Avg Annual TSR', key: 'avgAnnualTsr', format: pct, higherIsBetter: true },
+        { label: 'TSR vs QQQ', key: 'tsrAlpha', format: pct, higherIsBetter: true },
+        { label: 'Avg Ann. TSR vs QQQ', key: 'avgAnnualTsrAlpha', format: pct, higherIsBetter: true },
+        { label: 'CEO Comp ($M)', key: 'compensation', format: v => `$${money(v,1)}M`, higherIsBetter: false },
         { label: 'Comp Cost / 1% Avg TSR ($MM)', key: 'compensationCost', format: v => `$${money(v, 3)}`, higherIsBetter: false }
       ];
 
+      // Build table header
       let tableHTML = `<table class="w-full text-sm text-left text-gray-500">`;
       tableHTML += `<thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr>`;
-      tableHTML += `<th scope="col" class="px-6 py-3 sticky left-0 bg-gray-50">Metric</th>`;
+      tableHTML += `<th scope="col" class="px-6 py-3 sticky left-0 bg-gray-50 z-10">Metric</th>`;
+      
+      // UPDATED: Header now includes the ticker
       selectedCeos.forEach(ceo => {
-        tableHTML += `<th scope="col" class="px-6 py-3">${ceo.ceo}<br><span class="font-normal normal-case">${ceo.company}</span></th>`;
+        tableHTML += `<th scope="col" class="px-6 py-3">${ceo.ceo}<br><span class="font-normal normal-case">${ceo.company} (${ceo.ticker})</span></th>`;
       });
       tableHTML += `</tr></thead><tbody>`;
 
+      // Build table body
       metrics.forEach(metric => {
         tableHTML += `<tr class="bg-white border-b">`;
-        tableHTML += `<th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap sticky left-0 bg-white border-r">${metric.label}</th>`;
+        tableHTML += `<th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap sticky left-0 bg-white border-r z-10">${metric.label}</th>`;
 
+        // Find the best value for highlighting
         let bestValue;
         if (metric.higherIsBetter !== null) {
-          const values = selectedCeos.map(c => c[metric.key]);
-          bestValue = metric.higherIsBetter ? Math.max(...values) : Math.min(...values);
+          const values = selectedCeos.map(c => c[metric.key]).filter(v => typeof v === 'number');
+          if (values.length > 0) {
+            bestValue = metric.higherIsBetter ? Math.max(...values) : Math.min(...values);
+          }
         }
 
         selectedCeos.forEach(ceo => {
@@ -767,7 +782,6 @@
         if (e.target === loginModal) loginModal.classList.add('hidden');
       });
 
-      // --- UPDATED Modal and Card Click Listeners ---
       ceoCardView.addEventListener('click', (e) => {
           const star = e.target.closest('.watchlist-star');
           if (star) {
@@ -800,7 +814,6 @@
           }
       });
       
-      // NEW: Comparison Modal Listeners
       compareNowBtn.addEventListener('click', openComparisonModal);
       closeComparisonModalBtn.addEventListener('click', closeComparisonModal);
       comparisonModal.addEventListener('click', e => {
@@ -808,7 +821,6 @@
           closeComparisonModal();
         }
       });
-
 
       logoutBtn.addEventListener('click', () => auth.signOut());
       
