@@ -381,18 +381,17 @@
 
       // UPDATED: Comprehensive list of metrics for comparison
       const metrics = [
+        { label: 'Market Cap', key: 'marketCap', format: formatMarketCap, higherIsBetter: true },
+        { label: 'Founder', key: 'founder', format: v => (v?.toUpperCase() === 'Y' ? 'Yes' : 'No'), higherIsBetter: null },
         { label: 'AlphaScore', key: 'alphaScore', format: v => Math.round(v * 100), higherIsBetter: true },
         { label: 'Quartile', key: 'quartile', format: v => v, higherIsBetter: null },
-        { label: 'Ticker', key: 'ticker', format: v => v, higherIsBetter: null },
-        { label: 'Founder', key: 'founder', format: v => (v?.toUpperCase() === 'Y' ? 'Yes' : 'No'), higherIsBetter: null },
-        { label: 'Market Cap', key: 'marketCap', format: formatMarketCap, higherIsBetter: true },
-        { label: 'Tenure (Yrs)', key: 'tenure', format: v => v.toFixed(1), higherIsBetter: true },
         { label: 'TSR During Tenure', key: 'tsrValue', format: pct, higherIsBetter: true },
-        { label: 'Avg Annual TSR', key: 'avgAnnualTsr', format: pct, higherIsBetter: true },
         { label: 'TSR vs QQQ', key: 'tsrAlpha', format: pct, higherIsBetter: true },
+        { label: 'Avg Annual TSR', key: 'avgAnnualTsr', format: pct, higherIsBetter: true },
         { label: 'Avg Ann. TSR vs QQQ', key: 'avgAnnualTsrAlpha', format: pct, higherIsBetter: true },
         { label: 'CEO Comp ($M)', key: 'compensation', format: v => `$${money(v,1)}M`, higherIsBetter: false },
         { label: 'Comp Cost / 1% Avg TSR ($MM)', key: 'compensationCost', format: v => `$${money(v, 3)}`, higherIsBetter: false }
+        { label: 'Tenure (Yrs)', key: 'tenure', format: v => v.toFixed(1), higherIsBetter: true },
       ];
 
       // Build table header
