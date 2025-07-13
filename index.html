@@ -192,7 +192,7 @@
       <div class="flex items-center justify-center sm:justify-start space-x-3">
         <span id="comparisonTitle" class="font-semibold text-gray-700">Compare (0/3):</span>
         <div id="trayTickers" class="flex items-center space-x-2">
-          </div>
+        </div>
       </div>
       <button id="compareNowBtn" class="w-full mt-2 sm:w-auto sm:mt-0 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition">
         Compare Now →
@@ -209,7 +209,7 @@
         </button>
       </div>
       <div id="comparisonTableContainer" class="p-4 overflow-auto">
-        </div>
+      </div>
     </div>
   </div>
 
@@ -379,32 +379,26 @@
       const selectedCeos = master.filter(c => comparisonSet.has(c.ticker));
       if (selectedCeos.length === 0) return;
 
-      // Define the metrics to display in the table
       const metrics = [
-        { label: 'AlphaScore', key: 'alphaScore', format: v => Math.round(v * 100), higherIsBetter: true },
-        { label: 'Quartile', key: 'quartile', format: v => v, higherIsBetter: null },
-        { label: 'TSR vs QQQ', key: 'tsrAlpha', format: v => pct(v), higherIsBetter: true },
-        { label: 'Avg Ann. TSR vs QQQ', key: 'avgAnnualTsrAlpha', format: v => pct(v), higherIsBetter: true },
-        { label: 'CEO Comp ($M)', key: 'compensation', format: v => `$${money(v,1)}M`, higherIsBetter: false },
-        { label: 'Market Cap', key: 'marketCap', format: v => formatMarketCap(v), higherIsBetter: null },
-        { label: 'Tenure (Yrs)', key: 'tenure', format: v => v.toFixed(1), higherIsBetter: null },
+        { label: 'Founder', key: 'founder', format: v => (v?.toUpperCase() === 'Y' ? 'Yes' : 'No'), higherIsBetter: null },
+        { label: 'Ticker', key: 'ticker', format: v => v, higherIsBetter: null },
+        { label: 'TSR During Tenure', key: 'tsrValue', format: pct, higherIsBetter: true },
+        { label: 'Avg Annual TSR', key: 'avgAnnualTsr', format: pct, higherIsBetter: true },
+        { label: 'Comp Cost / 1% Avg TSR ($MM)', key: 'compensationCost', format: v => `$${money(v, 3)}`, higherIsBetter: false }
       ];
 
-      // Build table header
       let tableHTML = `<table class="w-full text-sm text-left text-gray-500">`;
       tableHTML += `<thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr>`;
-      tableHTML += `<th scope="col" class="px-6 py-3">Metric</th>`;
+      tableHTML += `<th scope="col" class="px-6 py-3 sticky left-0 bg-gray-50">Metric</th>`;
       selectedCeos.forEach(ceo => {
         tableHTML += `<th scope="col" class="px-6 py-3">${ceo.ceo}<br><span class="font-normal normal-case">${ceo.company}</span></th>`;
       });
       tableHTML += `</tr></thead><tbody>`;
 
-      // Build table body
       metrics.forEach(metric => {
         tableHTML += `<tr class="bg-white border-b">`;
-        tableHTML += `<th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${metric.label}</th>`;
+        tableHTML += `<th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap sticky left-0 bg-white border-r">${metric.label}</th>`;
 
-        // Find the best value for highlighting
         let bestValue;
         if (metric.higherIsBetter !== null) {
           const values = selectedCeos.map(c => c[metric.key]);
@@ -428,7 +422,7 @@
 
     function closeComparisonModal() {
       comparisonModal.classList.add('hidden');
-      comparisonTableContainer.innerHTML = ''; // Clear content
+      comparisonTableContainer.innerHTML = '';
     }
 
     function updateComparisonTray() {
@@ -933,7 +927,6 @@
         if (e.key === 'Escape' && !ceoDetailModal.classList.contains('hidden')) {
             closeDetailModalFunc();
         }
-        // NEW: Close comparison modal with Escape key
         if (e.key === 'Escape' && !comparisonModal.classList.contains('hidden')) {
             closeComparisonModal();
         }
