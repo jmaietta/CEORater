@@ -203,7 +203,10 @@
   <div id="comparisonModal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col">
       <div class="p-4 border-b flex justify-between items-center flex-shrink-0">
-        <h2 class="text-xl font-bold">CEO Comparison</h2>
+        <div class="flex items-center">
+          <img src="favicon-32x32.png" alt="CEORater Logo" class="h-8 w-8 mr-3">
+          <h2 class="text-xl font-bold">CEO Comparison</h2>
+        </div>
         <button id="closeComparisonModalBtn" class="text-gray-400 hover:text-gray-600">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
@@ -379,38 +382,34 @@
       const selectedCeos = master.filter(c => comparisonSet.has(c.ticker));
       if (selectedCeos.length === 0) return;
 
-      // UPDATED: Comprehensive list of metrics for comparison
       const metrics = [
-        { label: 'Market Cap', key: 'marketCap', format: formatMarketCap, higherIsBetter: true },
-        { label: 'Founder', key: 'founder', format: v => (v?.toUpperCase() === 'Y' ? 'Yes' : 'No'), higherIsBetter: null },
         { label: 'AlphaScore', key: 'alphaScore', format: v => Math.round(v * 100), higherIsBetter: true },
         { label: 'Quartile', key: 'quartile', format: v => v, higherIsBetter: null },
+        { label: 'Ticker', key: 'ticker', format: v => v, higherIsBetter: null },
+        { label: 'Founder', key: 'founder', format: v => (v?.toUpperCase() === 'Y' ? 'Yes' : 'No'), higherIsBetter: null },
+        { label: 'Market Cap', key: 'marketCap', format: formatMarketCap, higherIsBetter: true },
+        { label: 'Tenure (Yrs)', key: 'tenure', format: v => v.toFixed(1), higherIsBetter: true },
         { label: 'TSR During Tenure', key: 'tsrValue', format: pct, higherIsBetter: true },
-        { label: 'TSR vs QQQ', key: 'tsrAlpha', format: pct, higherIsBetter: true },
         { label: 'Avg Annual TSR', key: 'avgAnnualTsr', format: pct, higherIsBetter: true },
+        { label: 'TSR vs QQQ', key: 'tsrAlpha', format: pct, higherIsBetter: true },
         { label: 'Avg Ann. TSR vs QQQ', key: 'avgAnnualTsrAlpha', format: pct, higherIsBetter: true },
         { label: 'CEO Comp ($M)', key: 'compensation', format: v => `$${money(v,1)}M`, higherIsBetter: false },
-        { label: 'Comp Cost / 1% Avg TSR ($MM)', key: 'compensationCost', format: v => `$${money(v, 3)}`, higherIsBetter: false },
-        { label: 'Tenure (Yrs)', key: 'tenure', format: v => v.toFixed(1), higherIsBetter: true },
+        { label: 'Comp Cost / 1% Avg TSR ($MM)', key: 'compensationCost', format: v => `$${money(v, 3)}`, higherIsBetter: false }
       ];
 
-      // Build table header
       let tableHTML = `<table class="w-full text-sm text-left text-gray-500">`;
       tableHTML += `<thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr>`;
       tableHTML += `<th scope="col" class="px-6 py-3 sticky left-0 bg-gray-50 z-10">Metric</th>`;
       
-      // UPDATED: Header now includes the ticker
       selectedCeos.forEach(ceo => {
         tableHTML += `<th scope="col" class="px-6 py-3">${ceo.ceo}<br><span class="font-normal normal-case">${ceo.company} (${ceo.ticker})</span></th>`;
       });
       tableHTML += `</tr></thead><tbody>`;
 
-      // Build table body
       metrics.forEach(metric => {
         tableHTML += `<tr class="bg-white border-b">`;
         tableHTML += `<th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap sticky left-0 bg-white border-r z-10">${metric.label}</th>`;
 
-        // Find the best value for highlighting
         let bestValue;
         if (metric.higherIsBetter !== null) {
           const values = selectedCeos.map(c => c[metric.key]).filter(v => typeof v === 'number');
@@ -781,6 +780,7 @@
         if (e.target === loginModal) loginModal.classList.add('hidden');
       });
 
+      // --- UPDATED Modal and Card Click Listeners ---
       ceoCardView.addEventListener('click', (e) => {
           const star = e.target.closest('.watchlist-star');
           if (star) {
