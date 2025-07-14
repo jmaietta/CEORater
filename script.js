@@ -1,16 +1,10 @@
 import { pct, money, formatMarketCap } from './utils.js';
+import { fetchData } from './GoogleSheet.js';
 
 // ---------- Initialize Firebase ----------
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
-
-// ---------- Google Sheet Config ----------
-const sheetId = '17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA';
-const sheetGid = '0';
-const range = 'C6:AA107'; 
-const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${sheetGid}&range=${range}`;
-const REFRESH = 5 * 60 * 1000; // 5 min
 
 // ---------- DOM Elements ----------
 const $ = id => document.getElementById(id);
@@ -72,27 +66,6 @@ let currentUser = null;
 let userWatchlist = new Set();
 let comparisonSet = new Set(); 
 let currentView = 'all'; 
-
-function parseRows(txt) {
-  const m = txt.match(/google\.visualization\.Query\.setResponse\((.*)\)/s);
-  if (!m) return [];
-  const data = JSON.parse(m[1]);
-  if (!data.table?.rows) return [];
-  return data.table.rows.map(r => {
-    const gv = (i) => { const c = r.c[i]; return c && c.v != null ? c.v : "" };
-    const gn = (i) => { const c = r.c[i]; if (!c) return 0; return parseFloat((c.v ?? c.f ?? "0").toString().replace(/[^\d.-]/g, '')) || 0 };
-    return {
-      company: gv(0), ticker: gv(1), industry: gv(2), sector: gv(3),
-      ceo: gv(5), founder: gv(6), compensation: gn(7), equityTransactions: gv(8),
-      marketCap: gn(12),
-      tsrValue: gn(13), tenure: gn(14), avgAnnualTsr: gn(15), compensationCost: gn(16),
-      tsrAlpha: gn(18),
-      avgAnnualTsrAlpha: gn(19),
-      alphaScore: gn(22),
-      quartile: gv(24) 
-    };
-  });
-}
 
 // ---------- Firebase Auth ----------
 auth.onAuthStateChanged(user => {
@@ -513,25 +486,19 @@ function sortAndRender() {
   renderCards(view);
 }
 
-function fetchData(initial) {
-  fetch(sheetUrl + `&t=${Date.now()}`)
-    .then(r => r.text())
-    .then(txt => {
-      master = parseRows(txt);
-      if (initial) refreshFilters();
-      applyFilters();
-      lastUpdated.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
-    })
-    .catch(() => initial && errorMessage.classList.remove('hidden'))
-    .finally(() => initial && (loading.style.display = 'none'));
-}
-
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms) } }
 
 // ---------- Event Listeners ----------
 document.addEventListener('DOMContentLoaded', () => {
-  fetchData(true);
-  setInterval(() => fetchData(false), REFRESH);
+  fetchData()
+    .then(data => {
+      master = data;
+      refreshFilters();
+      applyFilters();
+      lastUpdated.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+    })
+    .catch(() => errorMessage.classList.remove('hidden'))
+    .finally(() => (loading.style.display = 'none'));
   
   searchInput.addEventListener('input', debounce(applyFilters, 300));
   industryFilter.addEventListener('change', applyFilters);
