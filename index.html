@@ -60,37 +60,35 @@
     </div>
 
     <main class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
-      <div class="mb-4 space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <input id="searchInput" type="text" placeholder="Search by CEO, Ticker, or Co." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <select id="industryFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white"></select>
-          <select id="sectorFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white"></select>
-          <select id="founderFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white">
-            <option value="all">All (Founder Status)</option>
-            <option value="founder">Founder-CEOs</option>
-            <option value="non-founder">Non-Founder CEOs</option>
-          </select>
-          <select id="sortControl" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white">
-            <option value="alphaScore-desc">Sort: AlphaScore ↓</option>
-            <option value="alphaScore-asc">Sort: AlphaScore ↑</option>
-            <option value="tsrAlpha-desc">TSR Alpha ↓</option>
-            <option value="tsrAlpha-asc">TSR Alpha ↑</option>
-            <option value="avgAnnualTsrAlpha-desc">Avg Annual TSR Alpha ↓</option>
-            <option value="avgAnnualTsrAlpha-asc">Avg Annual TSR Alpha ↑</option>
-            <option value="tsrValue-desc">TSR ↓</option>
-            <option value="tsrValue-asc">TSR ↑</option>
-            <option value="avgAnnualTsr-desc">Avg Annual TSR ↓</option>
-            <option value="avgAnnualTsr-asc">Avg Annual TSR ↑</option>
-            <option value="compensation-desc">Compensation ↓</option>
-            <option value="compensation-asc">Compensation ↑</option>
-            <option value="tenure-desc">Tenure ↓</option>
-            <option value="tenure-asc">Tenure ↑</option>
-            <option value="ceo-asc">CEO A‑Z</option>
-            <option value="ceo-desc">CEO Z‑A</option>
-            <option value="company-asc">Company A‑Z</option>
-            <option value="company-desc">Company Z‑A</option>
-          </select>
-        </div>
+        <select id="industryFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white"></select>
+        <select id="sectorFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white"></select>
+        <select id="founderFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white">
+          <option value="">All CEO Types</option>
+          <option value="Y">Founder CEOs</option>
+          <option value="N">Non-Founder CEOs</option>
+        </select>
+        <select id="sortControl" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white">
+          <option value="alphaScore-desc">Sort: AlphaScore ↓</option>
+          <option value="alphaScore-asc">Sort: AlphaScore ↑</option>
+          <option value="tsrAlpha-desc">TSR Alpha ↓</option>
+          <option value="tsrAlpha-asc">TSR Alpha ↑</option>
+          <option value="avgAnnualTsrAlpha-desc">Avg Annual TSR Alpha ↓</option>
+          <option value="avgAnnualTsrAlpha-asc">Avg Annual TSR Alpha ↑</option>
+          <option value="tsrValue-desc">TSR ↓</option>
+          <option value="tsrValue-asc">TSR ↑</option>
+          <option value="avgAnnualTsr-desc">Avg Annual TSR ↓</option>
+          <option value="avgAnnualTsr-asc">Avg Annual TSR ↑</option>
+          <option value="compensation-desc">Compensation ↓</option>
+          <option value="compensation-asc">Compensation ↑</option>
+          <option value="tenure-desc">Tenure ↓</option>
+          <option value="tenure-asc">Tenure ↑</option>
+          <option value="ceo-asc">CEO A‑Z</option>
+          <option value="ceo-desc">CEO Z‑A</option>
+          <option value="company-asc">Company A‑Z</option>
+          <option value="company-desc">Company Z‑A</option>
+        </select>
       </div>
 
       <div class="flex justify-end mb-4">
@@ -717,18 +715,13 @@
       const term = searchInput.value.toLowerCase();
       const ind = industryFilter.value;
       const sec = sectorFilter.value;
-      const founderStatus = founderFilter.value;
+      const founder = founderFilter.value;
       
       let filteredData = master.filter(c => {
         const matchTerm = (c.ceo + c.company + c.ticker).toLowerCase().includes(term);
         const matchInd = !ind || c.industry === ind;
         const matchSec = !sec || c.sector === sec;
-        const matchFounder = founderStatus === 'all' 
-          ? true 
-          : founderStatus === 'founder' 
-          ? c.founder?.toUpperCase() === 'Y' 
-          : c.founder?.toUpperCase() !== 'Y';
-        
+        const matchFounder = !founder || c.founder === founder;
         return matchTerm && matchInd && matchSec && matchFounder;
       });
 
