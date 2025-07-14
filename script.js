@@ -1,11 +1,6 @@
 import { fetchData } from './GoogleSheet.js';
 import * as ui from './ui.js';
-import { pct, money, formatMarketCap } from './utils.js';
-
-// ---------- Initialize Firebase ----------
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+import * as auth from './auth.js';
 
 // ---------- DOM Elements (for event listeners) ----------
 const $ = id => document.getElementById(id);
@@ -45,7 +40,6 @@ const ceoDetailModal = $("ceoDetailModal");
 const closeDetailModal = $("closeDetailModal");
 
 // Comparison Tray Elements
-const comparisonTray = $("comparisonTray");
 const compareNowBtn = $("compareNowBtn");
 
 // Comparison Modal Elements
@@ -61,8 +55,8 @@ let userWatchlist = new Set();
 let comparisonSet = new Set(); 
 let currentView = 'all'; 
 
-// ---------- Firebase Auth ----------
-auth.onAuthStateChanged(user => {
+// ---------- App Logic ----------
+function handleAuthStateChange(user) {
   currentUser = user;
   if (user) {
     loginBtn.classList.add('hidden');
@@ -70,7 +64,11 @@ auth.onAuthStateChanged(user => {
     userEmail.classList.remove('hidden');
     watchlistBtn.classList.remove('hidden');
     userEmail.textContent = user.email;
-    loadUserWatchlist();
+    auth.loadUserWatchlist(user.uid).then(watchlist => {
+        userWatchlist = watchlist;
+        updateWatchlistCount();
+        refreshView();
+    });
   } else {
     loginBtn.classList.remove('hidden');
     logoutBtn.classList.add('hidden');
@@ -84,37 +82,8 @@ auth.onAuthStateChanged(user => {
       switchToAllView();
     }
   }
-});
-
-async function loadUserWatchlist() {
-  if (!currentUser) return;
-  try {
-    const doc = await db.collection('watchlists').doc(currentUser.uid).get();
-    if (doc.exists) {
-      userWatchlist = new Set(doc.data().tickers || []);
-    } else {
-      userWatchlist = new Set();
-    }
-    updateWatchlistCount();
-    refreshView();
-  } catch (error) {
-    console.error('Error loading watchlist:', error);
-  }
 }
 
-async function saveUserWatchlist() {
-  if (!currentUser) return;
-  try {
-    await db.collection('watchlists').doc(currentUser.uid).set({
-      tickers: Array.from(userWatchlist),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-  } catch (error) {
-    console.error('Error saving watchlist:', error);
-  }
-}
-
-// ---------- App Logic ----------
 function toggleCompare(ticker) {
   if (comparisonSet.has(ticker)) {
     comparisonSet.delete(ticker);
@@ -126,7 +95,6 @@ function toggleCompare(ticker) {
     comparisonSet.add(ticker);
   }
   
-  // Re-render the cards to update the compare button's state
   sortAndRender();
   ui.updateComparisonTray(comparisonSet);
 }
@@ -137,18 +105,14 @@ async function toggleWatchlist(ticker) {
     return;
   }
   
-  const isSaved = userWatchlist.has(ticker);
-
-  if (isSaved) {
+  if (userWatchlist.has(ticker)) {
     userWatchlist.delete(ticker);
   } else {
     userWatchlist.add(ticker);
   }
   
-  await saveUserWatchlist();
+  await auth.saveUserWatchlist(currentUser.uid, userWatchlist);
   updateWatchlistCount();
-  
-  // Re-render the view to update the star's state
   refreshView();
 }
 
@@ -221,6 +185,8 @@ function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTi
 
 // ---------- Event Listeners ----------
 document.addEventListener('DOMContentLoaded', () => {
+  auth.initAuth(handleAuthStateChange);
+
   fetchData()
     .then(data => {
       master = data;
@@ -298,8 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
   logoutBtn.addEventListener('click', () => auth.signOut());
   
   googleSignIn.addEventListener('click', () => {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider).then(() => {
+    auth.signInWithGoogle().then(() => {
       loginModal.classList.add('hidden');
     }).catch(error => {
       console.error('Google sign in error:', error);
@@ -308,9 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   microsoftSignIn.addEventListener('click', () => {
-    const provider = new firebase.auth.OAuthProvider('microsoft.com');
-    provider.setCustomParameters({ prompt: 'select_account' });
-    auth.signInWithPopup(provider).then(() => {
+    auth.signInWithMicrosoft().then(() => {
       loginModal.classList.add('hidden');
     }).catch(error => {
       console.error('Microsoft sign in error:', error);
@@ -325,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Please enter your email address to reset your password.');
       return;
     }
-    auth.sendPasswordResetEmail(email)
+    auth.sendPasswordReset(email)
       .then(() => {
         alert('Password reset email sent! Please check your inbox.');
       })
@@ -344,7 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const password = passwordInput.value;
     if (!email || !password) return;
     
-    auth.signInWithEmailAndPassword(email, password).then(() => {
+    auth.signInWithEmail(email, password).then(() => {
       loginModal.classList.add('hidden');
     }).catch(error => {
       console.error('Email sign in error:', error);
@@ -357,7 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const password = passwordInput.value;
     if (!email || !password) return;
     
-    auth.createUserWithEmailAndPassword(email, password).then(() => {
+    auth.signUpWithEmail(email, password).then(() => {
       loginModal.classList.add('hidden');
     }).catch(error => {
       console.error('Email sign up error:', error);
