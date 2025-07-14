@@ -62,8 +62,11 @@
     <main class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <input id="searchInput" type="text" placeholder="Search by CEO, Ticker, or Co." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
-        <select id="industryFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white"></select>
-        <select id="sectorFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white"></select>
+        <select id="founderFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white">
+          <option value="">All CEO Types</option>
+          <option value="Y">Founder CEOs</option>
+          <option value="N">Non-Founder CEOs</option>
+        </select>
         <select id="sortControl" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white">
           <option value="alphaScore-desc">Sort: AlphaScore ↓</option>
           <option value="alphaScore-asc">Sort: AlphaScore ↑</option>
@@ -84,6 +87,8 @@
           <option value="company-asc">Company A‑Z</option>
           <option value="company-desc">Company Z‑A</option>
         </select>
+        <select id="industryFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white"></select>
+        <select id="sectorFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white"></select>
       </div>
 
       <div class="flex justify-end mb-4">
@@ -238,6 +243,7 @@
     const searchInput = $("searchInput");
     const industryFilter = $("industryFilter");
     const sectorFilter = $("sectorFilter");
+    const founderFilter = $("founderFilter");
     const sortControl = $("sortControl");
     const lastUpdated = $("lastUpdated");
     const ceoCardView = $("ceoCardView");
@@ -709,12 +715,14 @@
       const term = searchInput.value.toLowerCase();
       const ind = industryFilter.value;
       const sec = sectorFilter.value;
+      const founder = founderFilter.value;
       
       let filteredData = master.filter(c => {
         const matchTerm = (c.ceo + c.company + c.ticker).toLowerCase().includes(term);
         const matchInd = !ind || c.industry === ind;
         const matchSec = !sec || c.sector === sec;
-        return matchTerm && matchInd && matchSec;
+        const matchFounder = !founder || c.founder === founder;
+        return matchTerm && matchInd && matchSec && matchFounder;
       });
 
       if (currentView === 'watchlist') {
@@ -765,6 +773,7 @@
       searchInput.addEventListener('input', debounce(applyFilters, 300));
       industryFilter.addEventListener('change', applyFilters);
       sectorFilter.addEventListener('change', applyFilters);
+      founderFilter.addEventListener('change', applyFilters);
       sortControl.addEventListener('change', e => {
         const [k, d] = e.target.value.split('-');
         currentSort = { key: k, dir: d };
