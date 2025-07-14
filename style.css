@@ -1,31 +1,15 @@
-/* Sets the base font and background color for the entire page */
-body {
-    font-family: 'Inter', sans-serif;
-    background-color: #f8fafc;
+body { font-family: 'Inter', sans-serif; }
+.font-orbitron { font-family: 'Orbitron', sans-serif; }
+#loading-spinner{border:4px solid rgba(0,0,0,.1);width:36px;height:36px;border-radius:50%;border-left-color:#09f;animation:spin 1s linear infinite}
+@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+.modal { backdrop-filter: blur(4px); }
+.watchlist-tab { transition: all 0.3s ease; }
+.watchlist-tab.active { background-color: #3b82f6; color: white; }
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
-/* Style for highlighting the top 3 ranked CEOs in the table */
-.top-3-highlight {
-    background-color: #f3e8ff; /* A light purple */
-}
-
-/* Style for highlighting CEOs with high ownership stakes */
-.high-ownership {
-    color: #8b5cf6; /* A strong purple color */
-    font-weight: 600;
-}
-
-/* Style for positive returns (e.g., green text) */
-.return-positive {
-    color: #16a34a; /* A vibrant green */
-}
-
-/* Style for negative returns (e.g., red text) */
-.return-negative {
-    color: #dc2626; /* A strong red */
-}
-
-/* Adds a smooth transition effect for the media popup sliding in and out */
-#mediaPopup {
-    transition: transform 0.3s ease-in-out;
+#comparisonTray {
+  transition: transform 0.3s ease-in-out;
 }
