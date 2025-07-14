@@ -1,3 +1,5 @@
+import { pct, money, formatMarketCap } from './utils.js';
+
 // ---------- Initialize Firebase ----------
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
@@ -70,17 +72,6 @@ let currentUser = null;
 let userWatchlist = new Set();
 let comparisonSet = new Set(); 
 let currentView = 'all'; 
-
-// ---------- Helper Functions ----------
-const pct = v => typeof v === 'number' ? (v * 100).toLocaleString('en-US', { maximumFractionDigits: 0 }) + '%' : 'N/A';
-const money = (v, d = 2) => typeof v === 'number' ? v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) : 'N/A';
-const formatMarketCap = v => {
-    if (typeof v !== 'number' || v === 0) return 'N/A';
-    if (v >= 1e12) return `$${(v / 1e12).toFixed(2)}T`;
-    if (v >= 1e9) return `$${(v / 1e9).toFixed(0)}B`;
-    if (v >= 1e6) return `$${(v / 1e6).toFixed(0)}M`;
-    return `$${v.toLocaleString()}`;
-};
 
 function parseRows(txt) {
   const m = txt.match(/google\.visualization\.Query\.setResponse\((.*)\)/s);
