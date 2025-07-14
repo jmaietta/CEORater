@@ -33,6 +33,9 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    #comparisonTray {
+      transition: transform 0.3s ease-in-out;
+    }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -57,19 +60,16 @@
     </div>
 
     <main class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
-      <div class="flex flex-col space-y-4 mb-4">
+      <div class="mb-4 space-y-4">
         <input id="searchInput" type="text" placeholder="Search by CEO, Ticker, or Co." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
-        
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <select id="industryFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white"></select>
           <select id="sectorFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white"></select>
-          
           <select id="founderFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white">
             <option value="all">All (Founder Status)</option>
             <option value="founder">Founder-CEOs</option>
             <option value="non-founder">Non-Founder CEOs</option>
           </select>
-
           <select id="sortControl" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white">
             <option value="alphaScore-desc">Sort: AlphaScore ↓</option>
             <option value="alphaScore-asc">Sort: AlphaScore ↑</option>
@@ -194,6 +194,37 @@
     </div>
   </div>
 
+  <div id="comparisonTray" class="hidden fixed bottom-0 left-0 right-0 bg-white shadow-2xl border-t border-gray-200 z-40">
+    <div class="container mx-auto p-3 text-center sm:p-4 sm:text-left sm:flex sm:justify-between sm:items-center">
+      <div class="flex items-center justify-center sm:justify-start space-x-3">
+        <span id="comparisonTitle" class="font-semibold text-gray-700">Compare (0/3):</span>
+        <div id="trayTickers" class="flex items-center space-x-2">
+        </div>
+      </div>
+      <button id="compareNowBtn" class="w-full mt-2 sm:w-auto sm:mt-0 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition">
+        Compare Now →
+      </button>
+    </div>
+  </div>
+
+  <div id="comparisonModal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+      <div class="p-4 border-b flex justify-between items-center flex-shrink-0">
+        <div class="flex items-center gap-x-3">
+          <h1 class="text-2xl font-orbitron italic font-bold text-blue-600">CEORater</h1>
+          <span class="text-2xl font-light text-gray-300">|</span>
+          <h2 class="text-xl font-bold text-gray-800">CEO Comparison</h2>
+        </div>
+        <button id="closeComparisonModalBtn" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div id="comparisonTableContainer" class="p-4 overflow-auto">
+      </div>
+    </div>
+  </div>
+
+
   <script src="firebase-config.js"></script>
 
   <script>
@@ -214,7 +245,7 @@
     const searchInput = $("searchInput");
     const industryFilter = $("industryFilter");
     const sectorFilter = $("sectorFilter");
-    const founderFilter = $("founderFilter"); // NEW
+    const founderFilter = $("founderFilter");
     const sortControl = $("sortControl");
     const lastUpdated = $("lastUpdated");
     const ceoCardView = $("ceoCardView");
@@ -250,18 +281,37 @@
     const modalFooter = $("modalFooter");
     const closeDetailModal = $("closeDetailModal");
 
+    // Comparison Tray Elements
+    const comparisonTray = $("comparisonTray");
+    const comparisonTitle = $("comparisonTitle");
+    const trayTickers = $("trayTickers");
+    const compareNowBtn = $("compareNowBtn");
+    
+    // Comparison Modal Elements
+    const comparisonModal = $("comparisonModal");
+    const closeComparisonModalBtn = $("closeComparisonModalBtn");
+    const comparisonTableContainer = $("comparisonTableContainer");
+
     // ---------- State ----------
     let master = [];
     let view = [];
     let currentSort = { key: 'alphaScore', dir: 'desc' };
     let currentUser = null;
     let userWatchlist = new Set();
+    let comparisonSet = new Set(); 
     let currentView = 'all'; 
 
     // ---------- Helper Functions ----------
     const pct = v => typeof v === 'number' ? (v * 100).toLocaleString('en-US', { maximumFractionDigits: 0 }) + '%' : 'N/A';
     const money = (v, d = 2) => typeof v === 'number' ? v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) : 'N/A';
-    
+    const formatMarketCap = v => {
+        if (typeof v !== 'number' || v === 0) return 'N/A';
+        if (v >= 1e12) return `$${(v / 1e12).toFixed(2)}T`;
+        if (v >= 1e9) return `$${(v / 1e9).toFixed(0)}B`;
+        if (v >= 1e6) return `$${(v / 1e6).toFixed(0)}M`;
+        return `$${v.toLocaleString()}`;
+    };
+
     function parseRows(txt) {
       const m = txt.match(/google\.visualization\.Query\.setResponse\((.*)\)/s);
       if (!m) return [];
@@ -273,6 +323,7 @@
         return {
           company: gv(0), ticker: gv(1), industry: gv(2), sector: gv(3),
           ceo: gv(5), founder: gv(6), compensation: gn(7), equityTransactions: gv(8),
+          marketCap: gn(12),
           tsrValue: gn(13), tenure: gn(14), avgAnnualTsr: gn(15), compensationCost: gn(16),
           tsrAlpha: gn(18),
           avgAnnualTsrAlpha: gn(19),
@@ -298,6 +349,8 @@
         userEmail.classList.add('hidden');
         watchlistBtn.classList.add('hidden');
         userWatchlist.clear();
+        comparisonSet.clear();
+        updateComparisonTray();
         updateWatchlistCount();
         if (currentView === 'watchlist') {
           switchToAllView();
@@ -331,6 +384,108 @@
       } catch (error) {
         console.error('Error saving watchlist:', error);
       }
+    }
+
+    // ---------- Comparison Logic ----------
+    function openComparisonModal() {
+      const selectedCeos = master.filter(c => comparisonSet.has(c.ticker));
+      if (selectedCeos.length === 0) return;
+
+      const metrics = [
+        { label: 'AlphaScore', key: 'alphaScore', format: v => Math.round(v * 100), higherIsBetter: true },
+        { label: 'Quartile', key: 'quartile', format: v => v, higherIsBetter: null },
+        { label: 'Ticker', key: 'ticker', format: v => v, higherIsBetter: null },
+        { label: 'Founder', key: 'founder', format: v => (v?.toUpperCase() === 'Y' ? 'Yes' : 'No'), higherIsBetter: null },
+        { label: 'Market Cap', key: 'marketCap', format: formatMarketCap, higherIsBetter: true },
+        { label: 'Tenure (Yrs)', key: 'tenure', format: v => v.toFixed(1), higherIsBetter: true },
+        { label: 'TSR During Tenure', key: 'tsrValue', format: pct, higherIsBetter: true },
+        { label: 'Avg Annual TSR', key: 'avgAnnualTsr', format: pct, higherIsBetter: true },
+        { label: 'TSR vs QQQ', key: 'tsrAlpha', format: pct, higherIsBetter: true },
+        { label: 'Avg Ann. TSR vs QQQ', key: 'avgAnnualTsrAlpha', format: pct, higherIsBetter: true },
+        { label: 'CEO Comp ($M)', key: 'compensation', format: v => `$${money(v,1)}M`, higherIsBetter: false },
+        { label: 'Comp Cost / 1% Avg TSR ($MM)', key: 'compensationCost', format: v => `$${money(v, 3)}`, higherIsBetter: false }
+      ];
+
+      let tableHTML = `<table class="w-full text-sm text-left text-gray-500">`;
+      tableHTML += `<thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr>`;
+      tableHTML += `<th scope="col" class="px-6 py-3 sticky left-0 bg-gray-50 z-10">Metric</th>`;
+      
+      selectedCeos.forEach(ceo => {
+        tableHTML += `<th scope="col" class="px-6 py-3">${ceo.ceo}<br><span class="font-normal normal-case">${ceo.company} (${ceo.ticker})</span></th>`;
+      });
+      tableHTML += `</tr></thead><tbody>`;
+
+      metrics.forEach(metric => {
+        tableHTML += `<tr class="bg-white border-b">`;
+        tableHTML += `<th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap sticky left-0 bg-white border-r z-10">${metric.label}</th>`;
+
+        let bestValue;
+        if (metric.higherIsBetter !== null) {
+          const values = selectedCeos.map(c => c[metric.key]).filter(v => typeof v === 'number');
+          if (values.length > 0) {
+            bestValue = metric.higherIsBetter ? Math.max(...values) : Math.min(...values);
+          }
+        }
+
+        selectedCeos.forEach(ceo => {
+          const value = ceo[metric.key];
+          const isBest = value === bestValue;
+          const highlightClass = isBest ? 'bg-green-100 font-bold' : '';
+          tableHTML += `<td class="px-6 py-4 ${highlightClass}">${metric.format(value)}</td>`;
+        });
+        tableHTML += `</tr>`;
+      });
+
+      tableHTML += `</tbody></table>`;
+
+      comparisonTableContainer.innerHTML = tableHTML;
+      comparisonModal.classList.remove('hidden');
+    }
+
+    function closeComparisonModal() {
+      comparisonModal.classList.add('hidden');
+      comparisonTableContainer.innerHTML = '';
+    }
+
+    function updateComparisonTray() {
+      if (comparisonSet.size > 0) {
+        comparisonTitle.textContent = `Compare (${comparisonSet.size}/3):`;
+        let tickerHTML = '';
+        comparisonSet.forEach(ticker => {
+          tickerHTML += `<span class="bg-gray-200 text-gray-800 text-sm font-bold px-2 py-1 rounded-md">${ticker}</span>`;
+        });
+        trayTickers.innerHTML = tickerHTML;
+        comparisonTray.classList.remove('hidden');
+      } else {
+        comparisonTray.classList.add('hidden');
+      }
+    }
+
+    function toggleCompare(ticker) {
+      const button = document.querySelector(`.compare-btn[data-ticker="${ticker}"]`);
+      
+      if (comparisonSet.has(ticker)) {
+        comparisonSet.delete(ticker);
+      } else {
+        if (comparisonSet.size >= 3) {
+          alert('You can compare a maximum of 3 CEOs at a time.');
+          return;
+        }
+        comparisonSet.add(ticker);
+      }
+      
+      const isComparing = comparisonSet.has(ticker);
+      const compareIcon = isComparing 
+          ? `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>`
+          : `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>`;
+      
+      if(button) {
+        button.innerHTML = compareIcon;
+        button.title = isComparing ? 'Remove from Compare' : 'Add to Compare';
+        button.className = `compare-btn p-1 rounded-md ${isComparing ? 'bg-blue-100 text-blue-700' : 'text-gray-400 hover:bg-gray-100'}`;
+      }
+
+      updateComparisonTray();
     }
 
     async function toggleWatchlist(ticker) {
@@ -428,6 +583,16 @@
         const saved = userWatchlist.has(c.ticker);
         const watchlistStar = `<button class="watchlist-star text-2xl align-middle transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? '★' : '☆'}</button>`;
 
+        const isComparing = comparisonSet.has(c.ticker);
+        const compareIcon = isComparing 
+          ? `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>`
+          : `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>`;
+        const compareButton = `
+          <button class="compare-btn p-1 rounded-md ${isComparing ? 'bg-blue-100 text-blue-700' : 'text-gray-400 hover:bg-gray-100'}" data-ticker="${c.ticker}" title="${isComparing ? 'Remove from Compare' : 'Add to Compare'}">
+            ${compareIcon}
+          </button>
+        `;
+
         card.innerHTML = `
           <div>
             <div class="absolute top-1 left-1">
@@ -480,7 +645,8 @@
               </div>
             </div>
           </div>
-          <div class="mt-4 pt-2 border-t border-gray-100 text-xs flex justify-end items-center">
+          <div class="mt-4 pt-2 border-t border-gray-100 text-xs flex justify-between items-center">
+              ${compareButton}
               <a href="#" class="details-link text-blue-600 font-semibold flex items-center">
                 <span>View Details</span>
                 <span class="text-lg ml-1">→</span>
@@ -640,6 +806,13 @@
               return; 
           }
 
+          const compareBtn = e.target.closest('.compare-btn');
+          if (compareBtn) {
+              e.stopPropagation();
+              toggleCompare(compareBtn.dataset.ticker);
+              return;
+          }
+
           const card = e.target.closest('.ceo-card');
           if (card) {
               const ticker = card.dataset.ticker;
@@ -657,6 +830,14 @@
           }
       });
       
+      compareNowBtn.addEventListener('click', openComparisonModal);
+      closeComparisonModalBtn.addEventListener('click', closeComparisonModal);
+      comparisonModal.addEventListener('click', e => {
+        if (e.target === comparisonModal) {
+          closeComparisonModal();
+        }
+      });
+
       logoutBtn.addEventListener('click', () => auth.signOut());
       
       googleSignIn.addEventListener('click', () => {
@@ -773,6 +954,9 @@
         }
         if (e.key === 'Escape' && !ceoDetailModal.classList.contains('hidden')) {
             closeDetailModalFunc();
+        }
+        if (e.key === 'Escape' && !comparisonModal.classList.contains('hidden')) {
+            closeComparisonModal();
         }
       });
 
