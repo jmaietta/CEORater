@@ -6,6 +6,7 @@
   <title>CEORater</title>
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="stylesheet" href="styles.css">
   <meta property="og:title" content="CEORater">
   <meta property="og:description" content="NASDAQ 100 CEO Performance & Compensation Analytics" />
   <meta property="og:image" content="https://www.ceorater.com/android-chrome-512x512.png" />
@@ -20,23 +21,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
   
-  <style>
-    body { font-family: 'Inter', sans-serif; }
-    .font-orbitron { font-family: 'Orbitron', sans-serif; }
-    #loading-spinner{border:4px solid rgba(0,0,0,.1);width:36px;height:36px;border-radius:50%;border-left-color:#09f;animation:spin 1s linear infinite}
-    @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
-    .modal { backdrop-filter: blur(4px); }
-    .watchlist-tab { transition: all 0.3s ease; }
-    .watchlist-tab.active { background-color: #3b82f6; color: white; }
-    .truncate {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    #comparisonTray {
-      transition: transform 0.3s ease-in-out;
-    }
-  </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
   <div class="container mx-auto p-4 md:p-8">
