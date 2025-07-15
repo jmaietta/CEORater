@@ -149,7 +149,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
             </div>
           </div>
           <div class="mt-4 pt-3 border-t border-gray-200 text-sm">
-              <div class="sm:hidden space-y-1">
+              <div class="space-y-1 sm:hidden">
                   <div class="flex justify-between">
                       <span class="text-gray-500">TSR vs QQQ</span>
                       <span class="font-semibold ${tsrAlphaCol}">${pct(c.tsrAlpha)}</span>
