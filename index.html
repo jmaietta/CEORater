@@ -5,29 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CEORater</title>
 
-    <!-- Tailwind via CDN (production: use your build pipeline) -->
+    <!-- Tailwind via CDN (for prod, use your pipeline) -->
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Custom styles -->
     <link rel="stylesheet" href="style.css" />
   </head>
   <body class="bg-gray-50 font-sans text-gray-800">
     <!-- ░░░  STICKY HEADER  ░░░-->
     <header class="bg-white shadow-md sticky top-0 z-40">
       <div class="container mx-auto px-4">
-        <!-- ── Navigation bar ── -->
+        <!-- ── Top bar ── -->
         <div
           class="flex justify-between items-center py-3 flex-wrap gap-3"
         >
-          <!-- logo -->
+          <!-- Logo / site name -->
           <h1
             class="text-xl sm:text-2xl font-bold font-orbitron text-blue-600"
           >
             CEORater
           </h1>
 
-          <!-- view‑switch tabs -->
-          <div class="flex gap-1">
+          <!-- View‑switch tabs -->
+          <div class="flex gap-1 order-2 sm:order-none">
             <button
               id="allCeosTab"
               class="watchlist-tab px-3 py-1.5 rounded-md text-sm font-medium bg-blue-600 text-white"
@@ -42,14 +40,21 @@
             </button>
           </div>
 
-          <!-- account + logout -->
+          <!-- Auth & update info -->
           <nav
             class="flex flex-wrap items-center gap-2 sm:gap-3 overflow-x-auto"
           >
-            <span id="userEmail" class="text-sm">jmaietta@ceorater.com</span>
+            <span id="lastUpdated" class="text-xs text-gray-500 hidden"></span>
+            <span id="userEmail" class="text-sm hidden">user@example.com</span>
+            <button
+              id="loginBtn"
+              class="px-3 py-1.5 text-sm rounded-lg border hover:bg-gray-100 hidden"
+            >
+              Log in
+            </button>
             <button
               id="logoutBtn"
-              class="px-3 py-1.5 text-sm rounded-lg border hover:bg-gray-100"
+              class="px-3 py-1.5 text-sm rounded-lg border hover:bg-gray-100 hidden"
             >
               Log out
             </button>
@@ -58,13 +63,13 @@
 
         <!-- ── Filters row ── -->
         <div
-          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pb-3"
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 pb-3"
         >
           <input
             id="searchInput"
             type="text"
             placeholder="Search: CEO, Ticker, or Co."
-            class="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-blue-500 transition-shadow min-w-0 sm:col-span-2 lg:col-span-1"
+            class="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-blue-500 transition-shadow min-w-0 sm:col-span-2 lg:col-span-2"
           />
 
           <select
@@ -72,11 +77,10 @@
             class="w-full px-4 py-2 border rounded-lg"
           >
             <option value="">CEO Type</option>
-            <!-- options injected by script.js -->
           </select>
 
           <select
-            id="sortDropdown"
+            id="sortControl"
             class="w-full px-4 py-2 border rounded-lg"
           >
             <option value="alphascore">Sort: AlphaScore ↓</option>
@@ -87,11 +91,15 @@
             class="w-full px-4 py-2 border rounded-lg"
           >
             <option value="">All Industries</option>
-            <!-- options injected by script.js -->
           </select>
 
+          <select
+            id="sectorFilter"
+            class="w-full px-4 py-2 border rounded-lg hidden"
+          ></select>
+
           <button
-            id="exportBtn"
+            id="downloadExcelButton"
             class="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
           >
             Export to Excel
@@ -100,39 +108,74 @@
       </div>
     </header>
 
+    <!-- ░░░  STATUS MESSAGES  ░░░-->
+    <div class="container mx-auto px-4 md:px-8 pt-4">
+      <div
+        id="loading"
+        class="hidden flex items-center gap-2 text-sm text-gray-600"
+      >
+        <svg
+          class="animate-spin h-4 w-4"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          ></circle>
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8v8H4z"
+          ></path>
+        </svg>
+        Loading…
+      </div>
+      <p id="error-message" class="hidden text-red-600 text-sm"></p>
+    </div>
+
     <!-- ░░░  SUMMARY (STAT) CARDS – below sticky header ░░░-->
     <section class="container mx-auto px-4 md:px-8 py-6">
       <div
         id="statCardContainer"
         class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4"
       >
-        <!-- Example stat cards; values injected dynamically -->
+        <!-- Values injected dynamically by script.js -->
         <div class="bg-white rounded-lg shadow p-5 text-center">
           <span class="text-sm text-gray-500">Median TSR</span>
-          <p id="medianTsr" class="text-2xl font-bold">140%</p>
+          <p id="medianTsr" class="text-2xl font-bold">—</p>
         </div>
         <div class="bg-white rounded-lg shadow p-5 text-center">
           <span class="text-sm text-gray-500">Avg. Founder AlphaScore</span>
-          <p id="avgFounderAlpha" class="text-2xl font-bold">81</p>
+          <p id="avgFounderAlpha" class="text-2xl font-bold">—</p>
         </div>
         <div class="bg-white rounded-lg shadow p-5 text-center">
           <span class="text-sm text-gray-500">Founder CEOs</span>
-          <p id="founderCount" class="text-2xl font-bold">19</p>
+          <p id="founderCount" class="text-2xl font-bold">—</p>
         </div>
         <div class="bg-white rounded-lg shadow p-5 text-center">
           <span class="text-sm text-gray-500">Median CEO Compensation</span>
-          <p id="medianComp" class="text-2xl font-bold">$18.2M</p>
+          <p id="medianComp" class="text-2xl font-bold">—</p>
         </div>
       </div>
     </section>
 
     <!-- ░░░  CEO CARDS  ░░░-->
     <main
-      id="cardContainer"
+      id="ceoCardView"
       class="container mx-auto px-4 md:px-8 pb-24 grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
     >
-      <!-- CEO cards injected by script.js -->
+      <!-- Cards injected by script.js -->
     </main>
+
+    <!-- ░░░  NO RESULTS MESSAGE  ░░░-->
+    <p id="noResults" class="hidden text-center text-gray-500 pb-24">
+      No CEOs match your filters.
+    </p>
 
     <!-- Scripts -->
     <script src="script.js"></script>
