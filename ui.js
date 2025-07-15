@@ -347,7 +347,12 @@ export function updateComparisonTray(comparisonSet) {
     comparisonTitle.textContent = `Compare (${comparisonSet.size}/3):`;
     let tickerHTML = '';
     comparisonSet.forEach(ticker => {
-      tickerHTML += `<span class="bg-gray-200 text-gray-800 text-sm font-bold px-2 py-1 rounded-md">${ticker}</span>`;
+      tickerHTML += `<span class="inline-flex items-center gap-x-2 bg-gray-200 text-gray-800 text-sm font-bold px-2 py-1 rounded-md">
+              <span>${ticker}</span>
+              <button class="remove-from-tray-btn text-gray-500 hover:text-gray-800" data-ticker="${ticker}" title="Remove ${ticker}">
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+              </button>
+            </span>`;
     });
     trayTickers.innerHTML = tickerHTML;
     document.getElementById("comparisonTray").classList.remove('hidden');
@@ -355,6 +360,7 @@ export function updateComparisonTray(comparisonSet) {
     document.getElementById("comparisonTray").classList.add('hidden');
   }
 }
+
 
 /**
  * Populates the industry and sector filter dropdowns.
