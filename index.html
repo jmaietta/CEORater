@@ -56,6 +56,43 @@
         </nav>
       </div>
     </div>
+    <div class="container mx-auto px-4 border-t border-gray-200">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 py-4 items-center">
+            <input id="searchInput" type="text" placeholder="Search: CEO, Ticker, or Co." class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow sm:col-span-2 lg:col-span-1" />
+            <select id="founderFilter" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
+              <option value="">CEO Type</option>
+              <option value="Y">Founder CEOs</option>
+              <option value="N">Non-Founder CEOs</option>
+            </select>
+            <select id="sortControl" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
+              <option value="alphaScore-desc">Sort: AlphaScore ↓</option>
+              <option value="alphaScore-asc">Sort: AlphaScore ↑</option>
+              <option value="tsrAlpha-desc">TSR Alpha ↓</option>
+              <option value="tsrAlpha-asc">TSR Alpha ↑</option>
+              <option value="avgAnnualTsrAlpha-desc">Avg Annual TSR Alpha ↓</option>
+              <option value="avgAnnualTsrAlpha-asc">Avg Annual TSR Alpha ↑</option>
+              <option value="tsrValue-desc">TSR ↓</option>
+              <option value="tsrValue-asc">TSR ↑</option>
+              <option value="avgAnnualTsr-desc">Avg Annual TSR ↓</option>
+              <option value="avgAnnualTsr-asc">Avg Annual TSR ↑</option>
+              <option value="compensation-desc">Compensation ↓</option>
+              <option value="compensation-asc">Compensation ↑</option>
+              <option value="tenure-desc">Tenure ↓</option>
+              <option value="tenure-asc">Tenure ↑</option>
+              <option value="ceo-asc">CEO A‑Z</option>
+              <option value="ceo-desc">CEO Z‑A</option>
+              <option value="company-asc">Company A‑Z</option>
+              <option value="company-desc">Company Z‑A</option>
+            </select>
+            <select id="industryFilter" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
+                <option value="">All Industries</option>
+            </select>
+            <select id="sectorFilter" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
+                <option value="">All Sectors</option>
+            </select>
+            <button id="downloadExcelButton" class="w-full px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition">Export to Excel</button>
+        </div>
+    </div>
   </header>
 
   <div class="container mx-auto p-4 md:p-8">
@@ -80,45 +117,6 @@
     </div>
 
     <main class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
-      <div class="sticky top-[68px] z-20 bg-white -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 px-4 sm:px-6 pt-4 pb-4 mb-4 border-b border-gray-200">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-center">
-          <input id="searchInput" type="text" placeholder="Search: CEO, Ticker, or Co." class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow sm:col-span-2 lg:col-span-1" />
-          <select id="founderFilter" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
-            <option value="">CEO Type</option>
-            <option value="Y">Founder CEOs</option>
-            <option value="N">Non-Founder CEOs</option>
-          </select>
-          <select id="sortControl" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
-            <option value="alphaScore-desc">Sort: AlphaScore ↓</option>
-            <option value="alphaScore-asc">Sort: AlphaScore ↑</option>
-            <option value="tsrAlpha-desc">TSR Alpha ↓</option>
-            <option value="tsrAlpha-asc">TSR Alpha ↑</option>
-            <option value="avgAnnualTsrAlpha-desc">Avg Annual TSR Alpha ↓</option>
-            <option value="avgAnnualTsrAlpha-asc">Avg Annual TSR Alpha ↑</option>
-            <option value="tsrValue-desc">TSR ↓</option>
-            <option value="tsrValue-asc">TSR ↑</option>
-            <option value="avgAnnualTsr-desc">Avg Annual TSR ↓</option>
-            <option value="avgAnnualTsr-asc">Avg Annual TSR ↑</option>
-            <option value="compensation-desc">Compensation ↓</option>
-            <option value="compensation-asc">Compensation ↑</option>
-            <option value="tenure-desc">Tenure ↓</option>
-            <option value="tenure-asc">Tenure ↑</option>
-            <option value="ceo-asc">CEO A‑Z</option>
-            <option value="ceo-desc">CEO Z‑A</option>
-            <option value="company-asc">Company A‑Z</option>
-            <option value="company-desc">Company Z‑A</option>
-          </select>
-          <select id="industryFilter" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
-              <option value="">All Industries</option>
-          </select>
-          <select id="sectorFilter" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
-              <option value="">All Sectors</option>
-          </select>
-        </div>
-        <div class="flex justify-end items-center mt-4">
-          <button id="downloadExcelButton" class="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition">Export to Excel</button>
-        </div>
-      </div>
       <div id="lastUpdated" class="text-xs text-gray-500 text-right mb-4 h-4"></div>
       <div id="loading" class="flex justify-center items-center h-64"><div id="loading-spinner"></div></div>
       <div id="error-message" class="hidden text-center text-red-500 py-8">Could not load data from Google Sheets.</div>
