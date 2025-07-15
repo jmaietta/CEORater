@@ -13,6 +13,68 @@ const trayTickers = document.getElementById("trayTickers");
 const industryFilter = document.getElementById("industryFilter");
 const sectorFilter = document.getElementById("sectorFilter");
 
+// Stat Card Elements
+const medianTsrStat = document.getElementById("medianTsrStat");
+const avgFounderAlphaScoreStat = document.getElementById("avgFounderAlphaScoreStat");
+const founderCeoStat = document.getElementById("founderCeoStat");
+const medianCompStat = document.getElementById("medianCompStat");
+
+
+/**
+ * Calculates the median of a given array of numbers.
+ * @param {number[]} arr - An array of numbers.
+ * @returns {number} The median value.
+ */
+function calculateMedian(arr) {
+    if (!arr.length) return 0;
+    const sorted = [...arr].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
+ * Calculates the average of a given array of numbers.
+ * @param {number[]} arr - An array of numbers.
+ * @returns {number} The average value.
+ */
+function calculateAverage(arr) {
+    if (!arr.length) return 0;
+    const sum = arr.reduce((acc, val) => acc + val, 0);
+    return sum / arr.length;
+}
+
+
+/**
+ * Calculates and updates the main dashboard stat cards.
+ * @param {Array<Object>} masterData - The full list of all CEOs.
+ */
+export function updateStatCards(masterData) {
+    if (!masterData || masterData.length === 0) return;
+
+    // Calculate Median TSR
+    const tsrValues = masterData.map(c => c.tsrValue).filter(v => typeof v === 'number');
+    const medianTsr = calculateMedian(tsrValues);
+    medianTsrStat.textContent = pct(medianTsr);
+
+    // Calculate Avg. Founder AlphaScore
+    const founderAlphaScores = masterData
+        .filter(c => c.founder === 'Y')
+        .map(c => c.alphaScore * 100)
+        .filter(v => typeof v === 'number');
+    const avgFounderAlphaScore = calculateAverage(founderAlphaScores);
+    avgFounderAlphaScoreStat.textContent = Math.round(avgFounderAlphaScore);
+
+    // Calculate Founder CEOs
+    const founderCount = masterData.filter(c => c.founder === 'Y').length;
+    founderCeoStat.textContent = founderCount;
+    
+    // Calculate Median CEO Compensation
+    const compValues = masterData.map(c => c.compensation).filter(v => typeof v === 'number');
+    const medianComp = calculateMedian(compValues);
+    medianCompStat.textContent = `$${money(medianComp, 1)}M`;
+}
+
+
 /**
  * Renders the CEO cards in the main view.
  * @param {Array<Object>} data - The array of CEO data to render.
