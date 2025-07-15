@@ -282,14 +282,15 @@ export function renderComparisonModal(master, comparisonSet) {
                 bestValue = metric.higherIsBetter ? Math.max(...values) : Math.min(...values);
             }
         }
-
-        const fontClass = metric.label === 'AlphaScore' ? 'font-orbitron' : '';
         
+        const fontClass = metric.label === 'AlphaScore' ? 'font-orbitron' : '';
+
         selectedCeos.forEach(ceo => {
             const value = ceo[metric.key];
             const isBest = value === bestValue;
             const highlightClass = isBest ? 'bg-green-100 font-bold' : '';
-            tableHTML += `<td class="px-6 py-4 ${highlightClass}">${metric.format(value)}</td>`;
+            
+            tableHTML += `<td class="px-6 py-4 ${highlightClass} ${fontClass}">${metric.format(value)}</td>`;
         });
         tableHTML += `</tr>`;
     });
