@@ -288,7 +288,7 @@ export function renderComparisonModal(master, comparisonSet) {
         selectedCeos.forEach(ceo => {
             const value = ceo[metric.key];
             const isBest = value === bestValue;
-            const highlightClass = isBest ? 'bg-green-100 font-bold' : '';
+            const highlightClass = isBest ? 'bg-green-100 font-bold text-green-700' : '';
             
             tableHTML += `<td class="px-6 py-4 ${highlightClass} ${fontClass}">${metric.format(value)}</td>`;
         });
