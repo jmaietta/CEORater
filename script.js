@@ -46,6 +46,11 @@ const compareNowBtn = $("compareNowBtn");
 const comparisonModal = $("comparisonModal");
 const closeComparisonModalBtn = $("closeComparisonModalBtn");
 
+// Mobile Filter Toggle Elements
+const toggleFiltersBtn = $("toggleFiltersBtn");
+const mobileFilterControls = $("mobileFilterControls");
+const toggleFiltersIcon = $("toggleFiltersIcon");
+
 // ---------- State ----------
 let master = [];
 let view = [];
@@ -206,6 +211,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const [k, d] = e.target.value.split('-');
     currentSort = { key: k, dir: d };
     sortAndRender();
+  });
+
+  // Mobile filter toggle listener
+  toggleFiltersBtn.addEventListener('click', () => {
+    const isHidden = mobileFilterControls.classList.toggle('hidden');
+    toggleFiltersIcon.classList.toggle('rotate-180');
+    const buttonText = toggleFiltersBtn.querySelector('span');
+    buttonText.textContent = isHidden ? 'Show Filters & Options' : 'Hide Filters & Options';
   });
 
   allCeosTab.addEventListener('click', switchToAllView);
