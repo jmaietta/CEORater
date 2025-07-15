@@ -41,6 +41,7 @@ const closeDetailModal = $("closeDetailModal");
 
 // Comparison Tray Elements
 const compareNowBtn = $("compareNowBtn");
+const comparisonTray = $("comparisonTray"); // Add this
 
 // Comparison Modal Elements
 const comparisonModal = $("comparisonModal");
@@ -255,6 +256,17 @@ document.addEventListener('DOMContentLoaded', () => {
               ceoDetailModal.classList.remove('hidden');
           }
       }
+  });
+  
+  // Add new listener for the comparison tray
+  comparisonTray.addEventListener('click', e => {
+    const removeBtn = e.target.closest('.remove-from-tray-btn');
+    if (removeBtn) {
+        const ticker = removeBtn.dataset.ticker;
+        if (ticker) {
+            toggleCompare(ticker);
+        }
+    }
   });
 
   closeDetailModal.addEventListener('click', () => ceoDetailModal.classList.add('hidden'));
