@@ -216,7 +216,7 @@ export function renderDetailModal(ceoData) {
   
   modalBody.innerHTML = `
     <div class="space-y-2 text-sm">
-      <div class="flex justify-between"><span class="text-gray-500">AlphaScore</span><span class="font-bold text-lg text-blue-600">${Math.round(c.alphaScore * 100)}</span></div>
+      <div class="flex justify-between"><span class="text-gray-500">AlphaScore</span><span class="font-orbitron font-bold text-lg text-blue-600">${Math.round(c.alphaScore * 100)}</span></div>
       <div class="flex justify-between pb-2 mb-2 border-b"><span class="text-gray-500">Quartile</span><span class="font-bold">${c.quartile}</span></div>
 
       <div class="flex justify-between"><span class="text-gray-500">TSR During Tenure</span><span class="font-bold ${tsrCol}">${pct(c.tsrValue)}</span></div>
