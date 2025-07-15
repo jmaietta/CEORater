@@ -40,7 +40,7 @@
 <body class="bg-gray-100 text-gray-800 font-sans">
 
   <!-- New Header Structure -->
-  <header class="bg-white shadow-md sticky top-0 z-30">
+  <header class="bg-white shadow-md sticky top-0 z-30" class="sticky top-0 z-40 bg-white shadow">
     <div class="container mx-auto px-4">
       <div class="flex justify-between items-center py-3">
         <div class="flex items-center gap-3 sm:gap-6">
@@ -63,12 +63,7 @@
   <div class="container mx-auto p-4 md:p-8">
     
     <!-- Stat Cards Section - Now Responsive -->
-    <div id="statCardContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-      <!-- Stat Card 1: Median TSR -->
-      <div class="bg-white p-4 rounded-lg shadow text-center">
-        <h3 class="text-sm font-medium text-gray-500">Median TSR</h3>
-        <p id="medianTsrStat" class="text-2xl font-bold text-gray-900 mt-1">--</p>
-      </div>
+    
       <!-- Stat Card 2: Avg. Founder AlphaScore -->
       <div class="bg-white p-4 rounded-lg shadow text-center">
         <h3 class="text-sm font-medium text-gray-500">Avg. Founder AlphaScore</h3>
@@ -123,7 +118,18 @@
         </select>
       </div>
 
+<div id="statCardContainer" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <!-- Stat Card 1: Median TSR -->
+      <div class="bg-white p-4 rounded-lg shadow text-center">
+        <h3 class="text-sm font-medium text-gray-500">Median TSR</h3>
+        <p id="medianTsrStat" class="text-2xl font-bold text-gray-900 mt-1">--</p>
+      </div>
+
       <div class="flex justify-between items-center mb-4">
+        <div class="md:hidden"> <!-- This toggle will only show on mobile -->
+            <button id="mobileAllCeosTab" class="watchlist-tab px-4 py-1.5 rounded-md text-sm font-medium active">All CEOs</button>
+            <button id="mobileWatchlistTab" class="watchlist-tab px-4 py-1.5 rounded-md text-sm font-medium">My Watchlist</button>
+        </div>
         <button id="downloadExcelButton" class="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition ml-auto">Export to Excel</button>
       </div>
 
