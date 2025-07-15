@@ -282,6 +282,9 @@ export function renderComparisonModal(master, comparisonSet) {
                 bestValue = metric.higherIsBetter ? Math.max(...values) : Math.min(...values);
             }
         }
+
+        const fontClass = metric.label === 'AlphaScore' ? 'font-orbitron' : '';
+        
         selectedCeos.forEach(ceo => {
             const value = ceo[metric.key];
             const isBest = value === bestValue;
