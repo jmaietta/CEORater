@@ -191,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     .then(data => {
       master = data;
       ui.refreshFilters(master);
+      ui.updateStatCards(master);
       applyFilters();
       lastUpdated.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
     })
