@@ -14,7 +14,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
 
   <script>
@@ -200,7 +200,10 @@
         </div>
         <button id="closeComparisonModalBtn" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
       </div>
-      <div id="comparisonTableContainer" class="p-4 overflow-auto"></div>
+      <div class="flex-grow overflow-auto">
+        <div id="comparisonTableContainer" class="p-4 hidden lg:block"></div>
+        <div id="comparisonCardContainer" class="p-4 lg:hidden"></div>
+      </div>
     </div>
   </div>
 
