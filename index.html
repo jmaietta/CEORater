@@ -1,183 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CEORater</title>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CEORater</title>
 
-    <!-- Tailwind via CDN (for prod, use your pipeline) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body class="bg-gray-50 font-sans text-gray-800">
-    <!-- ░░░  STICKY HEADER  ░░░-->
-    <header class="bg-white shadow-md sticky top-0 z-40">
-      <div class="container mx-auto px-4">
-        <!-- ── Top bar ── -->
-        <div
-          class="flex justify-between items-center py-3 flex-wrap gap-3"
-        >
-          <!-- Logo / site name -->
-          <h1
-            class="text-xl sm:text-2xl font-bold font-orbitron text-blue-600"
-          >
-            CEORater
-          </h1>
+  <!-- Fonts & Tailwind -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            orbitron: ['Orbitron', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
 
-          <!-- View‑switch tabs -->
-          <div class="flex gap-1 order-2 sm:order-none">
-            <button
-              id="allCeosTab"
-              class="watchlist-tab px-3 py-1.5 rounded-md text-sm font-medium bg-blue-600 text-white"
-            >
-              All CEOs
-            </button>
-            <button
-              id="watchlistTab"
-              class="watchlist-tab px-3 py-1.5 rounded-md text-sm font-medium bg-gray-100"
-            >
-              My Watchlist
-            </button>
-          </div>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="bg-gray-100 font-sans text-gray-800">
+  <!-- ░░░ STICKY HEADER ░░░ -->
+  <header class="bg-white shadow-md sticky top-0 z-40">
+    <div class="container mx-auto px-4">
+      <!-- Top row: logo, view‑switch, account -->
+      <div class="flex justify-between items-center py-3 flex-wrap gap-3">
+        <!-- Logo / brand -->
+        <h1 class="text-xl sm:text-2xl font-bold font-orbitron italic text-blue-600">CEORater</h1>
 
-          <!-- Auth & update info -->
-          <nav
-            class="flex flex-wrap items-center gap-2 sm:gap-3 overflow-x-auto"
-          >
-            <span id="lastUpdated" class="text-xs text-gray-500 hidden"></span>
-            <span id="userEmail" class="text-sm hidden">user@example.com</span>
-            <button
-              id="loginBtn"
-              class="px-3 py-1.5 text-sm rounded-lg border hover:bg-gray-100 hidden"
-            >
-              Log in
-            </button>
-            <button
-              id="logoutBtn"
-              class="px-3 py-1.5 text-sm rounded-lg border hover:bg-gray-100 hidden"
-            >
-              Log out
-            </button>
-          </nav>
+        <!-- View switch tabs -->
+        <div class="flex gap-1 order-2 sm:order-none bg-gray-100 rounded-lg p-1 shadow-inner">
+          <button id="allCeosTab" class="watchlist-tab px-3 py-1.5 text-sm font-medium rounded-md active">All CEOs</button>
+          <button id="watchlistTab" class="watchlist-tab px-3 py-1.5 text-sm font-medium rounded-md">My Watchlist</button>
         </div>
 
-        <!-- ── Filters row ── -->
-        <div
-          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 pb-3"
-        >
-          <input
-            id="searchInput"
-            type="text"
-            placeholder="Search: CEO, Ticker, or Co."
-            class="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-blue-500 transition-shadow min-w-0 sm:col-span-2 lg:col-span-2"
-          />
-
-          <select
-            id="founderFilter"
-            class="w-full px-4 py-2 border rounded-lg"
-          >
-            <option value="">CEO Type</option>
-          </select>
-
-          <select
-            id="sortControl"
-            class="w-full px-4 py-2 border rounded-lg"
-          >
-            <option value="alphascore">Sort: AlphaScore ↓</option>
-          </select>
-
-          <select
-            id="industryFilter"
-            class="w-full px-4 py-2 border rounded-lg"
-          >
-            <option value="">All Industries</option>
-          </select>
-
-          <select
-            id="sectorFilter"
-            class="w-full px-4 py-2 border rounded-lg hidden"
-          ></select>
-
-          <button
-            id="downloadExcelButton"
-            class="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
-          >
-            Export to Excel
-          </button>
-        </div>
+        <!-- Account / auth controls -->
+        <nav class="flex flex-wrap items-center gap-2 sm:gap-3 overflow-x-auto">
+          <button id="watchlistBtn" class="hidden md:inline-block px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm">My Watchlist (<span id="watchlistCount">0</span>)</button>
+          <span id="userEmail" class="hidden text-sm text-gray-600 px-3 py-1"></span>
+          <button id="loginBtn" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">Log in</button>
+          <button id="logoutBtn" class="hidden px-3 py-1.5 border rounded-lg hover:bg-gray-100 transition text-sm">Log out</button>
+        </nav>
       </div>
-    </header>
 
-    <!-- ░░░  STATUS MESSAGES  ░░░-->
-    <div class="container mx-auto px-4 md:px-8 pt-4">
-      <div
-        id="loading"
-        class="hidden flex items-center gap-2 text-sm text-gray-600"
-      >
-        <svg
-          class="animate-spin h-4 w-4"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <circle
-            class="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            stroke-width="4"
-          ></circle>
-          <path
-            class="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8v8H4z"
-          ></path>
-        </svg>
-        Loading…
+      <!-- Filters row -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 pb-3">
+        <input id="searchInput" type="text" placeholder="Search: CEO, Ticker, or Co." class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-shadow min-w-0 sm:col-span-2 lg:col-span-2" />
+        <select id="founderFilter" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 transition-shadow">
+          <option value="">CEO Type</option>
+          <option value="Y">Founder CEOs</option>
+          <option value="N">Non‑Founder CEOs</option>
+        </select>
+        <select id="sortControl" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 transition-shadow">
+          <option value="alphaScore-desc">Sort: AlphaScore ↓</option>
+          <option value="alphaScore-asc">Sort: AlphaScore ↑</option>
+          <option value="tsrAlpha-desc">TSR Alpha ↓</option>
+          <option value="tsrAlpha-asc">TSR Alpha ↑</option>
+        </select>
+        <select id="industryFilter" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 transition-shadow">
+          <option value="">All Industries</option>
+        </select>
+        <select id="sectorFilter" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 transition-shadow">
+          <option value="">All Sectors</option>
+        </select>
+        <button id="downloadExcelButton" class="w-full lg:w-auto bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">Export to Excel</button>
       </div>
-      <p id="error-message" class="hidden text-red-600 text-sm"></p>
     </div>
+  </header>
 
-    <!-- ░░░  SUMMARY (STAT) CARDS – below sticky header ░░░-->
-    <section class="container mx-auto px-4 md:px-8 py-6">
-      <div
-        id="statCardContainer"
-        class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4"
-      >
-        <!-- Values injected dynamically by script.js -->
-        <div class="bg-white rounded-lg shadow p-5 text-center">
-          <span class="text-sm text-gray-500">Median TSR</span>
-          <p id="medianTsr" class="text-2xl font-bold">—</p>
-        </div>
-        <div class="bg-white rounded-lg shadow p-5 text-center">
-          <span class="text-sm text-gray-500">Avg. Founder AlphaScore</span>
-          <p id="avgFounderAlpha" class="text-2xl font-bold">—</p>
-        </div>
-        <div class="bg-white rounded-lg shadow p-5 text-center">
-          <span class="text-sm text-gray-500">Founder CEOs</span>
-          <p id="founderCount" class="text-2xl font-bold">—</p>
-        </div>
-        <div class="bg-white rounded-lg shadow p-5 text-center">
-          <span class="text-sm text-gray-500">Median CEO Compensation</span>
-          <p id="medianComp" class="text-2xl font-bold">—</p>
-        </div>
+  <!-- Status & messages -->
+  <div class="container mx-auto px-4 md:px-8 pt-4">
+    <div id="loading" class="flex justify-center items-center h-16 hidden">
+      <div class="animate-spin h-6 w-6 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+    </div>
+    <p id="error-message" class="hidden text-center text-red-500"></p>
+    <div id="lastUpdated" class="text-xs text-gray-500 text-right h-4"></div>
+  </div>
+
+  <!-- Summary cards -->
+  <section class="container mx-auto px-4 md:px-8 py-4">
+    <div id="statCardContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-white p-4 rounded-lg shadow text-center">
+        <h3 class="text-sm font-medium text-gray-500">Median TSR</h3>
+        <p id="medianTsrStat" class="text-2xl font-bold text-gray-900 mt-1">--</p>
       </div>
-    </section>
+      <div class="bg-white p-4 rounded-lg shadow text-center">
+        <h3 class="text-sm font-medium text-gray-500">Avg. Founder AlphaScore</h3>
+        <p id="avgFounderAlphaScoreStat" class="text-2xl font-bold mt-1 font-orbitron text-blue-600">--</p>
+      </div>
+      <div class="bg-white p-4 rounded-lg shadow text-center">
+        <h3 class="text-sm font-medium text-gray-500">Founder CEOs</h3>
+        <p id="founderCeoStat" class="text-2xl font-bold text-gray-900 mt-1">--</p>
+      </div>
+      <div class="bg-white p-4 rounded-lg shadow text-center">
+        <h3 class="text-sm font-medium text-gray-500">Median CEO Compensation</h3>
+        <p id="medianCompStat" class="text-2xl font-bold text-gray-900 mt-1">--</p>
+      </div>
+    </div>
+  </section>
 
-    <!-- ░░░  CEO CARDS  ░░░-->
-    <main
-      id="ceoCardView"
-      class="container mx-auto px-4 md:px-8 pb-24 grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
-    >
-      <!-- Cards injected by script.js -->
-    </main>
+  <!-- CEO card grid -->
+  <main class="container mx-auto px-4 md:px-8 pb-24">
+    <div id="ceoCardView" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+    <p id="noResults" class="hidden text-center text-gray-500 py-8">No results found.</p>
+    <div id="watchlistEmpty" class="hidden text-center text-gray-500 py-12">
+      <div class="text-4xl mb-4">⭐</div>
+      <h3 class="text-lg font-semibold mb-2">Your watchlist is empty</h3>
+      <p>Click the star icon on any CEO card to add them to your watchlist.</p>
+    </div>
+  </main>
 
-    <!-- ░░░  NO RESULTS MESSAGE  ░░░-->
-    <p id="noResults" class="hidden text-center text-gray-500 pb-24">
-      No CEOs match your filters.
-    </p>
+  <!-- Comparison tray -->
+  <div id="comparisonTray" class="hidden fixed bottom-0 left-0 right-0 bg-white shadow-2xl border-t border-gray-200 z-40">
+    <div class="container mx-auto p-3 text-center sm:p-4 sm:text-left sm:flex sm:justify-between sm:items-center">
+      <div class="flex items-center justify-center sm:justify-start space-x-3">
+        <span id="comparisonTitle" class="font-semibold text-gray-700">Compare (0/3):</span>
+        <div id="trayTickers" class="flex items-center space-x-2"></div>
+      </div>
+      <button id="compareNowBtn" class="w-full mt-2 sm:w-auto sm:mt-0 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition">Compare Now →</button>
+    </div>
+  </div>
 
-    <!-- Scripts -->
-    <script src="script.js"></script>
-  </body>
+  <!-- Scripts -->
+  <script src="firebase-config.js"></script>
+  <script type="module" src="script.js"></script>
+</body>
 </html>
