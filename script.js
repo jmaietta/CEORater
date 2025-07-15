@@ -1,131 +1,391 @@
-/* ------------------------------------------------------------
-   CEORater • script.js          (no backend required)
-   ------------------------------------------------------------
-   • Fetches the CSV already in the repo
-   • Parses it with Papa Parse   (index.html now loads the CDN)
-   • Fills your styled table, filter buttons, and video popup
-------------------------------------------------------------- */
+import { fetchData } from './GoogleSheet.js';
+import * as ui from './ui.js';
+import * as auth from './auth.js';
 
-/* ---------- CONFIG ---------- */
-const CSV_PATH = "/CEORater%20CSV%20for%20Upload.csv"; // (%20 = space)
+// ---------- DOM Elements (for event listeners) ----------
+const $ = id => document.getElementById(id);
+const searchInput = $("searchInput");
+const industryFilter = $("industryFilter");
+const sectorFilter = $("sectorFilter");
+const founderFilter = $("founderFilter");
+const sortControl = $("sortControl");
+const lastUpdated = $("lastUpdated");
+const ceoCardView = $("ceoCardView");
+const noResults = $("noResults");
+const loading = $("loading");
+const errorMessage = $("error-message");
 
-/* ---------- DOM SHORTCUTS ---------- */
-const tbody          = document.getElementById("ceoTableBody");
-const filterTabs     = document.getElementById("filterTabs");
-const popup          = document.getElementById("mediaPopup");
-const popupOverlay   = document.getElementById("popupOverlay");
-const popupCeoName   = document.getElementById("popupCeoName");
-const popupMediaCont = document.getElementById("popupMediaContent");
-const closePopupBtn  = document.getElementById("closePopup");
-const lastUpdated    = document.getElementById("lastUpdated");
+// Auth elements
+const loginBtn = $("loginBtn");
+const logoutBtn = $("logoutBtn");
+const userEmail = $("userEmail");
+const watchlistBtn = $("watchlistBtn");
+const watchlistCount = $("watchlistCount");
+const loginModal = $("loginModal");
+const closeLoginModalBtn = $("closeLoginModalBtn");
+const googleSignIn = $("googleSignIn");
+const microsoftSignIn = $("microsoftSignIn");
+const signInEmail = $("signInEmail");
+const signUpEmail = $("signUpEmail");
+const emailInput = $("emailInput");
+const passwordInput = $("passwordInput");
+const forgotPasswordLink = $("forgotPasswordLink");
 
-/* ---------- STATE ---------- */
-let allRows = [];              // full dataset
-let media   = {};              // CEO → array of URLs
-let active  = "all";           // current tab
+// View toggle
+const allCeosTab = $("allCeosTab");
+const watchlistTab = $("watchlistTab");
 
-/* ---------- SMALL HELPERS ---------- */
-const pct  = (v) => (v ? `${v}%` : "N/A");
-const money= (m)=> (m?`$${Number(m).toLocaleString()} MM`:"N/A");
-const tenure = (d)=>{
-  if(!d)return"N/A";
-  const s=new Date(d);if(isNaN(s))return"N/A";
-  const n=new Date();let y=n.getFullYear()-s.getFullYear();
-  let m=n.getMonth()-s.getMonth();if(m<0){y--;m+=12}
-  return`${y}.${m} yrs`;
-};
+// CEO Detail Modal Elements
+const ceoDetailModal = $("ceoDetailModal");
+const closeDetailModal = $("closeDetailModal");
 
-/* ---------- BUILD ONE TABLE ROW ---------- */
-function rowHTML(ceo, i){
-  const posRet=!String(ceo["Total Stock Return"]).startsWith("-");
-  const founder=(ceo["Founder (Y/N)"]||"").trim().toUpperCase()==="Y";
-  const ytCnt=+(ceo["YouTube Count"]||0);
-  return`
-  <td class="px-6 py-4">${i+1}</td>
-  <td class="px-6 py-4">
-      <div class="font-semibold">${ceo["CEO Name"]}</div>
-      <div class="text-sm text-gray-500">${ceo["Company Name"]} (${ceo["Ticker"]})</div>
-      ${founder?'<span class="inline-block mt-1 text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">Founder</span>':""}
-  </td>
-  <td class="px-6 py-4">${tenure(ceo["CEO Start Date"])}</td>
-  <td class="px-6 py-4 font-semibold ${posRet?"text-green-600":"text-red-600"}">
-      ${pct(ceo["Total Stock Return"])}
-  </td>
-  <td class="px-6 py-4">${ceo["Equity Ownership %"]||"N/A"}</td>
-  <td class="px-6 py-4">${ceo["Insider Score"]||"N/A"}</td>
-  <td class="px-6 py-4">
-    ${ytCnt
-      ? `<button class="view-vid text-blue-600 underline" data-ceo="${ceo["CEO Name"]}">Videos (${ytCnt})</button>`
-      : '<span class="text-gray-400">None</span>'}
-  </td>
-  <td class="px-6 py-4 font-bold">${ceo["Total Score"]||"N/A"}</td>`;
+// Comparison Tray Elements
+const compareNowBtn = $("compareNowBtn");
+
+// Comparison Modal Elements
+const comparisonModal = $("comparisonModal");
+const closeComparisonModalBtn = $("closeComparisonModalBtn");
+
+// ---------- State ----------
+let master = [];
+let view = [];
+let currentSort = { key: 'alphaScore', dir: 'desc' };
+let currentUser = null;
+let userWatchlist = new Set();
+let comparisonSet = new Set(); 
+let currentView = 'all'; 
+
+// ---------- App Logic ----------
+function handleAuthStateChange(user) {
+  currentUser = user;
+  if (user) {
+    loginBtn.classList.add('hidden');
+    logoutBtn.classList.remove('hidden');
+    userEmail.classList.remove('hidden');
+    watchlistBtn.classList.remove('hidden');
+    userEmail.textContent = user.email;
+    auth.loadUserWatchlist(user.uid).then(watchlist => {
+        userWatchlist = watchlist;
+        updateWatchlistCount();
+        refreshView();
+    });
+  } else {
+    loginBtn.classList.remove('hidden');
+    logoutBtn.classList.add('hidden');
+    userEmail.classList.add('hidden');
+    watchlistBtn.classList.add('hidden');
+    userWatchlist.clear();
+    comparisonSet.clear();
+    ui.updateComparisonTray(comparisonSet);
+    updateWatchlistCount();
+    if (currentView === 'watchlist') {
+      switchToAllView();
+    }
+  }
 }
 
-/* ---------- TABLE RENDER ---------- */
-function render(tab=active){
-  active=tab;
-  tbody.innerHTML="";
-  document.querySelectorAll("#filterTabs button").forEach(b=>{
-    b.classList.toggle("tab-active",b.dataset.filter===tab);
-  });
+function toggleCompare(ticker) {
+  if (comparisonSet.has(ticker)) {
+    comparisonSet.delete(ticker);
+  } else {
+    if (comparisonSet.size >= 3) {
+      alert('You can compare a maximum of 3 CEOs at a time.');
+      return;
+    }
+    comparisonSet.add(ticker);
+  }
+  
+  sortAndRender();
+  ui.updateComparisonTray(comparisonSet);
+}
 
-  const show=allRows.filter(r=>{
-    if(tab==="top")       return +r["Total Score"]>=80;
-    if(tab==="ownership") return parseFloat(r["Equity Ownership %"])>1;
-    if(tab==="insider")   return +r["Insider Score"]>0;
-    if(tab==="flags")     return +r["Insider Score"]<0;
-    return true; // 'all'
-  });
-
-  if(!show.length){
-    tbody.innerHTML=`<tr><td colspan="8" class="p-6 text-center text-gray-500">No CEOs match this filter.</td></tr>`;
+async function toggleWatchlist(ticker) {
+  if (!currentUser) {
+    loginModal.classList.remove('hidden');
     return;
   }
+  
+  if (userWatchlist.has(ticker)) {
+    userWatchlist.delete(ticker);
+  } else {
+    userWatchlist.add(ticker);
+  }
+  
+  await auth.saveUserWatchlist(currentUser.uid, userWatchlist);
+  updateWatchlistCount();
+  refreshView();
+}
 
-  show.forEach((c,i)=>{
-    const tr=document.createElement("tr");
-    tr.className=i%2?"bg-gray-50":"";
-    tr.innerHTML=rowHTML(c,i);
-    tbody.appendChild(tr);
+function updateWatchlistCount() {
+  watchlistCount.textContent = userWatchlist.size;
+}
+
+function switchToAllView() {
+  currentView = 'all';
+  allCeosTab.classList.add('active');
+  watchlistTab.classList.remove('active');
+  applyFilters();
+}
+
+function switchToWatchlistView() {
+  if (!currentUser) {
+    loginModal.classList.remove('hidden');
+    return;
+  }
+  currentView = 'watchlist';
+  watchlistTab.classList.add('active');
+  allCeosTab.classList.remove('active');
+  applyFilters();
+}
+
+function refreshView() {
+  applyFilters();
+}
+
+function applyFilters() {
+  const term = searchInput.value.toLowerCase();
+  const ind = industryFilter.value;
+  const sec = sectorFilter.value;
+  const founder = founderFilter.value;
+  
+  let filteredData = master.filter(c => {
+    const matchTerm = (c.ceo + c.company + c.ticker).toLowerCase().includes(term);
+    const matchInd = !ind || c.industry === ind;
+    const matchSec = !sec || c.sector === sec;
+    const matchFounder = !founder || c.founder === founder;
+    return matchTerm && matchInd && matchSec && matchFounder;
   });
+
+  if (currentView === 'watchlist') {
+    filteredData = filteredData.filter(c => userWatchlist.has(c.ticker));
+  }
+
+  view = filteredData;
+  sortAndRender();
 }
 
-/* ---------- MEDIA POPUP ---------- */
-function openPopup(name){
-  const list=media[name]||[];
-  popupCeoName.textContent=`${name}'s Media`;
-  popupMediaCont.innerHTML=list.length
-    ? list.map((u,i)=>`<a href="${u}" target="_blank" class="block mb-2 text-blue-600 underline">Video ${i+1}</a>`).join("")
-    : "<p class='text-gray-500'>No recent media.</p>";
-  popup.classList.remove("translate-x-full");
-  popupOverlay.classList.remove("hidden");
+function sortAndRender() {
+  view.sort((a, b) => {
+    const A = a[currentSort.key];
+    const B = b[currentSort.key];
+    let cmp = (typeof A === 'number' && typeof B === 'number') ? A - B : String(A).localeCompare(String(B));
+    return currentSort.dir === 'asc' ? cmp : -cmp;
+  });
+  
+  if (view.length === 0 && currentView !== 'watchlist') {
+    noResults.classList.remove('hidden');
+  } else {
+    noResults.classList.add('hidden');
+  }
+  
+  ui.renderCards(view, userWatchlist, comparisonSet, currentView);
 }
-const closePopup=()=>{popup.classList.add("translate-x-full");popupOverlay.classList.add("hidden");};
 
-/* ---------- EVENT HANDLERS ---------- */
-filterTabs.addEventListener("click",e=>{
-  if(e.target.tagName==="BUTTON")render(e.target.dataset.filter);
-});
-tbody.addEventListener("click",e=>{
-  if(e.target.classList.contains("view-vid"))openPopup(e.target.dataset.ceo);
-});
-closePopupBtn.addEventListener("click",closePopup);
-popupOverlay.addEventListener("click",closePopup);
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms) } }
 
-/* ---------- BOOT ---------- */
-tbody.innerHTML='<tr><td colspan="8" class="p-6 text-center text-gray-500">Loading…</td></tr>';
+// ---------- Event Listeners ----------
+document.addEventListener('DOMContentLoaded', () => {
+  auth.initAuth(handleAuthStateChange);
 
-fetch(CSV_PATH)
-  .then(r=>r.text())
-  .then(txt=>{
-    const parsed=Papa.parse(txt,{header:true,skipEmptyLines:true});
-    allRows=parsed.data;
-    parsed.data.forEach(row=>{
-      media[row["CEO Name"]]=(row["YouTube URLs"]||"").split(",").map(u=>u.trim()).filter(Boolean);
+  fetchData()
+    .then(data => {
+      master = data;
+      ui.refreshFilters(master);
+      ui.updateStatCards(master);
+      applyFilters();
+      lastUpdated.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+    })
+    .catch(() => errorMessage.classList.remove('hidden'))
+    .finally(() => (loading.style.display = 'none'));
+  
+  searchInput.addEventListener('input', debounce(applyFilters, 300));
+  industryFilter.addEventListener('change', applyFilters);
+  sectorFilter.addEventListener('change', applyFilters);
+  founderFilter.addEventListener('change', applyFilters);
+  sortControl.addEventListener('change', e => {
+    const [k, d] = e.target.value.split('-');
+    currentSort = { key: k, dir: d };
+    sortAndRender();
+  });
+
+  allCeosTab.addEventListener('click', switchToAllView);
+  watchlistTab.addEventListener('click', switchToWatchlistView);
+  watchlistBtn.addEventListener('click', switchToWatchlistView);
+
+  loginBtn.addEventListener('click', () => loginModal.classList.remove('hidden'));
+  closeLoginModalBtn.addEventListener('click', () => loginModal.classList.add('hidden'));
+  loginModal.addEventListener('click', e => {
+    if (e.target === loginModal) loginModal.classList.add('hidden');
+  });
+
+  ceoCardView.addEventListener('click', (e) => {
+      const star = e.target.closest('.watchlist-star');
+      if (star) {
+          e.stopPropagation();
+          toggleWatchlist(star.dataset.ticker);
+          return; 
+      }
+
+      const compareBtn = e.target.closest('.compare-btn');
+      if (compareBtn) {
+          e.stopPropagation();
+          toggleCompare(compareBtn.dataset.ticker);
+          return;
+      }
+
+      const card = e.target.closest('.ceo-card');
+      if (card) {
+          const ticker = card.dataset.ticker;
+          const ceoData = master.find(c => c.ticker === ticker);
+          if (ceoData) {
+              ui.renderDetailModal(ceoData);
+              ceoDetailModal.classList.remove('hidden');
+          }
+      }
+  });
+
+  closeDetailModal.addEventListener('click', () => ceoDetailModal.classList.add('hidden'));
+  ceoDetailModal.addEventListener('click', e => {
+      if (e.target === ceoDetailModal) {
+          ceoDetailModal.classList.add('hidden');
+      }
+  });
+  
+  compareNowBtn.addEventListener('click', () => {
+      ui.renderComparisonModal(master, comparisonSet);
+      comparisonModal.classList.remove('hidden');
+  });
+  closeComparisonModalBtn.addEventListener('click', () => comparisonModal.classList.add('hidden'));
+  comparisonModal.addEventListener('click', e => {
+    if (e.target === comparisonModal) {
+      comparisonModal.classList.add('hidden');
+    }
+  });
+
+  logoutBtn.addEventListener('click', () => auth.signOut());
+  
+  googleSignIn.addEventListener('click', () => {
+    auth.signInWithGoogle().then(() => {
+      loginModal.classList.add('hidden');
+    }).catch(error => {
+      console.error('Google sign in error:', error);
+      alert('Sign in failed. Please try again.');
     });
-    lastUpdated.textContent="just now";
-    render("all");
-  })
-  .catch(e=>{
-    tbody.innerHTML=`<tr><td colspan="8" class="p-6 text-center text-red-600">Couldn't load CSV: ${e}</td></tr>`;
   });
+
+  microsoftSignIn.addEventListener('click', () => {
+    auth.signInWithMicrosoft().then(() => {
+      loginModal.classList.add('hidden');
+    }).catch(error => {
+      console.error('Microsoft sign in error:', error);
+      alert('Sign in failed: ' + error.message);
+    });
+  });
+  
+  forgotPasswordLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    const email = emailInput.value;
+    if (!email) {
+      alert('Please enter your email address to reset your password.');
+      return;
+    }
+    auth.sendPasswordReset(email)
+      .then(() => {
+        alert('Password reset email sent! Please check your inbox.');
+      })
+      .catch((error) => {
+        console.error('Password reset error:', error);
+        if (error.code === 'auth/user-not-found') {
+          alert('No account found with that email address.');
+        } else {
+          alert('Failed to send password reset email. Please try again.');
+        }
+      });
+  });
+  
+  signInEmail.addEventListener('click', () => {
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    if (!email || !password) return;
+    
+    auth.signInWithEmail(email, password).then(() => {
+      loginModal.classList.add('hidden');
+    }).catch(error => {
+      console.error('Email sign in error:', error);
+      alert('Sign in failed: ' + error.message);
+    });
+  });
+
+  signUpEmail.addEventListener('click', () => {
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    if (!email || !password) return;
+    
+    auth.signUpWithEmail(email, password).then(() => {
+      loginModal.classList.add('hidden');
+    }).catch(error => {
+      console.error('Email sign up error:', error);
+      alert('Sign up failed: ' + error.message);
+    });
+  });
+
+  $("downloadExcelButton").addEventListener('click', () => {
+    if (view.length === 0) {
+      alert('No data to export');
+      return;
+    }
+    
+    const headers = ['CEO', 'Company', 'Ticker', 'Market Cap ($B)', 'AlphaScore', 'AlphaScore Quartile', 'TSR Alpha', 'Avg Annual TSR Alpha', 'Industry', 'Sector', 'TSR During Tenure', 'Avg Annual TSR', 'Compensation ($MM)', 'Comp Cost / 1% Avg TSR ($MM)', 'Tenure (yrs)', 'Founder'];
+    const csvContent = [
+      headers.join(','),
+      ...view.map(c => [
+        `"${c.ceo}"`,
+        `"${c.company}"`,
+        c.ticker,
+        (c.marketCap / 1e9).toFixed(2),
+        c.alphaScore,
+        c.quartile,
+        c.tsrAlpha,
+        c.avgAnnualTsrAlpha,
+        `"${c.industry || ''}"`,
+        `"${c.sector || ''}"`,
+        c.tsrValue,
+        c.avgAnnualTsr,
+        c.compensation,
+        c.compensationCost,
+        c.tenure,
+        c.founder === 'Y' ? 'Yes' : 'No'
+      ].join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ceorater-${currentView}-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !loginModal.classList.contains('hidden')) {
+      loginModal.classList.add('hidden');
+    }
+    if (e.key === 'Escape' && !ceoDetailModal.classList.contains('hidden')) {
+        ceoDetailModal.classList.add('hidden');
+    }
+    if (e.key === 'Escape' && !comparisonModal.classList.contains('hidden')) {
+        comparisonModal.classList.add('hidden');
+    }
+  });
+
+  emailInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') signInEmail.click();
+  });
+  
+  passwordInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') signInEmail.click();
+  });
+});
