@@ -282,11 +282,15 @@ export function renderComparisonModal(master, comparisonSet) {
                 bestValue = metric.higherIsBetter ? Math.max(...values) : Math.min(...values);
             }
         }
+        
+        const fontClass = metric.label === 'AlphaScore' ? 'font-orbitron' : '';
+
         selectedCeos.forEach(ceo => {
             const value = ceo[metric.key];
             const isBest = value === bestValue;
-            const highlightClass = isBest ? 'bg-green-100 font-bold' : '';
-            tableHTML += `<td class="px-6 py-4 ${highlightClass}">${metric.format(value)}</td>`;
+            const highlightClass = isBest ? 'bg-green-100 font-bold text-green-700' : '';
+            
+            tableHTML += `<td class="px-6 py-4 ${highlightClass} ${fontClass}">${metric.format(value)}</td>`;
         });
         tableHTML += `</tr>`;
     });
@@ -314,22 +318,25 @@ export function renderComparisonModal(master, comparisonSet) {
             const value = ceo[metric.key];
             const isBest = value === bestValue;
             const highlightClass = isBest ? 'bg-green-50' : '';
+            const fontClass = metric.label === 'AlphaScore' ? 'font-orbitron' : '';
             
             cardHTML += `<div class="p-4 flex justify-between items-center ${highlightClass}">
                 <div>
                     <p class="font-semibold text-gray-800">${ceo.ceo}</p>
                     <p class="text-xs text-gray-500">${ceo.company}</p>
                 </div>
-                <p class="font-bold text-lg text-right ${isBest ? 'text-green-700' : 'text-gray-900'}">
+                <p class="${fontClass} font-bold text-lg text-right ${isBest ? 'text-green-700' : 'text-gray-900'}">
                     ${metric.format(value)}
                 </p>
             </div>`;
         });
+       
         cardHTML += '</div></div>';
     });
     cardHTML += '</div>';
     comparisonCardContainer.innerHTML = cardHTML;
 }
+
 
 /**
  * Updates the comparison tray at the bottom of the screen.
