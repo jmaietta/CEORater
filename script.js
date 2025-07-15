@@ -41,7 +41,7 @@ const closeDetailModal = $("closeDetailModal");
 
 // Comparison Tray Elements
 const compareNowBtn = $("compareNowBtn");
-const comparisonTray = $("comparisonTray"); // Add this
+const comparisonTray = $("comparisonTray");
 
 // Comparison Modal Elements
 const comparisonModal = $("comparisonModal");
@@ -257,9 +257,18 @@ document.addEventListener('DOMContentLoaded', () => {
           }
       }
   });
-  
-  // Add new listener for the comparison tray
+
+  // Listener for the entire comparison tray (handles "x" and "Clear All")
   comparisonTray.addEventListener('click', e => {
+    // Handle "Clear All" button click
+    if (e.target.id === 'clearCompareBtn') {
+        comparisonSet.clear();
+        sortAndRender();
+        ui.updateComparisonTray(comparisonSet);
+        return;
+    }
+
+    // Handle individual remove ("x") button clicks
     const removeBtn = e.target.closest('.remove-from-tray-btn');
     if (removeBtn) {
         const ticker = removeBtn.dataset.ticker;
