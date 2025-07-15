@@ -1,8 +1,7 @@
 // auth.js
 
-// Get references to Firebase services
-const auth = firebase.auth();
-const db = firebase.firestore();
+// Import the initialized Firebase services.
+import { auth, db } from './firebase-init.js';
 
 /**
  * Initializes the authentication state listener.
