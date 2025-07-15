@@ -8,6 +8,7 @@ const modalHeader = document.getElementById("modalHeader");
 const modalBody = document.getElementById("modalBody");
 const modalFooter = document.getElementById("modalFooter");
 const comparisonTableContainer = document.getElementById("comparisonTableContainer");
+const comparisonCardContainer = document.getElementById("comparisonCardContainer"); // New container for mobile
 const comparisonTitle = document.getElementById("comparisonTitle");
 const trayTickers = document.getElementById("trayTickers");
 const industryFilter = document.getElementById("industryFilter");
@@ -238,7 +239,7 @@ export function renderDetailModal(ceoData) {
 }
 
 /**
- * Renders the comparison table modal.
+ * Renders the comparison table modal for both desktop (table) and mobile (cards).
  * @param {Array<Object>} master - The full list of all CEOs.
  * @param {Set<string>} comparisonSet - A set of tickers the user is comparing.
  */
@@ -261,10 +262,10 @@ export function renderComparisonModal(master, comparisonSet) {
         { label: 'Comp Cost / 1% Avg TSR ($MM)', key: 'compensationCost', format: v => `$${money(v, 3)}`, higherIsBetter: false }
     ];
 
+    // --- RENDER DESKTOP TABLE ---
     let tableHTML = `<table class="w-full text-sm text-left text-gray-500">`;
     tableHTML += `<thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr>`;
     tableHTML += `<th scope="col" class="px-6 py-3 sticky left-0 bg-gray-50 z-10">Metric</th>`;
-    
     selectedCeos.forEach(ceo => {
         tableHTML += `<th scope="col" class="px-6 py-3">${ceo.ceo}<br><span class="font-normal normal-case">${ceo.company} (${ceo.ticker})</span></th>`;
     });
@@ -281,7 +282,6 @@ export function renderComparisonModal(master, comparisonSet) {
                 bestValue = metric.higherIsBetter ? Math.max(...values) : Math.min(...values);
             }
         }
-
         selectedCeos.forEach(ceo => {
             const value = ceo[metric.key];
             const isBest = value === bestValue;
@@ -290,9 +290,45 @@ export function renderComparisonModal(master, comparisonSet) {
         });
         tableHTML += `</tr>`;
     });
-
     tableHTML += `</tbody></table>`;
     comparisonTableContainer.innerHTML = tableHTML;
+
+    // --- RENDER MOBILE CARDS ---
+    let cardHTML = '<div class="space-y-4">';
+    metrics.forEach(metric => {
+        let bestValue;
+        if (metric.higherIsBetter !== null) {
+            const values = selectedCeos.map(c => c[metric.key]).filter(v => typeof v === 'number');
+            if (values.length > 0) {
+                bestValue = metric.higherIsBetter ? Math.max(...values) : Math.min(...values);
+            }
+        }
+
+        cardHTML += `<div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+            <div class="px-4 py-3 bg-gray-50 border-b">
+                <h3 class="font-bold text-gray-800">${metric.label}</h3>
+            </div>
+            <div class="divide-y divide-gray-200">`;
+
+        selectedCeos.forEach(ceo => {
+            const value = ceo[metric.key];
+            const isBest = value === bestValue;
+            const highlightClass = isBest ? 'bg-green-50' : '';
+            
+            cardHTML += `<div class="p-4 flex justify-between items-center ${highlightClass}">
+                <div>
+                    <p class="font-semibold text-gray-800">${ceo.ceo}</p>
+                    <p class="text-xs text-gray-500">${ceo.company}</p>
+                </div>
+                <p class="font-bold text-lg text-right ${isBest ? 'text-green-700' : 'text-gray-900'}">
+                    ${metric.format(value)}
+                </p>
+            </div>`;
+        });
+        cardHTML += '</div></div>';
+    });
+    cardHTML += '</div>';
+    comparisonCardContainer.innerHTML = cardHTML;
 }
 
 /**
