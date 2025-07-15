@@ -262,79 +262,72 @@ export function renderComparisonModal(master, comparisonSet) {
         { label: 'Comp Cost / 1% Avg TSR ($MM)', key: 'compensationCost', format: v => `$${money(v, 3)}`, higherIsBetter: false }
     ];
 
-    // --- RENDER DESKTOP TABLE ---
-    let tableHTML = `<table class="w-full text-sm text-left text-gray-500">`;
-    tableHTML += `<thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr>`;
-    tableHTML += `<th scope="col" class="px-6 py-3 sticky left-0 bg-gray-50 z-10">Metric</th>`;
-    selectedCeos.forEach(ceo => {
-        tableHTML += `<th scope="col" class="px-6 py-3">${ceo.ceo}<br><span class="font-normal normal-case">${ceo.company} (${ceo.ticker})</span></th>`;
-    });
-    tableHTML += `</tr></thead><tbody>`;
-
-    metrics.forEach(metric => {
-        tableHTML += `<tr class="bg-white border-b">`;
-        tableHTML += `<th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap sticky left-0 bg-white border-r z-10">${metric.label}</th>`;
-
-        let bestValue;
-        if (metric.higherIsBetter !== null) {
-            const values = selectedCeos.map(c => c[metric.key]).filter(v => typeof v === 'number');
-            if (values.length > 0) {
-                bestValue = metric.higherIsBetter ? Math.max(...values) : Math.min(...values);
-            }
-        }
-        
-        const fontClass = metric.label === 'AlphaScore' ? 'font-orbitron' : '';
-
-        selectedCeos.forEach(ceo => {
-            const value = ceo[metric.key];
-            const isBest = value === bestValue;
-            const highlightClass = isBest ? 'bg-green-100 font-bold text-green-700' : '';
-            
-            tableHTML += `<td class="px-6 py-4 ${highlightClass} ${fontClass}">${metric.format(value)}</td>`;
-        });
-        tableHTML += `</tr>`;
-    });
-    tableHTML += `</tbody></table>`;
-    comparisonTableContainer.innerHTML = tableHTML;
-
-    // --- RENDER MOBILE CARDS ---
-    let cardHTML = '<div class="space-y-4">';
-    metrics.forEach(metric => {
-        let bestValue;
-        if (metric.higherIsBetter !== null) {
-            const values = selectedCeos.map(c => c[metric.key]).filter(v => typeof v === 'number');
-            if (values.length > 0) {
-                bestValue = metric.higherIsBetter ? Math.max(...values) : Math.min(...values);
-            }
+    const renderLogic = (isMobile) => {
+        let html = isMobile ? '<div class="space-y-4">' : `<table class="w-full text-sm text-left text-gray-500">`;
+        if (!isMobile) {
+            html += `<thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr>`;
+            html += `<th scope="col" class="px-6 py-3 sticky left-0 bg-gray-50 z-10">Metric</th>`;
+            selectedCeos.forEach(ceo => {
+                html += `<th scope="col" class="px-6 py-3">${ceo.ceo}<br><span class="font-normal normal-case">${ceo.company} (${ceo.ticker})</span></th>`;
+            });
+            html += `</tr></thead><tbody>`;
         }
 
-        cardHTML += `<div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-            <div class="px-4 py-3 bg-gray-50 border-b">
-                <h3 class="font-bold text-gray-800">${metric.label}</h3>
-            </div>
-            <div class="divide-y divide-gray-200">`;
+        metrics.forEach(metric => {
+            // Use rounded values for AlphaScore comparison, otherwise use raw values
+            const getComparableValue = (ceo) => {
+                return metric.label === 'AlphaScore' 
+                    ? Math.round(ceo[metric.key] * 100) 
+                    : ceo[metric.key];
+            };
 
-        selectedCeos.forEach(ceo => {
-            const value = ceo[metric.key];
-            const isBest = value === bestValue;
-            const highlightClass = isBest ? 'bg-green-50' : '';
-            const fontClass = metric.label === 'AlphaScore' ? 'font-orbitron' : '';
+            let bestValue;
+            if (metric.higherIsBetter !== null) {
+                const values = selectedCeos.map(getComparableValue).filter(v => typeof v === 'number');
+                if (values.length > 0) {
+                    bestValue = metric.higherIsBetter ? Math.max(...values) : Math.min(...values);
+                }
+            }
             
-            cardHTML += `<div class="p-4 flex justify-between items-center ${highlightClass}">
-                <div>
-                    <p class="font-semibold text-gray-800">${ceo.ceo}</p>
-                    <p class="text-xs text-gray-500">${ceo.company}</p>
-                </div>
-                <p class="${fontClass} font-bold text-lg text-right ${isBest ? 'text-green-700' : 'text-gray-900'}">
-                    ${metric.format(value)}
-                </p>
-            </div>`;
+            if (isMobile) {
+                html += `<div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"><div class="px-4 py-3 bg-gray-50 border-b"><h3 class="font-bold text-gray-800">${metric.label}</h3></div><div class="divide-y divide-gray-200">`;
+            } else {
+                html += `<tr class="bg-white border-b"><th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap sticky left-0 bg-white border-r z-10">${metric.label}</th>`;
+            }
+
+            selectedCeos.forEach(ceo => {
+                const rawValue = ceo[metric.key];
+                const comparableValue = getComparableValue(ceo);
+                const isBest = comparableValue === bestValue;
+                const fontClass = metric.label === 'AlphaScore' ? 'font-orbitron' : '';
+
+                if (isMobile) {
+                    const highlightClass = isBest ? 'bg-green-50' : '';
+                    html += `<div class="p-4 flex justify-between items-center ${highlightClass}"><div><p class="font-semibold text-gray-800">${ceo.ceo}</p><p class="text-xs text-gray-500">${ceo.company}</p></div><p class="${fontClass} font-bold text-lg text-right ${isBest ? 'text-green-700' : 'text-gray-900'}">${metric.format(rawValue)}</p></div>`;
+                } else {
+                    const highlightClass = isBest ? 'bg-green-100 font-bold text-green-700' : '';
+                    html += `<td class="px-6 py-4 ${highlightClass} ${fontClass}">${metric.format(rawValue)}</td>`;
+                }
+            });
+
+            if (isMobile) {
+                html += '</div></div>';
+            } else {
+                html += `</tr>`;
+            }
         });
-       
-        cardHTML += '</div></div>';
-    });
-    cardHTML += '</div>';
-    comparisonCardContainer.innerHTML = cardHTML;
+
+        if (isMobile) {
+            html += '</div>';
+        } else {
+            html += `</tbody></table>`;
+        }
+        return html;
+    };
+
+    // --- RENDER BOTH VIEWS ---
+    comparisonTableContainer.innerHTML = renderLogic(false); // Render desktop table
+    comparisonCardContainer.innerHTML = renderLogic(true); // Render mobile cards
 }
 
 
@@ -354,6 +347,10 @@ export function updateComparisonTray(comparisonSet) {
               </button>
             </span>`;
     });
+    // Add a clear all button if there's more than one CEO selected
+    if (comparisonSet.size > 1) {
+        tickerHTML += `<button id="clearCompareBtn" class="text-xs text-blue-600 hover:underline ml-3" title="Clear all selections">Clear All</button>`;
+    }
     trayTickers.innerHTML = tickerHTML;
     document.getElementById("comparisonTray").classList.remove('hidden');
   } else {
