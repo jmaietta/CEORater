@@ -314,6 +314,7 @@ export function renderComparisonModal(master, comparisonSet) {
             const value = ceo[metric.key];
             const isBest = value === bestValue;
             const highlightClass = isBest ? 'bg-green-50' : '';
+            const fontClass = metric.label === 'AlphaScore' ? 'font-orbitron' : '';
             
             cardHTML += `<div class="p-4 flex justify-between items-center ${highlightClass}">
                 <div>
