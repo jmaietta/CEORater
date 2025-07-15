@@ -88,14 +88,14 @@
 
     <!-- Filters and Main Content Section -->
     <main class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 items-center">
-        <input id="searchInput" type="text" placeholder="Search by CEO, Ticker, or Co." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
-        <select id="founderFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-4 items-center">
+        <input id="searchInput" type="text" placeholder="Search by CEO, Ticker, or Co." class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
+        <select id="founderFilter" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
           <option value="">Founder & Non-Founder CEOs</option>
           <option value="Y">Founder CEOs</option>
           <option value="N">Non-Founder CEOs</option>
         </select>
-        <select id="sortControl" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white">
+        <select id="sortControl" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
           <option value="alphaScore-desc">Sort: AlphaScore ↓</option>
           <option value="alphaScore-asc">Sort: AlphaScore ↑</option>
           <option value="tsrAlpha-desc">TSR Alpha ↓</option>
@@ -115,7 +115,8 @@
           <option value="company-asc">Company A‑Z</option>
           <option value="company-desc">Company Z‑A</option>
         </select>
-        <select id="industryFilter" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white"></select>
+        <select id="industryFilter" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"></select>
+        <select id="sectorFilter" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"></select>
       </div>
 
       <div class="flex justify-end mb-4">
