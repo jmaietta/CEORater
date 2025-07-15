@@ -314,15 +314,13 @@ export function renderComparisonModal(master, comparisonSet) {
             const value = ceo[metric.key];
             const isBest = value === bestValue;
             const highlightClass = isBest ? 'bg-green-50' : '';
-            // 1. This line defines the font class variable
-            const fontClass = metric.label === 'AlphaScore' ? 'font-orbitron' : ''; 
+            const fontClass = metric.label === 'AlphaScore' ? 'font-orbitron' : '';
             
             cardHTML += `<div class="p-4 flex justify-between items-center ${highlightClass}">
                 <div>
                     <p class="font-semibold text-gray-800">${ceo.ceo}</p>
                     <p class="text-xs text-gray-500">${ceo.company}</p>
                 </div>
-                {/* 2. The variable is used here to add the class to the paragraph tag */}
                 <p class="${fontClass} font-bold text-lg text-right ${isBest ? 'text-green-700' : 'text-gray-900'}">
                     ${metric.format(value)}
                 </p>
@@ -334,6 +332,7 @@ export function renderComparisonModal(master, comparisonSet) {
     cardHTML += '</div>';
     comparisonCardContainer.innerHTML = cardHTML;
 }
+
 
 /**
  * Updates the comparison tray at the bottom of the screen.
