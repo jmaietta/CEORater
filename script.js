@@ -149,7 +149,7 @@ function refreshView() {
 }
 
 function applyFilters() {
-  const term = searchInput.value.toLowerCase();
+  const term = searchInput.value.trim().toLowerCase();
   const ind = industryFilter.value;
   const sec = sectorFilter.value;
   const founder = founderFilter.value;
