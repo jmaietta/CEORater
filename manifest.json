@@ -4,10 +4,17 @@
   "description": "NASDAQ 100 CEO Performance & Compensation Analytics",
   "id": "/?source=pwa",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4338ca",
   "orientation": "any",
+  "lang": "en-US",
+  "categories": [
+    "business",
+    "finance",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "android-chrome-192x192.png",
