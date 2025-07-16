@@ -1,10 +1,10 @@
 // service-worker.js
 
 // Define a name for the cache
-const CACHE_NAME = 'ceorater-cache-v1';
+const CACHE_NAME = 'ceorater-cache-v2'; // Incremented cache version
 
-// List all the files that should be cached
-const urlsToCache = [
+// List only the essential local files that make up the app shell
+const urlsToCacheOnInstall = [
   '/',
   'index.html',
   'style.css',
@@ -18,42 +18,39 @@ const urlsToCache = [
   'favicon-16x16.png',
   'android-chrome-192x192.png',
   'android-chrome-512x512.png',
-  'manifest.json',
-  'https://cdn.tailwindcss.com',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap',
-  'https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js'
+  'manifest.json'
 ];
 
 // --- EVENT LISTENERS ---
 
-// 1. Install Event: Caches all the essential files.
+// 1. Install Event: Caches the core app shell.
 self.addEventListener('install', event => {
-  // Perform install steps
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
+        console.log('Opened cache and caching app shell');
+        return cache.addAll(urlsToCacheOnInstall);
       })
   );
 });
 
-// 2. Fetch Event: Intercepts network requests and serves cached files if available.
+// 2. Fetch Event: Implements a "Network falling back to cache" strategy.
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response from the cache
-        if (response) {
-          return response;
-        }
-
-        // Not in cache - fetch from the network
-        return fetch(event.request);
-      }
-    )
+    // Try to fetch from the network first
+    fetch(event.request)
+      .then(networkResponse => {
+        // If the fetch is successful, cache the new response and return it
+        return caches.open(CACHE_NAME)
+          .then(cache => {
+            cache.put(event.request, networkResponse.clone());
+            return networkResponse;
+          });
+      })
+      .catch(() => {
+        // If the network fetch fails (e.g., offline), try to get it from the cache
+        return caches.match(event.request);
+      })
   );
 });
 
@@ -64,7 +61,9 @@ self.addEventListener('activate', event => {
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
+          // If the cache name is not in our whitelist, delete it
           if (cacheWhitelist.indexOf(cacheName) === -1) {
+            console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
