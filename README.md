@@ -1,5 +1,3 @@
----
-
 # CEORater
 
 **CEORater** is a web-based dashboard that ranks and analyzes NASDAQ-100 CEOs based primarily on Total Shareholder Return (TSR) performance vs. the benchmark (QQQ), as well as CEO compensation metrics.
