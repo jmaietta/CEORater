@@ -4,13 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CEORater</title>
+  
+  <!-- Favicon and PWA Icons -->
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#4338ca">
-  
+
+  <!-- PWA Theme Color -->
+  <meta name="theme-color" content="#4f46e5">
+
+  <!-- Open Graph Meta Tags -->
   <meta property="og:title" content="CEORater">
   <meta property="og:description" content="NASDAQ 100 CEO Performance & Compensation Analytics" />
   <meta property="og:image" content="https://www.ceorater.com/android-chrome-512x512.png" />
@@ -43,7 +47,6 @@
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans">
 
-  <!-- ALL YOUR EXISTING BODY CONTENT GOES HERE -->
   <header class="bg-white shadow-md sticky top-0 z-30">
     <div class="container mx-auto px-4">
       <div class="flex justify-between items-center py-3">
@@ -145,15 +148,17 @@
       </div>
     </main>
 
-    <footer class="text-center mt-8 text-sm text-gray-500">
-      <p class="mb-2">
-        <a href="/methodology.html" class="text-blue-600 hover:underline">Our Methodology</a>
-      </p>
-      <p>CEORater 2025. A TEK2day Holdings company.</p>
+    <footer class="text-center mt-8 py-8 border-t text-sm text-gray-500">
+        <p class="mb-2">
+            <a href="/methodology.html" class="text-blue-600 hover:underline">Our Methodology</a> | 
+            <a href="/privacy.html" class="text-blue-600 hover:underline">Privacy Policy</a>
+        </p>
+        <p>CEORater 2025. A TEK2day Holdings company.</p>
     </footer>
     
   </div>
 
+  <!-- All your modals and other elements remain the same -->
   <div id="loginModal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-lg p-6 w-full max-w-md relative">
       <h2 class="text-xl font-bold mb-4">Sign In to CEORater</h2>
@@ -230,5 +235,6 @@
       });
     }
   </script>
+
 </body>
 </html>
