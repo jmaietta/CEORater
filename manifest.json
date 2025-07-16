@@ -10,11 +10,16 @@
   "theme_color": "#4338ca",
   "orientation": "any",
   "lang": "en-US",
+  "dir": "auto",
   "categories": [
     "business",
     "finance",
     "productivity"
   ],
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "android-chrome-192x192.png",
