@@ -35,20 +35,29 @@ self.addEventListener('install', event => {
 });
 
 // 2. Fetch Event: Implements a "Network falling back to cache" strategy.
+//    **MODIFIED** to only cache GET requests.
 self.addEventListener('fetch', event => {
   event.respondWith(
     // Try to fetch from the network first
     fetch(event.request)
       .then(networkResponse => {
-        // If the fetch is successful, cache the new response and return it
-        return caches.open(CACHE_NAME)
-          .then(cache => {
-            cache.put(event.request, networkResponse.clone());
-            return networkResponse;
-          });
+        // If the fetch is successful, we may cache the response.
+        // **Only cache GET requests.** POST, PUT, etc., are not cacheable.
+        if (event.request.method === 'GET') {
+          // Clone the response because a response can only be consumed once.
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME)
+            .then(cache => {
+              // Put the cloned response in the cache.
+              cache.put(event.request, responseToCache);
+            });
+        }
+        // Return the original network response to the browser.
+        return networkResponse;
       })
       .catch(() => {
-        // If the network fetch fails (e.g., offline), try to get it from the cache
+        // If the network fetch fails (e.g., offline), try to get it from the cache.
+        // This will only succeed for previously cached GET requests.
         return caches.match(event.request);
       })
   );
