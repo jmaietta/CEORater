@@ -19,7 +19,6 @@ const errorMessage = $("error-message");
 const loginBtn = $("loginBtn");
 const logoutBtn = $("logoutBtn");
 const userEmail = $("userEmail");
-const watchlistBtn = $("watchlistBtn");
 const watchlistCount = $("watchlistCount");
 const loginModal = $("loginModal");
 const closeLoginModalBtn = $("closeLoginModalBtn");
@@ -68,7 +67,7 @@ function handleAuthStateChange(user) {
     loginBtn.classList.add('hidden');
     logoutBtn.classList.remove('hidden');
     userEmail.classList.remove('hidden');
-    watchlistBtn.classList.remove('hidden');
+    // We no longer need the separate watchlistBtn, so we can remove references to it here.
     userEmail.textContent = user.email;
     auth.loadUserWatchlist(user.uid).then(watchlist => {
         userWatchlist = watchlist;
@@ -79,7 +78,6 @@ function handleAuthStateChange(user) {
     loginBtn.classList.remove('hidden');
     logoutBtn.classList.add('hidden');
     userEmail.classList.add('hidden');
-    watchlistBtn.classList.add('hidden');
     userWatchlist.clear();
     comparisonSet.clear();
     ui.updateComparisonTray(comparisonSet);
@@ -123,7 +121,15 @@ async function toggleWatchlist(ticker) {
 }
 
 function updateWatchlistCount() {
-  watchlistCount.textContent = userWatchlist.size;
+    // Also show/hide the badge if the count is > 0
+    if (watchlistCount) {
+        if (userWatchlist.size > 0) {
+            watchlistCount.textContent = userWatchlist.size;
+            watchlistCount.classList.remove('hidden');
+        } else {
+            watchlistCount.classList.add('hidden');
+        }
+    }
 }
 
 function switchToAllView() {
@@ -224,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   allCeosTab.addEventListener('click', switchToAllView);
   watchlistTab.addEventListener('click', switchToWatchlistView);
-  watchlistBtn.addEventListener('click', switchToWatchlistView);
+  // The event listener for watchlistBtn is removed
 
   loginBtn.addEventListener('click', () => loginModal.classList.remove('hidden'));
   closeLoginModalBtn.addEventListener('click', () => loginModal.classList.add('hidden'));
