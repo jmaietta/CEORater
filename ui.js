@@ -109,7 +109,19 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
     
     const alphaScoreValue = c.alphaScore * 100;
     const alphaScoreColor = 'text-blue-600';
-    const quartileBadge = c.quartile ? `<div class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full ${quartileColorClass.replace('border', 'bg').replace('-500', '-100')} ${quartileColorClass.replace('border', 'text')}">${c.quartile}</div>` : '';
+    
+    // Enhanced quartile badge with risk indicators and tooltips
+    const getQuartileTooltip = (quartile) => {
+        switch(quartile) {
+            case 'Bottom Quartile': return 'Performance risk indicator - historically underperforms market';
+            case '2nd Quartile': return 'Second quartile performance ranking - below market average';
+            case '3rd Quartile': return 'Third quartile performance ranking - above market average';
+            case 'Top Quartile': return 'Top quartile performance ranking - superior market performance';
+            default: return quartile + ' performance ranking';
+        }
+    };
+
+    const quartileBadge = c.quartile ? `<div class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full ${quartileColorClass.replace('border', 'bg').replace('-500', '-100')} ${quartileColorClass.replace('border', 'text')}" title="${getQuartileTooltip(c.quartile)}">${c.quartile === 'Bottom Quartile' ? '⚠ ' : ''}${c.quartile}</div>` : '';
 
     const tsrAlphaCol = c.tsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
     const avgAlphaCol = c.avgAnnualTsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
