@@ -49,15 +49,48 @@ function parseRows(txt) {
 }
 
 /**
- * Fetches data from the configured Google Sheet.
+ * Fetches data from the configured Google Sheet with 20-minute caching.
  * @returns {Promise<Array<Object>>} A promise that resolves to an array of CEO data objects.
  */
 export async function fetchData() {
-  // Append a timestamp to the URL to prevent caching issues.
-  const response = await fetch(sheetUrl + `&t=${Date.now()}`);
-  if (!response.ok) {
-    throw new Error('Could not fetch data from Google Sheets.');
+  const CACHE_TIME = 20 * 60 * 1000; // 20 minutes in milliseconds
+  const lastFetch = localStorage.getItem('lastUpdate');
+  const cachedData = localStorage.getItem('ceoData');
+  
+  // If data is less than 20 minutes old, use cache
+  if (cachedData && lastFetch && (Date.now() - parseInt(lastFetch) < CACHE_TIME)) {
+    console.log('Using cached data (less than 20 minutes old)');
+    return JSON.parse(cachedData);
   }
-  const text = await response.text();
-  return parseRows(text);
+  
+  console.log('Fetching fresh data from Google Sheets...');
+  
+  try {
+    // Append a timestamp to the URL to prevent caching issues.
+    const response = await fetch(sheetUrl + `&t=${Date.now()}`);
+    if (!response.ok) {
+      throw new Error('Could not fetch data from Google Sheets.');
+    }
+    const text = await response.text();
+    const freshData = parseRows(text);
+    
+    // Save fresh data to cache
+    localStorage.setItem('ceoData', JSON.stringify(freshData));
+    localStorage.setItem('lastUpdate', Date.now().toString());
+    
+    console.log('Fresh data cached successfully');
+    return freshData;
+    
+  } catch (error) {
+    console.error('Error fetching fresh data:', error);
+    
+    // If we have cached data (even if older than 20 minutes), use it as fallback
+    if (cachedData) {
+      console.log('Using cached data as fallback due to fetch error');
+      return JSON.parse(cachedData);
+    }
+    
+    // If no cached data and fetch failed, throw the error
+    throw error;
+  }
 }
