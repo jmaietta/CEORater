@@ -2,7 +2,7 @@
 
 // Your Firebase configuration from the project you just created
 const firebaseConfig = {
-  apiKey: "AIzaSyDVH0M02AWi_9mdhnd-EMHhXUDhHOelsrU",
+  apiKey: "     ",
   authDomain: "ceorater-test.firebaseapp.com",
   projectId: "ceorater-test",
   storageBucket: "ceorater-test.firebasestorage.app",
