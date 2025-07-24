@@ -1,9 +1,19 @@
+// firebase-config.js - Your Firebase configuration
+
+// Your Firebase configuration from the project you just created
 const firebaseConfig = {
-  apiKey: "AIzaSyDxHijS3cGbVq-mHFc5SfdgyqnbKUJarYQ",
-  authDomain: "ceorater-dacef.firebaseapp.com",
-  projectId: "ceorater-dacef",
-  storageBucket: "ceorater-dacef.firebasestorage.app",
-  messagingSenderId: "772315733470",
-  appId: "1:772315733470:web:990b30df47ba3fc8fc914f",
-  measurementId: "G-NRNZ6WZNE8"
+  apiKey: "AIzaSyDVH0M02AWi_9mdhnd-EMHhXUDhHOelsrU",
+  authDomain: "ceorater-test.firebaseapp.com",
+  projectId: "ceorater-test",
+  storageBucket: "ceorater-test.firebasestorage.app",
+  messagingSenderId: "847610982404",
+  appId: "1:847610982404:web:2d710a20fc3449beca0551"
 };
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+
+// Get Finnhub API key from environment variable (set in Render dashboard)
+window.FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || '';
+
+console.log('Firebase initialized for CEORater test');
