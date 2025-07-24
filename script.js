@@ -1,4 +1,4 @@
-import { fetchData } from './GoogleSheet.js';
+import { fetchData } from './FirebaseService.js';
 import * as ui from './ui.js';
 import * as auth from './auth.js';
 
