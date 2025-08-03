@@ -57,9 +57,9 @@ export async function fetchData() {
   const lastFetch = localStorage.getItem('lastUpdate');
   const cachedData = localStorage.getItem('ceoData');
   
-  // If data is less than 20 minutes old, use cache
+  // If data is less than 60 minutes old, use cache
   if (cachedData && lastFetch && (Date.now() - parseInt(lastFetch) < CACHE_TIME)) {
-    console.log('Using cached data (less than 20 minutes old)');
+    console.log('Using cached data (less than 60 minutes old)');
     return JSON.parse(cachedData);
   }
   
@@ -84,7 +84,7 @@ export async function fetchData() {
   } catch (error) {
     console.error('Error fetching fresh data:', error);
     
-    // If we have cached data (even if older than 20 minutes), use it as fallback
+    // If we have cached data (even if older than 60 minutes), use it as fallback
     if (cachedData) {
       console.log('Using cached data as fallback due to fetch error');
       return JSON.parse(cachedData);
