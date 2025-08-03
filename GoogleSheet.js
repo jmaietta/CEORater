@@ -49,11 +49,11 @@ function parseRows(txt) {
 }
 
 /**
- * Fetches data from the configured Google Sheet with 20-minute caching.
+ * Fetches data from the configured Google Sheet with 60-minute caching.
  * @returns {Promise<Array<Object>>} A promise that resolves to an array of CEO data objects.
  */
 export async function fetchData() {
-  const CACHE_TIME = 20 * 60 * 1000; // 20 minutes in milliseconds
+  const CACHE_TIME = 60 * 60 * 1000; // 60 minutes in milliseconds
   const lastFetch = localStorage.getItem('lastUpdate');
   const cachedData = localStorage.getItem('ceoData');
   
