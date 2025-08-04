@@ -1,7 +1,7 @@
 // GoogleSheet.js
 
 // The URL for your new, secure Cloud Run service.
-const serviceUrl = 'https://get-ceo-data-847610982404.us-east4.run.app';
+const serviceUrl = 'https://ceorater-backend-697273542938.us-south1.run.app';
 
 /**
  * Fetches data from the secure Cloud Run service.
