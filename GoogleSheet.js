@@ -1,11 +1,12 @@
-// GoogleSheet.js
+// GoogleSheet.js (Test Environment with Caching)
 
-// The URL for your new, secure Cloud Run service.
+// The URL for your secure Cloud Run service.
 const serviceUrl = 'https://ceorater-backend-697273542938.us-south1.run.app';
 
 /**
- * Fetches data from the secure Cloud Run service.
- * @returns {Promise<Array<Object>>} A promise that resolves to an array of CEO data objects.
+ * Parses the array data from Cloud Run service into structured objects.
+ * @param {Array} data The array data from Cloud Run service.
+ * @returns {Array<Object>} An array of CEO data objects.
  */
 function parseRows(data) {
   if (!data) return [];
@@ -40,20 +41,49 @@ function parseRows(data) {
   }));
 }
 
-
+/**
+ * Fetches data from the secure Cloud Run service with 60-minute caching.
+ * @returns {Promise<Array<Object>>} A promise that resolves to an array of CEO data objects.
+ */
 export async function fetchData() {
+  const CACHE_TIME = 60 * 60 * 1000; // 60 minutes in milliseconds
+  const lastFetch = localStorage.getItem('lastUpdate');
+  const cachedData = localStorage.getItem('ceoData');
+  
+  // If data is less than 60 minutes old, use cache
+  if (cachedData && lastFetch && (Date.now() - parseInt(lastFetch) < CACHE_TIME)) {
+    console.log('Using cached data (less than 60 minutes old)');
+    return JSON.parse(cachedData);
+  }
+  
+  console.log('Fetching fresh data from Cloud Run...');
+  
   try {
-    const response = await fetch(serviceUrl);
+    // Append a timestamp to the URL to prevent caching issues.
+    const response = await fetch(serviceUrl + `?t=${Date.now()}`);
     if (!response.ok) {
-      throw new Error('Could not fetch data from the service.');
+      throw new Error(`Could not fetch data from the service. Status: ${response.status}`);
     }
     const jsonData = await response.json();
-    // We now need to parse the array data, since our function returns a simple array of arrays.
-    return parseRows(jsonData);
-
+    const freshData = parseRows(jsonData);
+    
+    // Save fresh data to cache
+    localStorage.setItem('ceoData', JSON.stringify(freshData));
+    localStorage.setItem('lastUpdate', Date.now().toString());
+    
+    console.log('Fresh data cached successfully');
+    return freshData;
+    
   } catch (error) {
     console.error('Error fetching fresh data:', error);
-    // You might want to add fallback logic here if needed.
+    
+    // If we have cached data (even if older than 60 minutes), use it as fallback
+    if (cachedData) {
+      console.log('Using cached data as fallback due to fetch error');
+      return JSON.parse(cachedData);
+    }
+    
+    // If no cached data and fetch failed, throw the error
     throw error;
   }
 }
