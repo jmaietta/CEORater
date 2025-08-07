@@ -1,4 +1,4 @@
-// GoogleSheet.js (Production Environment with Caching)
+// GoogleSheet.js (Test Environment with Caching)
 
 // The URL for your secure Cloud Run service.
 const serviceUrl = 'https://ceorater-backend-697273542938.us-south1.run.app';
@@ -47,8 +47,8 @@ function parseRows(data) {
  */
 export async function fetchData() {
   const CACHE_TIME = 60 * 60 * 1000; // 60 minutes in milliseconds
-  const lastFetch = localStorage.getItem('lastUpdate_v2');
-  const cachedData = localStorage.getItem('ceoData_v2');
+  const lastFetch = localStorage.getItem('lastUpdate');
+  const cachedData = localStorage.getItem('ceoData');
   
   // If data is less than 60 minutes old, use cache
   if (cachedData && lastFetch && (Date.now() - parseInt(lastFetch) < CACHE_TIME)) {
@@ -68,8 +68,8 @@ export async function fetchData() {
     const freshData = parseRows(jsonData);
     
     // Save fresh data to cache
-    localStorage.setItem('ceoData_v2', JSON.stringify(freshData));
-    localStorage.setItem('lastUpdate_v2', Date.now().toString());
+    localStorage.setItem('ceoData', JSON.stringify(freshData));
+    localStorage.setItem('lastUpdate', Date.now().toString());
     
     console.log('Fresh data cached successfully');
     return freshData;
