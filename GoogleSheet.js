@@ -1,7 +1,7 @@
 // GoogleSheet.js (Test Environment with Caching)
 
 // The URL for your secure Cloud Run service.
-const serviceUrl = 'https://ceorater-backend-697273542938.us-south1.run.app';
+const serviceUrl = 'https://get-ceo-data-847610982404.us-east4.run.app';
 
 /**
  * Parses the array data from Cloud Run service into structured objects.
