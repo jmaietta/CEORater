@@ -60,7 +60,7 @@ export function updateStatCards(masterData) {
     // Calculate Avg. Founder AlphaScore
     const founderAlphaScores = masterData
         .filter(c => c.founder === 'Y')
-        .map(c => c.alphaScore * 100)
+        .map(c => c.alphaScore)
         .filter(v => typeof v === 'number');
     const avgFounderAlphaScore = calculateAverage(founderAlphaScores);
     avgFounderAlphaScoreStat.textContent = Math.round(avgFounderAlphaScore);
@@ -107,7 +107,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
 
     card.className = `ceo-card relative bg-white border-l-4 ${quartileColorClass} rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer flex flex-col justify-between`;
     
-    const alphaScoreValue = c.alphaScore * 100;
+    const alphaScoreValue = c.alphaScore;
     const alphaScoreColor = 'text-blue-600';
     const quartileBadge = c.quartile ? `<div class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full ${quartileColorClass.replace('border', 'bg').replace('-500', '-100')} ${quartileColorClass.replace('border', 'text')}">${c.quartile}</div>` : '';
 
@@ -207,7 +207,7 @@ export function renderDetailModal(ceoData) {
       ${c.ceo}
       ${founder}
     </h3>
-    <p class="text-sm text-gray-600 font-bold mt-1">${c.company} (${c.ticker}) <span class="text-gray-500 font-bold">&bull; Market Cap: ${formatMarketCap(c.marketCap)}</span></p>`;
+    <p class="text-sm text-gray-600 font-bold mt-1">${c.company} (${c.ticker})</p>`;
 
   const tsrCol = c.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
   const avgCol = c.avgAnnualTsr >= 0 ? 'text-green-600' : 'text-red-600';
@@ -216,7 +216,7 @@ export function renderDetailModal(ceoData) {
   
   modalBody.innerHTML = `
     <div class="space-y-2 text-sm">
-      <div class="flex justify-between"><span class="text-gray-500">AlphaScore</span><span class="font-orbitron font-bold text-lg text-blue-600">${Math.round(c.alphaScore * 100)}</span></div>
+      <div class="flex justify-between"><span class="text-gray-500">AlphaScore</span><span class="font-orbitron font-bold text-lg text-blue-600">${Math.round(c.alphaScore)}</span></div>
       <div class="flex justify-between pb-2 mb-2 border-b"><span class="text-gray-500">Quartile</span><span class="font-bold">${c.quartile}</span></div>
 
       <div class="flex justify-between"><span class="text-gray-500">TSR During Tenure</span><span class="font-bold ${tsrCol}">${pct(c.tsrValue)}</span></div>
@@ -248,11 +248,10 @@ export function renderComparisonModal(master, comparisonSet) {
     if (selectedCeos.length === 0) return;
 
     const metrics = [
-        { label: 'AlphaScore', key: 'alphaScore', format: v => Math.round(v * 100), higherIsBetter: true },
+        { label: 'AlphaScore', key: 'alphaScore', format: v => Math.round(v), higherIsBetter: true },
         { label: 'Quartile', key: 'quartile', format: v => v, higherIsBetter: null },
         { label: 'Ticker', key: 'ticker', format: v => v, higherIsBetter: null },
         { label: 'Founder', key: 'founder', format: v => (v?.toUpperCase() === 'Y' ? 'Yes' : 'No'), higherIsBetter: null },
-        { label: 'Market Cap', key: 'marketCap', format: formatMarketCap, higherIsBetter: true },
         { label: 'Tenure (Yrs)', key: 'tenure', format: v => v.toFixed(1), higherIsBetter: true },
         { label: 'TSR During Tenure', key: 'tsrValue', format: pct, higherIsBetter: true },
         { label: 'Avg Annual TSR', key: 'avgAnnualTsr', format: pct, higherIsBetter: true },
