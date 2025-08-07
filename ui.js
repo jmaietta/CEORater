@@ -207,7 +207,7 @@ export function renderDetailModal(ceoData) {
       ${c.ceo}
       ${founder}
     </h3>
-    <p class="text-sm text-gray-600 font-bold mt-1">${c.company} (${c.ticker}) <span class="text-gray-500 font-bold">&bull; Market Cap: ${formatMarketCap(c.marketCap)}</span></p>`;
+    <p class="text-sm text-gray-600 font-bold mt-1">${c.company} (${c.ticker})</p>`;
 
   const tsrCol = c.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
   const avgCol = c.avgAnnualTsr >= 0 ? 'text-green-600' : 'text-red-600';
@@ -252,7 +252,6 @@ export function renderComparisonModal(master, comparisonSet) {
         { label: 'Quartile', key: 'quartile', format: v => v, higherIsBetter: null },
         { label: 'Ticker', key: 'ticker', format: v => v, higherIsBetter: null },
         { label: 'Founder', key: 'founder', format: v => (v?.toUpperCase() === 'Y' ? 'Yes' : 'No'), higherIsBetter: null },
-        { label: 'Market Cap', key: 'marketCap', format: formatMarketCap, higherIsBetter: true },
         { label: 'Tenure (Yrs)', key: 'tenure', format: v => v.toFixed(1), higherIsBetter: true },
         { label: 'TSR During Tenure', key: 'tsrValue', format: pct, higherIsBetter: true },
         { label: 'Avg Annual TSR', key: 'avgAnnualTsr', format: pct, higherIsBetter: true },
