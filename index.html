@@ -50,6 +50,13 @@
       }
     }
   </script>
+
+  <script>
+    // Start fetching data immediately, before anything else loads
+    window.dataPromise = fetch('https://ceorater-backend-697273542938.us-south1.run.app/api/data')
+      .then(r => r.json())
+      .catch(err => console.error('Early fetch failed:', err));
+  </script>
   
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
@@ -253,6 +260,7 @@
 
 </body>
 </html>
+
 
 
 
