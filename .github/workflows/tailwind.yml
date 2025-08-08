@@ -1,0 +1,14 @@
+name: Build Tailwind CSS
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build Tailwind
+        run: |
+          npx tailwindcss -i input.css -o style-tailwind.css --minify
+      - uses: EndBug/add-and-commit@v7
+        with:
+          add: 'style-tailwind.css'
+          message: 'Build Tailwind CSS'
