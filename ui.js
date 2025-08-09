@@ -96,6 +96,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
   data.forEach(c => {
     const card = document.createElement('div');
     card.dataset.ticker = c.ticker; 
+    card.dataset.ceoName = c.ceo;  
 
     let quartileColorClass = 'border-gray-200';
     switch(c.quartile) {
