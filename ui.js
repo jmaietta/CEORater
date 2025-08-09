@@ -99,10 +99,10 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
 
     let quartileColorClass = 'border-gray-200';
     switch(c.quartile) {
-        case 'Top Quartile': quartileColorClass = 'border-green-500'; break;
-        case '3rd Quartile': quartileColorClass = 'border-yellow-500'; break;
-        case '2nd Quartile': quartileColorClass = 'border-orange-500'; break;
-        case 'Bottom Quartile': quartileColorClass = 'border-red-500'; break;
+        case 'Top Quartile': quartileColorClass = 'border-emerald-600'; break;
+        case '3rd Quartile': quartileColorClass = 'border-blue-500'; break;
+        case '2nd Quartile': quartileColorClass = 'border-slate-500'; break;
+        case 'Bottom Quartile': quartileColorClass = 'border-rose-600'; break;
     }
 
     card.className = `ceo-card relative bg-white border-l-4 ${quartileColorClass} rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer flex flex-col justify-between`;
