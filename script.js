@@ -256,7 +256,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const card = e.target.closest('.ceo-card');
       if (card) {
           const ticker = card.dataset.ticker;
-          const ceoData = master.find(c => c.ticker === ticker);
+          const ceoName = card.dataset.ceoName;
+          const ceoData = master.find(c => c.ticker === ticker && c.ceo === ceoName);
           if (ceoData) {
               ui.renderDetailModal(ceoData);
               ceoDetailModal.classList.remove('hidden');
@@ -429,3 +430,4 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') signInEmail.click();
   });
 });
+
