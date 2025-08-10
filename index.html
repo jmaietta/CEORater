@@ -6,9 +6,11 @@
   
   <title>CEORater</title>
 
-  <link rel="preconnect" href="https://ceorater-backend-697273542938.us-south1.run.app">
+  <link rel="preconnect" href="https://ceorater-backend-697273542938.us-south1.run.app" crossorigin>
   <link rel="dns-prefetch" href="https://ceorater-backend-697273542938.us-south1.run.app">
   
+  <!-- Preload favicon -->
+  <link rel="preload" href="favicon-32x32.png" as="image" type="image/png">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -65,10 +67,6 @@
       .then(r => r.json())
       .catch(err => console.error('Early fetch failed:', err));
   </script>
-  
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"></script>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
   
   <link rel="stylesheet" href="style.css">
 </head>
@@ -249,30 +247,27 @@
     </div>
   </div>
 
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
   <script defer src="firebase-config.js"></script>
   <script type="module" src="script.js"></script>
 
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js')
-          .then(registration => {
-            console.log('ServiceWorker registration successful with scope: ', registration.scope);
-          })
-          .catch(error => {
-            console.log('ServiceWorker registration failed: ', error);
-          });
+        requestIdleCallback(() => {
+          navigator.serviceWorker.register('/service-worker.js')
+            .then(registration => {
+              console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            })
+            .catch(error => {
+              console.log('ServiceWorker registration failed: ', error);
+            });
+        });
       });
     }
   </script>
 
 </body>
 </html>
-
-
-
-
-
-
-
-
