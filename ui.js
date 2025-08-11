@@ -240,23 +240,38 @@ export function renderDetailModal(ceoData) {
     </div>
 
     <!-- Additional Info -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div class="grid grid-cols-1 gap-8">
       <!-- Compensation -->
       <div class="bg-gray-50 rounded-lg p-6">
-        <h4 class="text-lg font-bold text-gray-900 mb-4">Compensation</h4>
-        <div class="space-y-3">
-          <div class="flex justify-between items-center py-2"><span class="text-sm text-gray-600">Total Compensation</span><span class="font-bold">${money(c.compensation, 1)}M</span></div>
-          <div class="flex justify-between items-center py-2 border-t border-gray-200"><span class="text-sm text-gray-600">Cost / 1% Avg TSR</span><span class="font-bold">${money(c.compensationCost, 3)}M</span></div>
+        <h4 class="text-lg font-bold text-gray-900 mb-6">Compensation</h4>
+        <div class="space-y-4">
+          <div>
+            <p class="text-xs text-gray-600 uppercase tracking-wider mb-2">Total Compensation</p>
+            <p class="font-bold text-xl text-gray-900">$${money(c.compensation, 1)}M</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-600 uppercase tracking-wider mb-2">Cost / 1% Avg TSR</p>
+            <p class="font-bold text-xl text-gray-900">$${money(c.compensationCost, 3)}M</p>
+          </div>
         </div>
       </div>
 
       <!-- Company Details -->
       <div class="bg-gray-50 rounded-lg p-6">
-        <h4 class="text-lg font-bold text-gray-900 mb-4">Company Details</h4>
-        <div class="space-y-3">
-          <div class="flex justify-between items-center py-2"><span class="text-sm text-gray-600">Tenure</span><span class="font-bold">${c.tenure.toFixed(1)} years</span></div>
-          <div class="flex justify-between items-center py-2 border-t border-gray-200"><span class="text-sm text-gray-600 flex-shrink-0">Industry</span><span class="font-bold text-right text-sm ml-4 truncate">${c.industry || 'N/A'}</span></div>
-          <div class="flex justify-between items-center py-2 border-t border-gray-200"><span class="text-sm text-gray-600 flex-shrink-0">Sector</span><span class="font-bold text-right text-sm ml-4">${c.sector || 'N/A'}</span></div>
+        <h4 class="text-lg font-bold text-gray-900 mb-6">Company Details</h4>
+        <div class="space-y-4">
+          <div>
+            <p class="text-xs text-gray-600 uppercase tracking-wider mb-2">Tenure</p>
+            <p class="font-bold text-xl text-gray-900">${c.tenure.toFixed(1)} years</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-600 uppercase tracking-wider mb-2">Industry</p>
+            <p class="font-bold text-xl text-gray-900 truncate" title="${c.industry || 'N/A'}">${c.industry || 'N/A'}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-600 uppercase tracking-wider mb-2">Sector</p>
+            <p class="font-bold text-xl text-gray-900 truncate" title="${c.sector || 'N/A'}">${c.sector || 'N/A'}</p>
+          </div>
         </div>
       </div>
     </div>`;
