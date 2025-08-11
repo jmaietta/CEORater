@@ -1,3 +1,4 @@
+
 import { pct, money, formatMarketCap } from './utils.js';
 
 // Get references to DOM elements that the UI functions will manipulate.
@@ -213,16 +214,13 @@ export function renderDetailModal(ceoData) {
   const avgAlphaCol = c.avgAnnualTsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
   
   modalBody.innerHTML = `
-    <!-- Key Scores Section -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-      <!-- AlphaScore Card -->
       <div class="bg-blue-50 rounded-lg p-6 text-center border border-blue-200">
         <h4 class="text-sm font-semibold text-blue-800 uppercase tracking-wider mb-3">AlphaScore</h4>
         <div class="font-orbitron font-bold text-4xl text-blue-600 mb-2">${Math.round(c.alphaScore)}</div>
         <div class="text-sm text-blue-700">Overall Stock Performance Rating</div>
       </div>
       
-      <!-- CompScore Card -->
       <div class="bg-purple-50 rounded-lg p-6 text-center border border-purple-200">
         <h4 class="text-sm font-semibold text-purple-800 uppercase tracking-wider mb-3">CompScore</h4>
         <div class="font-orbitron font-bold text-4xl text-purple-600 mb-2">${c.compensationScore || 'N/A'}</div>
@@ -230,18 +228,15 @@ export function renderDetailModal(ceoData) {
       </div>
     </div>
 
-    <!-- Performance Data -->
     <div class="space-y-3 text-sm mb-6">
       <h4 class="text-lg font-bold text-gray-900 mb-4">Performance Metrics</h4>
-      <div class="flex justify-between py-2 border-b border-gray-100"><span class="text-gray-500">TSR During Tenure</span><span class="font-bold ${tsrCol}">${pct(c.tsrValue)}</span></div>
-      <div class="flex justify-between py-2 border-b border-gray-100"><span class="text-gray-500">TSR vs. QQQ</span><span class="font-bold ${tsrAlphaCol}">${pct(c.tsrAlpha)}</span></div>
-      <div class="flex justify-between py-2 border-b border-gray-100"><span class="text-gray-500">Avg Annual TSR</span><span class="font-bold ${avgCol}">${pct(c.avgAnnualTsr)}</span></div>
-      <div class="flex justify-between py-2 border-b border-gray-100"><span class="text-gray-500">Avg Annual TSR vs. QQQ</span><span class="font-bold ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</span></div>
+      <div class="flex justify-between items-center py-2 border-b border-gray-100"><span class="text-gray-500">TSR During Tenure</span><span class="font-bold text-xl ${tsrCol}">${pct(c.tsrValue)}</span></div>
+      <div class="flex justify-between items-center py-2 border-b border-gray-100"><span class="text-gray-500">TSR vs. QQQ</span><span class="font-bold text-xl ${tsrAlphaCol}">${pct(c.tsrAlpha)}</span></div>
+      <div class="flex justify-between items-center py-2 border-b border-gray-100"><span class="text-gray-500">Avg Annual TSR</span><span class="font-bold text-xl ${avgCol}">${pct(c.avgAnnualTsr)}</span></div>
+      <div class="flex justify-between items-center py-2 border-b border-gray-100"><span class="text-gray-500">Avg Annual TSR vs. QQQ</span><span class="font-bold text-xl ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</span></div>
     </div>
 
-    <!-- Additional Info -->
     <div class="grid grid-cols-1 gap-8">
-      <!-- Compensation -->
       <div class="bg-gray-50 rounded-lg p-6">
         <h4 class="text-lg font-bold text-gray-900 mb-6">Compensation</h4>
         <div class="space-y-4">
@@ -256,7 +251,6 @@ export function renderDetailModal(ceoData) {
         </div>
       </div>
 
-      <!-- Company Details -->
       <div class="bg-gray-50 rounded-lg p-6">
         <h4 class="text-lg font-bold text-gray-900 mb-6">Company Details</h4>
         <div class="space-y-4">
