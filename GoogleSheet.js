@@ -26,7 +26,8 @@ const FIELDS = {
   TSR_ALPHA: 18,
   AVG_ANNUAL_TSR_ALPHA: 19,
   ALPHA_SCORE: 22,
-  QUARTILE: 24
+  QUARTILE: 24,
+  COMPENSATION_SCORE: 28 
 };
 
 // Pre-compile regex for performance
@@ -99,7 +100,8 @@ function parseRows(data) {
       tsrAlpha: getNumber(row, FIELDS.TSR_ALPHA),
       avgAnnualTsrAlpha: getNumber(row, FIELDS.AVG_ANNUAL_TSR_ALPHA),
       alphaScore: getNumber(row, FIELDS.ALPHA_SCORE),
-      quartile: getString(row, FIELDS.QUARTILE)
+      quartile: getString(row, FIELDS.QUARTILE),
+      compensationScore: getString(row, FIELDS.COMPENSATION_SCORE) 
     };
   }).filter(Boolean); // Remove any null entries from invalid rows
 }
