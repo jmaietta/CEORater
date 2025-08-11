@@ -8,7 +8,7 @@ const modalHeader = document.getElementById("modalHeader");
 const modalBody = document.getElementById("modalBody");
 const modalFooter = document.getElementById("modalFooter");
 const comparisonTableContainer = document.getElementById("comparisonTableContainer");
-const comparisonCardContainer = document.getElementById("comparisonCardContainer"); // New container for mobile
+const comparisonCardContainer = document.getElementById("comparisonCardContainer");
 const comparisonTitle = document.getElementById("comparisonTitle");
 const trayTickers = document.getElementById("trayTickers");
 const industryFilter = document.getElementById("industryFilter");
@@ -19,7 +19,6 @@ const medianTsrStat = document.getElementById("medianTsrStat");
 const avgFounderAlphaScoreStat = document.getElementById("avgFounderAlphaScoreStat");
 const founderCeoStat = document.getElementById("founderCeoStat");
 const medianCompStat = document.getElementById("medianCompStat");
-
 
 /**
  * Calculates the median of a given array of numbers.
@@ -43,7 +42,6 @@ function calculateAverage(arr) {
     const sum = arr.reduce((acc, val) => acc + val, 0);
     return sum / arr.length;
 }
-
 
 /**
  * Calculates and updates the main dashboard stat cards.
@@ -74,7 +72,6 @@ export function updateStatCards(masterData) {
     const medianComp = calculateMedian(compValues);
     medianCompStat.textContent = `$${money(medianComp, 1)}M`;
 }
-
 
 /**
  * Renders the CEO cards in the main view.
@@ -196,7 +193,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
 }
 
 /**
- * Renders the content for the CEO detail modal.
+ * Enhanced CEO Detail Modal - starting from original and making targeted improvements
  * @param {Object} ceoData - The data for the specific CEO to display.
  */
 export function renderDetailModal(ceoData) {
@@ -216,20 +213,52 @@ export function renderDetailModal(ceoData) {
   const avgAlphaCol = c.avgAnnualTsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
   
   modalBody.innerHTML = `
-    <div class="space-y-2 text-sm">
-      <div class="flex justify-between font-bold"><span class="text-gray-500">AlphaScore</span><span class="font-orbitron font-bold text-lg text-blue-600">${Math.round(c.alphaScore)}</span></div>
-      <div class="flex justify-between pb-2 mb-2 border-b"><span class="text-gray-500">Quartile</span><span class="font-bold">${c.quartile}</span></div>
+    <!-- Key Scores Section -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <!-- AlphaScore Card -->
+      <div class="bg-blue-50 rounded-lg p-6 text-center border border-blue-200">
+        <h4 class="text-sm font-semibold text-blue-800 uppercase tracking-wider mb-3">AlphaScore</h4>
+        <div class="font-orbitron font-bold text-4xl text-blue-600 mb-2">${Math.round(c.alphaScore)}</div>
+        <div class="text-sm text-blue-700">Overall Stock Performance Rating</div>
+      </div>
+      
+      <!-- CompScore Card -->
+      <div class="bg-purple-50 rounded-lg p-6 text-center border border-purple-200">
+        <h4 class="text-sm font-semibold text-purple-800 uppercase tracking-wider mb-3">CompScore</h4>
+        <div class="font-orbitron font-bold text-4xl text-purple-600 mb-2">${c.compensationScore || 'N/A'}</div>
+        <div class="text-sm text-purple-700">Compensation Efficiency</div>
+      </div>
+    </div>
 
-      <div class="flex justify-between"><span class="text-gray-500">TSR During Tenure</span><span class="font-bold ${tsrCol}">${pct(c.tsrValue)}</span></div>
-      <div class="flex justify-between"><span class="text-gray-500">TSR vs. QQQ</span><span class="font-bold ${tsrAlphaCol}">${pct(c.tsrAlpha)}</span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Avg Annual TSR</span><span class="font-bold ${avgCol}">${pct(c.avgAnnualTsr)}</span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Avg Annual TSR vs. QQQ</span><span class="font-bold ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</span></div>
-      <div class="flex justify-between border-t mt-2 pt-2"><span class="text-gray-500">CEO Compensation ($MM)</span><span>$${money(c.compensation, 1)}</span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Comp Cost / 1% Avg TSR ($MM)</span><span>$${money(c.compensationCost, 3)}</span></div>
-      <div class="flex justify-between font-bold"><span class="text-gray-500">Compensation Score</span><span>${c.compensationScore || 'N/A'}</span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Tenure (yrs)</span><span>${c.tenure.toFixed(1)}</span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Industry</span><span class="text-right">${c.industry || 'N/A'}</span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Sector</span><span class="text-right">${c.sector || 'N/A'}</span></div>
+    <!-- Performance Data -->
+    <div class="space-y-3 text-sm mb-6">
+      <h4 class="text-lg font-bold text-gray-900 mb-4">Performance Metrics</h4>
+      <div class="flex justify-between py-2 border-b border-gray-100"><span class="text-gray-500">TSR During Tenure</span><span class="font-bold ${tsrCol}">${pct(c.tsrValue)}</span></div>
+      <div class="flex justify-between py-2 border-b border-gray-100"><span class="text-gray-500">TSR vs. QQQ</span><span class="font-bold ${tsrAlphaCol}">${pct(c.tsrAlpha)}</span></div>
+      <div class="flex justify-between py-2 border-b border-gray-100"><span class="text-gray-500">Avg Annual TSR</span><span class="font-bold ${avgCol}">${pct(c.avgAnnualTsr)}</span></div>
+      <div class="flex justify-between py-2 border-b border-gray-100"><span class="text-gray-500">Avg Annual TSR vs. QQQ</span><span class="font-bold ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</span></div>
+    </div>
+
+    <!-- Additional Info -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <!-- Compensation -->
+      <div class="bg-gray-50 rounded-lg p-6">
+        <h4 class="text-lg font-bold text-gray-900 mb-4">Compensation</h4>
+        <div class="space-y-3">
+          <div class="flex justify-between items-center py-2"><span class="text-sm text-gray-600">Total Compensation</span><span class="font-bold">${money(c.compensation, 1)}M</span></div>
+          <div class="flex justify-between items-center py-2 border-t border-gray-200"><span class="text-sm text-gray-600">Cost / 1% Avg TSR</span><span class="font-bold">${money(c.compensationCost, 3)}M</span></div>
+        </div>
+      </div>
+
+      <!-- Company Details -->
+      <div class="bg-gray-50 rounded-lg p-6">
+        <h4 class="text-lg font-bold text-gray-900 mb-4">Company Details</h4>
+        <div class="space-y-3">
+          <div class="flex justify-between items-center py-2"><span class="text-sm text-gray-600">Tenure</span><span class="font-bold">${c.tenure.toFixed(1)} years</span></div>
+          <div class="flex justify-between items-center py-2 border-t border-gray-200"><span class="text-sm text-gray-600 flex-shrink-0">Industry</span><span class="font-bold text-right text-sm ml-4 truncate">${c.industry || 'N/A'}</span></div>
+          <div class="flex justify-between items-center py-2 border-t border-gray-200"><span class="text-sm text-gray-600 flex-shrink-0">Sector</span><span class="font-bold text-right text-sm ml-4">${c.sector || 'N/A'}</span></div>
+        </div>
+      </div>
     </div>`;
 
   const filings = c.equityTransactions ? `<a href="${c.equityTransactions}" target="_blank" class="text-blue-600 hover:underline">View Filings</a>` : '<span class="text-gray-400">N/A</span>';
@@ -328,10 +357,9 @@ export function renderComparisonModal(master, comparisonSet) {
     };
 
     // --- RENDER BOTH VIEWS ---
-    comparisonTableContainer.innerHTML = renderLogic(false); // Render desktop table
-    comparisonCardContainer.innerHTML = renderLogic(true); // Render mobile cards
+    comparisonTableContainer.innerHTML = renderLogic(false);
+    comparisonCardContainer.innerHTML = renderLogic(true);
 }
-
 
 /**
  * Updates the comparison tray at the bottom of the screen.
@@ -359,7 +387,6 @@ export function updateComparisonTray(comparisonSet) {
     document.getElementById("comparisonTray").classList.add('hidden');
   }
 }
-
 
 /**
  * Populates the industry and sector filter dropdowns.
