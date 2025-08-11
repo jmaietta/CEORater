@@ -217,7 +217,7 @@ export function renderDetailModal(ceoData) {
   
   modalBody.innerHTML = `
     <div class="space-y-2 text-sm">
-      <div class="flex justify-between"><span class="text-gray-500">AlphaScore</span><span class="font-orbitron font-bold text-lg text-blue-600">${Math.round(c.alphaScore)}</span></div>
+      <div class="flex justify-between font-bold"><span class="text-gray-500">AlphaScore</span><span class="font-orbitron font-bold text-lg text-blue-600">${Math.round(c.alphaScore)}</span></div>
       <div class="flex justify-between pb-2 mb-2 border-b"><span class="text-gray-500">Quartile</span><span class="font-bold">${c.quartile}</span></div>
 
       <div class="flex justify-between"><span class="text-gray-500">TSR During Tenure</span><span class="font-bold ${tsrCol}">${pct(c.tsrValue)}</span></div>
@@ -226,7 +226,7 @@ export function renderDetailModal(ceoData) {
       <div class="flex justify-between"><span class="text-gray-500">Avg Annual TSR vs. QQQ</span><span class="font-bold ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</span></div>
       <div class="flex justify-between border-t mt-2 pt-2"><span class="text-gray-500">CEO Compensation ($MM)</span><span>$${money(c.compensation, 1)}</span></div>
       <div class="flex justify-between"><span class="text-gray-500">Comp Cost / 1% Avg TSR ($MM)</span><span>$${money(c.compensationCost, 3)}</span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Compensation Score</span><span>${c.compensationScore || 'N/A'}</span></div>
+      <div class="flex justify-between font-bold"><span class="text-gray-500">Compensation Score</span><span>${c.compensationScore || 'N/A'}</span></div>
       <div class="flex justify-between"><span class="text-gray-500">Tenure (yrs)</span><span>${c.tenure.toFixed(1)}</span></div>
       <div class="flex justify-between"><span class="text-gray-500">Industry</span><span class="text-right">${c.industry || 'N/A'}</span></div>
       <div class="flex justify-between"><span class="text-gray-500">Sector</span><span class="text-right">${c.sector || 'N/A'}</span></div>
