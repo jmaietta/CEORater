@@ -1,4 +1,3 @@
-
 import { pct, money, formatMarketCap } from './utils.js';
 
 // Get references to DOM elements that the UI functions will manipulate.
@@ -106,14 +105,9 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
 
     card.className = `ceo-card relative bg-white border-l-4 ${quartileColorClass} rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer flex flex-col justify-between`;
     
-    const alphaScoreValue = c.alphaScore;
-    const alphaScoreColor = 'text-blue-600';
+    // --- Badge & Button Definitions ---
+    const founderBadge = (c.founder?.toUpperCase() === 'Y') ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
     const quartileBadge = c.quartile ? `<div class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full ${quartileColorClass.replace('border', 'bg').replace('-500', '-100')} ${quartileColorClass.replace('border', 'text')}">${c.quartile}</div>` : '';
-
-    const tsrAlphaCol = c.tsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
-    const avgAlphaCol = c.avgAnnualTsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
-
-    const founderBadge = (c.founder?.toUpperCase() === 'Y') ? `<div class="mt-1"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span></div>` : '';
     
     const saved = userWatchlist.has(c.ticker);
     const watchlistStar = `<button class="watchlist-star text-2xl align-middle transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? '★' : '☆'}</button>`;
@@ -128,59 +122,39 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
       </button>
     `;
 
+    // --- NEW Card HTML Structure ---
     card.innerHTML = `
       <div>
-        <div class="absolute top-1 left-1">
+        <div class="absolute top-2 right-2">
             ${watchlistStar}
         </div>
-        <div class="pt-6">
-          <div class="flex justify-between items-start space-x-2">
-            <div class="flex-1 min-w-0">
+        
+        <div class="pr-8">
+            <div class="flex items-center space-x-2">
               <h3 class="font-bold text-lg text-gray-900 truncate" title="${c.ceo}">${c.ceo}</h3>
               ${founderBadge}
-              <p class="text-sm text-gray-600 font-bold truncate mt-1" title="${c.company} (${c.ticker})">${c.company} (${c.ticker})</p>
             </div>
-            <div class="flex flex-col items-end flex-shrink-0">
-                <div class="text-right">
-                    <p class="text-xs text-gray-800 font-bold uppercase tracking-wider">AlphaScore</p>
-                    <p class="text-3xl font-orbitron font-bold ${alphaScoreColor}">${Math.round(alphaScoreValue)}</p>
+            <p class="text-sm text-gray-600 font-bold truncate mt-1" title="${c.company} (${c.ticker})">${c.company} (${c.ticker})</p>
+        </div>
+
+        <div class="mt-4 grid grid-cols-2 gap-3 text-center">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 flex flex-col justify-between">
+                <div>
+                  <p class="text-xs text-blue-800 font-bold uppercase tracking-wider">AlphaScore</p>
+                  <p class="text-3xl font-orbitron font-bold text-blue-600">${Math.round(c.alphaScore)}</p>
                 </div>
-                <div class="mt-1 h-6">${quartileBadge}</div>
+                <div class="mt-2 flex justify-center h-6 items-center">${quartileBadge}</div>
             </div>
-          </div>
-          <div class="mt-4 pt-3 border-t border-gray-200 text-sm">
-              <div class="space-y-1 sm:hidden">
-                  <div class="flex justify-between">
-                      <span class="text-gray-500">TSR vs QQQ</span>
-                      <span class="font-semibold ${tsrAlphaCol}">${pct(c.tsrAlpha)}</span>
-                  </div>
-                  <div class="flex justify-between">
-                      <span class="text-gray-500">CEO Comp</span>
-                      <span class="font-semibold">$${money(c.compensation, 1)}M</span>
-                  </div>
-                  <div class="flex justify-between">
-                      <span class="text-gray-500">Avg Ann. TSR vs QQQ</span>
-                      <span class="font-semibold ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</span>
-                  </div>
-              </div>
-              <div class="hidden sm:flex sm:justify-between sm:text-right">
-                  <div>
-                      <p class="text-xs text-gray-500" title="Total Shareholder Return vs. QQQ">TSR vs QQQ</p>
-                      <p class="font-semibold text-sm ${tsrAlphaCol}">${pct(c.tsrAlpha)}</p>
-                  </div>
-                  <div>
-                      <p class="text-xs text-gray-500">CEO Comp</p>
-                      <p class="font-semibold text-sm">$${money(c.compensation, 1)}M</p>
-                  </div>
-                  <div>
-                      <p class="text-xs text-gray-500" title="Average Annual TSR vs. QQQ">Avg Ann. TSR vs QQQ</p>
-                      <p class="font-semibold text-sm ${avgAlphaCol}">${pct(c.avgAnnualTsrAlpha)}</p>
-                  </div>
-              </div>
-          </div>
+            <div class="bg-purple-50 border border-purple-200 rounded-lg p-3 flex flex-col justify-between">
+                <div>
+                  <p class="text-xs text-purple-800 font-bold uppercase tracking-wider">CompScore</p>
+                  <p class="text-3xl font-orbitron font-bold text-purple-600">${c.compensationScore || 'N/A'}</p>
+                </div>
+                <div class="h-6"></div> </div>
         </div>
       </div>
-      <div class="mt-4 pt-2 border-t border-gray-100 text-xs flex justify-between items-center">
+
+      <div class="mt-4 pt-3 border-t border-gray-100 text-xs flex justify-between items-center">
           ${compareButton}
           <a href="#" class="details-link text-blue-600 font-semibold flex items-center">
             <span>View Details</span>
