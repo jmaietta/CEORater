@@ -54,7 +54,7 @@ const toggleFiltersIcon = $("toggleFiltersIcon");
 // ---------- State ----------
 let master = [];
 let view = [];
-let currentSort = { key: 'alphaScore', dir: 'desc' };
+let currentSort = { key: 'ceoRaterScore', dir: 'desc' }; // Changed default to CEORaterScore
 let currentUser = null;
 let userWatchlist = new Set();
 let comparisonSet = new Set(); 
@@ -178,8 +178,15 @@ function applyFilters() {
 
 function sortAndRender() {
   view.sort((a, b) => {
-    const A = a[currentSort.key];
-    const B = b[currentSort.key];
+    let A = a[currentSort.key];
+    let B = b[currentSort.key];
+    
+    // Special handling for CEORaterScore - treat null values as 0 for sorting
+    if (currentSort.key === 'ceoRaterScore') {
+      A = A ?? 0;
+      B = B ?? 0;
+    }
+    
     let cmp = (typeof A === 'number' && typeof B === 'number') ? A - B : String(A).localeCompare(String(B));
     return currentSort.dir === 'asc' ? cmp : -cmp;
   });
@@ -370,21 +377,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Enhanced CSV export with CEORaterScore
   $("downloadExcelButton").addEventListener('click', () => {
     if (view.length === 0) {
       alert('No data to export');
       return;
     }
     
-    const headers = ['CEO', 'Company', 'Ticker', 'Market Cap ($B)', 'AlphaScore', 'AlphaScore Quartile', 'TSR Alpha', 'Avg Annual TSR Alpha', 'Industry', 'Sector', 'TSR During Tenure', 'Avg Annual TSR', 'Compensation ($MM)', 'Comp Cost / 1% Avg TSR ($MM)', 'Tenure (yrs)', 'Founder'];
+    // Updated headers to include CEORaterScore
+    const headers = ['CEO', 'Company', 'Ticker', 'CEORaterScore', 'AlphaScore', 'CompScore', 'Market Cap ($B)', 'AlphaScore Quartile', 'TSR Alpha', 'Avg Annual TSR Alpha', 'Industry', 'Sector', 'TSR During Tenure', 'Avg Annual TSR', 'Compensation ($MM)', 'Comp Cost / 1% Avg TSR ($MM)', 'Tenure (yrs)', 'Founder'];
+    
     const csvContent = [
       headers.join(','),
       ...view.map(c => [
         `"${c.ceo}"`,
         `"${c.company}"`,
         c.ticker,
+        c.ceoRaterScore ? Math.round(c.ceoRaterScore) : 'N/A', // NEW: CEORaterScore
+        Math.round(c.alphaScore),
+        c.compensationScore || 'N/A',
         (c.marketCap / 1e9).toFixed(2),
-        c.alphaScore,
         c.quartile,
         c.tsrAlpha,
         c.avgAnnualTsrAlpha,
@@ -430,4 +442,3 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') signInEmail.click();
   });
 });
-
