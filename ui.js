@@ -107,7 +107,6 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
     
     // --- Badge & Button Definitions ---
     const founderBadge = (c.founder?.toUpperCase() === 'Y') ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
-    const quartileBadge = c.quartile ? `<div class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full ${quartileColorClass.replace('border', 'bg').replace('-500', '-100')} ${quartileColorClass.replace('border', 'text')}">${c.quartile}</div>` : '';
     
     const saved = userWatchlist.has(c.ticker);
     const watchlistStar = `<button class="watchlist-star text-2xl align-middle transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? '★' : '☆'}</button>`;
@@ -138,19 +137,14 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
         </div>
 
         <div class="mt-4 grid grid-cols-2 gap-3 text-center">
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 flex flex-col justify-between">
-                <div>
-                  <p class="text-xs text-blue-800 font-bold uppercase tracking-wider">AlphaScore</p>
-                  <p class="text-3xl font-orbitron font-bold text-blue-600">${Math.round(c.alphaScore)}</p>
-                </div>
-                <div class="mt-2 flex justify-center h-6 items-center">${quartileBadge}</div>
+            <div class="bg-blue-50 border border-blue-200 rounded-lg py-3 px-2">
+                <p class="text-xs text-blue-800 font-bold uppercase tracking-wider">AlphaScore</p>
+                <p class="text-4xl font-orbitron font-bold text-blue-600">${Math.round(c.alphaScore)}</p>
             </div>
-            <div class="bg-purple-50 border border-purple-200 rounded-lg p-3 flex flex-col justify-between">
-                <div>
-                  <p class="text-xs text-purple-800 font-bold uppercase tracking-wider">CompScore</p>
-                  <p class="text-3xl font-orbitron font-bold text-purple-600">${c.compensationScore || 'N/A'}</p>
-                </div>
-                <div class="h-6"></div> </div>
+            <div class="bg-purple-50 border border-purple-200 rounded-lg py-3 px-2">
+                <p class="text-xs text-purple-800 font-bold uppercase tracking-wider">CompScore</p>
+                <p class="text-4xl font-orbitron font-bold text-purple-600">${c.compensationScore || 'N/A'}</p>
+            </div>
         </div>
       </div>
 
