@@ -248,10 +248,10 @@ export function renderDetailModal(ceoData) {
         <h4 class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-3">CEORaterScore</h4>
         <div class="font-orbitron font-black text-5xl text-slate-800 mb-3">${ceoRaterScore ? Math.round(ceoRaterScore) : 'N/A'}</div>
         <div class="text-sm text-slate-600 mb-4">Comprehensive CEO Performance Rating</div>
-        <div class="flex items-center justify-center space-x-4 text-xs text-slate-600">
-            <span>60% AlphaScore (${Math.round(c.alphaScore)})</span>
+        <div class="flex items-center justify-center space-x-4 text-xs text-slate-500">
+            <span><strong>60% AlphaScore</strong> (${Math.round(c.alphaScore)})</span>
             <span>•</span>
-            <span>40% CompScore (${c.compensationScore || 'N/A'})</span>
+            <span><strong>40% CompScore</strong> (${c.compensationScore || 'N/A'})</span>
         </div>
     </div>
 
