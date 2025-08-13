@@ -245,9 +245,9 @@ export function renderDetailModal(ceoData) {
   modalBody.innerHTML = `
     <!-- CEORaterScore Hero Section in Modal -->
     <div class="modal-ceorater-section p-6 text-center mb-6">
-        <h4 class="text-sm font-semibold text-slate-800 uppercase tracking-wider mb-3">CEORaterScore</h4>
-        <div class="font-orbitron font-black text-5xl text-amber-900 mb-3">${ceoRaterScore ? Math.round(ceoRaterScore) : 'N/A'}</div>
-        <div class="text-sm text-amber-700 mb-4">Comprehensive CEO Performance Rating</div>
+        <h4 class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-3">CEORaterScore</h4>
+        <div class="font-orbitron font-black text-5xl text-slate-800 mb-3">${ceoRaterScore ? Math.round(ceoRaterScore) : 'N/A'}</div>
+        <div class="text-sm text-slate-600 mb-4">Comprehensive CEO Performance Rating</div>
         <div class="flex items-center justify-center space-x-4 text-xs text-amber-600">
             <span>60% AlphaScore (${Math.round(c.alphaScore)})</span>
             <span>•</span>
