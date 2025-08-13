@@ -27,7 +27,8 @@ const FIELDS = {
   AVG_ANNUAL_TSR_ALPHA: 19,
   ALPHA_SCORE: 22,
   QUARTILE: 24,
-  COMPENSATION_SCORE: 28 
+  COMPENSATION_SCORE: 28, 
+  CEO_RATER_SCORE: 29
 };
 
 // Pre-compile regex for performance
@@ -66,6 +67,8 @@ const getNumber = (row, index) => {
   return isNaN(parsed) ? 0 : parsed;
 };
 
+// REMOVED: calculateCEORaterScore function - using backend calculation instead
+
 /**
  * Parses the array data from Cloud Run service into structured objects.
  * @param {Array} data The array data from Cloud Run service.
@@ -82,6 +85,8 @@ function parseRows(data) {
       console.warn('Invalid row data:', row);
       return null;
     }
+
+    // REMOVED: Local CEORaterScore calculation - using backend value instead
 
     return {
       company: getString(row, FIELDS.COMPANY),
@@ -101,7 +106,8 @@ function parseRows(data) {
       avgAnnualTsrAlpha: getNumber(row, FIELDS.AVG_ANNUAL_TSR_ALPHA),
       alphaScore: getNumber(row, FIELDS.ALPHA_SCORE),
       quartile: getString(row, FIELDS.QUARTILE),
-      compensationScore: getString(row, FIELDS.COMPENSATION_SCORE) 
+      compensationScore: getString(row, FIELDS.COMPENSATION_SCORE),
+      ceoRaterScore: getNumber(row, FIELDS.CEO_RATER_SCORE) // Use backend calculation ONLY
     };
   }).filter(Boolean); // Remove any null entries from invalid rows
 }
