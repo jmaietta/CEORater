@@ -20,3 +20,212 @@ body { font-family: 'Inter', sans-serif; }
     overflow-x: hidden;
   }
 */
+
+/* CEORaterScore Enhancements - PROFESSIONAL VERSION */
+
+/* Professional CEORaterScore Hero Section */
+.ceorater-hero {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
+  box-shadow: 0 8px 25px rgba(30, 41, 59, 0.3);
+  transition: all 0.3s ease;
+}
+
+.ceorater-hero:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px rgba(30, 41, 59, 0.4);
+}
+
+/* Score Weight Indicator */
+.score-weight-bar {
+  background: linear-gradient(to right, #3b82f6 0%, #3b82f6 60%, #8b5cf6 60%, #8b5cf6 100%);
+  height: 6px;
+  border-radius: 3px;
+  transition: all 0.3s ease;
+}
+
+.score-weight-bar:hover {
+  height: 8px;
+}
+
+/* Enhanced Card Animations */
+.ceo-card {
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.ceo-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Score Progress Bars */
+.score-progress {
+  transition: width 0.8s ease-in-out;
+}
+
+/* Enhanced Hero CEORaterScore Stat Card */
+.ceorater-stat-card {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border: 3px solid #475569;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.ceorater-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+  animation: shimmer 4s infinite;
+  opacity: 0.5;
+}
+
+.ceorater-stat-card:hover {
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+  transform: scale(1.02);
+  box-shadow: 0 20px 40px rgba(71, 85, 105, 0.2);
+}
+
+/* Professional Modal CEORaterScore Section */
+.modal-ceorater-section {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  border: 2px solid #475569;
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.modal-ceorater-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+  animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Weight Distribution Tooltip */
+.weight-tooltip {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+.weight-indicator:hover .weight-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Professional Comparison Table CEORaterScore Column */
+.ceorater-column {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  font-weight: bold;
+  color: #334155;
+}
+
+/* Professional CEORaterScore in comparison cards (mobile) */
+.comparison-ceorater-highlight {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  border-left: 4px solid #475569;
+}
+
+/* Score badge variants */
+.score-badge-excellent { 
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+}
+.score-badge-good { 
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); 
+}
+.score-badge-average { 
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%); 
+}
+.score-badge-poor { 
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); 
+}
+
+/* Enhanced hover states for interactive elements */
+.compare-btn, .watchlist-star {
+  transition: all 0.3s ease;
+}
+
+.compare-btn:hover {
+  transform: scale(1.1);
+}
+
+.watchlist-star:hover {
+  transform: scale(1.2) rotate(5deg);
+}
+
+/* Ensure secondary stat cards are visually subordinate */
+#statCardContainer .grid .bg-white {
+  transition: all 0.2s ease;
+}
+
+#statCardContainer .grid .bg-white:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive CEORaterScore on mobile */
+@media (max-width: 768px) {
+  .ceorater-hero {
+    padding: 1rem;
+  }
+  
+  .ceorater-hero .font-orbitron {
+    font-size: 2.5rem;
+  }
+  
+  .score-weight-bar {
+    height: 4px;
+  }
+  
+  /* Hero card responsive adjustments */
+  .ceorater-stat-card {
+    padding: 1.5rem;
+  }
+  
+  .ceorater-stat-card .text-5xl {
+    font-size: 3rem;
+  }
+}
+
+/* Responsive stat cards */
+@media (max-width: 1024px) {
+  /* On medium screens, show 2 rows of stat cards */
+  #statCardContainer.grid.lg\:grid-cols-5 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  /* Make CEORaterScore card span full width on small screens for emphasis */
+  @media (max-width: 640px) {
+    .ceorater-stat-card {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
+/* Loading state for CEORaterScore calculation */
+.ceorater-loading {
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.5s infinite;
+}
+
+@keyframes loading-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
