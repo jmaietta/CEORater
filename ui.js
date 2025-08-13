@@ -19,6 +19,7 @@ const medianTsrStat = document.getElementById("medianTsrStat");
 const avgFounderAlphaScoreStat = document.getElementById("avgFounderAlphaScoreStat");
 const founderCeoStat = document.getElementById("founderCeoStat");
 const medianCompStat = document.getElementById("medianCompStat");
+const medianCeoRaterScoreStat = document.getElementById("medianCeoRaterScoreStat");
 
 /**
  * Calculates the median of a given array of numbers.
@@ -41,6 +42,18 @@ function calculateAverage(arr) {
     if (!arr.length) return 0;
     const sum = arr.reduce((acc, val) => acc + val, 0);
     return sum / arr.length;
+}
+
+/**
+ * Gets the appropriate CSS class for score badge based on score value
+ * @param {number} score - The score to evaluate
+ * @returns {string} CSS class name
+ */
+function getScoreBadgeClass(score) {
+    if (score >= 90) return 'score-badge-excellent';
+    if (score >= 75) return 'score-badge-good';
+    if (score >= 60) return 'score-badge-average';
+    return 'score-badge-poor';
 }
 
 /**
@@ -71,6 +84,16 @@ export function updateStatCards(masterData) {
     const compValues = masterData.map(c => c.compensation).filter(v => typeof v === 'number');
     const medianComp = calculateMedian(compValues);
     medianCompStat.textContent = `$${money(medianComp, 1)}M`;
+
+    // NEW: Calculate Median CEORaterScore
+    const ceoRaterScores = masterData
+        .map(c => c.ceoRaterScore)
+        .filter(v => typeof v === 'number');
+    const medianCeoRaterScore = calculateMedian(ceoRaterScores);
+    
+    if (medianCeoRaterScoreStat) {
+        medianCeoRaterScoreStat.textContent = Math.round(medianCeoRaterScore);
+    }
 }
 
 /**
@@ -93,7 +116,11 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
   data.forEach(c => {
     const card = document.createElement('div');
     card.dataset.ticker = c.ticker; 
-    card.dataset.ceoName = c.ceo;  
+    card.dataset.ceoName = c.ceo;
+
+    // Calculate CEORaterScore and score badge class
+    const ceoRaterScore = c.ceoRaterScore;
+    const scoreBadgeClass = ceoRaterScore ? getScoreBadgeClass(ceoRaterScore) : 'score-badge-average';
 
     let quartileColorClass = 'border-gray-200';
     switch(c.quartile) {
@@ -103,7 +130,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
         case 'Bottom Quartile': quartileColorClass = 'border-red-500'; break;
     }
 
-    card.className = `ceo-card relative bg-white border-l-4 ${quartileColorClass} rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer flex flex-col justify-between`;
+    card.className = `ceo-card relative bg-white border-l-4 ${quartileColorClass} rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer flex flex-col justify-between`;
     
     // --- Badge & Button Definitions ---
     const founderBadge = (c.founder?.toUpperCase() === 'Y') ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
@@ -121,14 +148,14 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
       </button>
     `;
 
-    // --- NEW Card HTML Structure ---
+    // --- Enhanced Card HTML Structure with CEORaterScore ---
     card.innerHTML = `
       <div>
         <div class="absolute top-2 right-2">
             ${watchlistStar}
         </div>
         
-        <div class="pr-8">
+        <div class="pr-8 mb-4">
             <div class="flex items-center space-x-2">
               <h3 class="font-bold text-lg text-gray-900 truncate" title="${c.ceo}">${c.ceo}</h3>
               ${founderBadge}
@@ -136,14 +163,45 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
             <p class="text-sm text-gray-600 font-bold truncate mt-1" title="${c.company} (${c.ticker})">${c.company} (${c.ticker})</p>
         </div>
 
-        <div class="mt-4 grid grid-cols-2 gap-3 text-center">
-            <div class="bg-blue-50 border border-blue-200 rounded-lg py-3 px-2">
-                <p class="text-xs text-blue-800 font-bold uppercase tracking-wider">AlphaScore</p>
-                <p class="text-4xl font-orbitron font-bold text-blue-600">${Math.round(c.alphaScore)}</p>
+        <!-- CEORaterScore Hero Section -->
+        <div class="ceorater-hero ${scoreBadgeClass} rounded-xl p-4 text-center text-white mb-4 relative overflow-hidden">
+            <div class="relative z-10">
+                <p class="text-xs font-bold uppercase tracking-wider opacity-90 mb-1">CEORaterScore</p>
+                <p class="text-4xl font-orbitron font-black">${ceoRaterScore ? Math.round(ceoRaterScore) : 'N/A'}</p>
+                <p class="text-xs opacity-75">60% Alpha • 40% Comp</p>
             </div>
-            <div class="bg-purple-50 border border-purple-200 rounded-lg py-3 px-2">
+        </div>
+
+        <!-- Weight Distribution Indicator -->
+        <div class="weight-indicator mb-4 relative">
+            <div class="flex items-center justify-between text-xs text-gray-600 mb-2">
+                <span>Alpha (60%)</span>
+                <span>Comp (40%)</span>
+            </div>
+            <div class="score-weight-bar rounded-full"></div>
+            
+            <!-- Tooltip -->
+            <div class="weight-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg">
+                60% AlphaScore + 40% CompScore
+                <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+            </div>
+        </div>
+
+        <!-- Component Scores -->
+        <div class="grid grid-cols-2 gap-3 text-center">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg py-3 px-2 relative">
+                <p class="text-xs text-blue-800 font-bold uppercase tracking-wider">AlphaScore</p>
+                <p class="text-3xl font-orbitron font-bold text-blue-600">${Math.round(c.alphaScore)}</p>
+                <div class="w-full bg-blue-200 rounded-full h-1.5 mt-2">
+                    <div class="score-progress bg-blue-600 h-1.5 rounded-full" style="width: ${Math.min(c.alphaScore, 100)}%"></div>
+                </div>
+            </div>
+            <div class="bg-purple-50 border border-purple-200 rounded-lg py-3 px-2 relative">
                 <p class="text-xs text-purple-800 font-bold uppercase tracking-wider">CompScore</p>
-                <p class="text-4xl font-orbitron font-bold text-purple-600">${c.compensationScore || 'N/A'}</p>
+                <p class="text-3xl font-orbitron font-bold text-purple-600">${c.compensationScore || 'N/A'}</p>
+                <div class="w-full bg-purple-200 rounded-full h-1.5 mt-2">
+                    <div class="score-progress bg-purple-600 h-1.5 rounded-full" style="width: ${c.compensationScore ? Math.min(parseFloat(c.compensationScore), 100) : 0}%"></div>
+                </div>
             </div>
         </div>
       </div>
@@ -162,11 +220,14 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
 }
 
 /**
- * Enhanced CEO Detail Modal - starting from original and making targeted improvements
+ * Enhanced CEO Detail Modal with CEORaterScore
  * @param {Object} ceoData - The data for the specific CEO to display.
  */
 export function renderDetailModal(ceoData) {
   const c = ceoData;
+  const ceoRaterScore = c.ceoRaterScore;
+  const scoreBadgeClass = ceoRaterScore ? getScoreBadgeClass(ceoRaterScore) : '';
+  
   const founder = (c.founder?.toUpperCase() === 'Y') ? `<span class="ml-3 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Founder</span>` : '';
   
   modalHeader.innerHTML = `
@@ -182,17 +243,35 @@ export function renderDetailModal(ceoData) {
   const avgAlphaCol = c.avgAnnualTsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
   
   modalBody.innerHTML = `
+    <!-- CEORaterScore Hero Section in Modal -->
+    <div class="modal-ceorater-section p-6 text-center mb-6">
+        <h4 class="text-sm font-semibold text-slate-800 uppercase tracking-wider mb-3">CEORaterScore</h4>
+        <div class="font-orbitron font-black text-5xl text-amber-900 mb-3">${ceoRaterScore ? Math.round(ceoRaterScore) : 'N/A'}</div>
+        <div class="text-sm text-amber-700 mb-4">Comprehensive CEO Performance Rating</div>
+        <div class="flex items-center justify-center space-x-4 text-xs text-amber-600">
+            <span>60% AlphaScore (${Math.round(c.alphaScore)})</span>
+            <span>•</span>
+            <span>40% CompScore (${c.compensationScore || 'N/A'})</span>
+        </div>
+    </div>
+
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
       <div class="bg-blue-50 rounded-lg p-6 text-center border border-blue-200">
         <h4 class="text-sm font-semibold text-blue-800 uppercase tracking-wider mb-3">AlphaScore</h4>
         <div class="font-orbitron font-bold text-4xl text-blue-600 mb-2">${Math.round(c.alphaScore)}</div>
-        <div class="text-sm text-blue-700">Overall Stock Performance Rating</div>
+        <div class="text-sm text-blue-700">Stock Performance Rating</div>
+        <div class="w-full bg-blue-200 rounded-full h-2 mt-3">
+            <div class="score-progress bg-blue-600 h-2 rounded-full" style="width: ${Math.min(c.alphaScore, 100)}%"></div>
+        </div>
       </div>
       
       <div class="bg-purple-50 rounded-lg p-6 text-center border border-purple-200">
         <h4 class="text-sm font-semibold text-purple-800 uppercase tracking-wider mb-3">CompScore</h4>
         <div class="font-orbitron font-bold text-4xl text-purple-600 mb-2">${c.compensationScore || 'N/A'}</div>
         <div class="text-sm text-purple-700">Compensation Efficiency</div>
+        <div class="w-full bg-purple-200 rounded-full h-2 mt-3">
+            <div class="score-progress bg-purple-600 h-2 rounded-full" style="width: ${c.compensationScore ? Math.min(parseFloat(c.compensationScore), 100) : 0}%"></div>
+        </div>
       </div>
     </div>
 
@@ -256,7 +335,9 @@ export function renderComparisonModal(master, comparisonSet) {
     if (selectedCeos.length === 0) return;
 
     const metrics = [
+        { label: 'CEORaterScore', key: 'ceoRaterScore', format: v => v ? Math.round(v) : 'N/A', higherIsBetter: true, cssClass: 'ceorater-column' },
         { label: 'AlphaScore', key: 'alphaScore', format: v => Math.round(v), higherIsBetter: true },
+        { label: 'CompScore', key: 'compensationScore', format: v => v || 'N/A', higherIsBetter: true },
         { label: 'Quartile', key: 'quartile', format: v => v, higherIsBetter: null },
         { label: 'Ticker', key: 'ticker', format: v => v, higherIsBetter: null },
         { label: 'Founder', key: 'founder', format: v => (v?.toUpperCase() === 'Y' ? 'Yes' : 'No'), higherIsBetter: null },
@@ -266,8 +347,7 @@ export function renderComparisonModal(master, comparisonSet) {
         { label: 'TSR vs QQQ', key: 'tsrAlpha', format: pct, higherIsBetter: true },
         { label: 'Avg Ann. TSR vs QQQ', key: 'avgAnnualTsrAlpha', format: pct, higherIsBetter: true },
         { label: 'CEO Comp ($M)', key: 'compensation', format: v => `$${money(v,1)}M`, higherIsBetter: false },
-        { label: 'Comp Cost / 1% Avg TSR ($MM)', key: 'compensationCost', format: v => `$${money(v, 3)}`, higherIsBetter: false },
-        { label: 'Compensation Score', key: 'compensationScore', format: v => v || 'N/A', higherIsBetter: null }
+        { label: 'Comp Cost / 1% Avg TSR ($MM)', key: 'compensationCost', format: v => `$${money(v, 3)}`, higherIsBetter: false }
     ];
 
     const renderLogic = (isMobile) => {
@@ -282,11 +362,15 @@ export function renderComparisonModal(master, comparisonSet) {
         }
 
         metrics.forEach(metric => {
-            // Use rounded values for AlphaScore comparison, otherwise use raw values
+            // Use rounded values for scores comparison, otherwise use raw values
             const getComparableValue = (ceo) => {
-                return metric.label === 'AlphaScore' 
-                    ? Math.round(ceo[metric.key] * 100) 
-                    : ceo[metric.key];
+                if (metric.label === 'AlphaScore') {
+                    return Math.round(ceo[metric.key] * 100);
+                } else if (metric.label === 'CEORaterScore') {
+                    return ceo[metric.key] ? Math.round(ceo[metric.key] * 100) : null;
+                } else {
+                    return ceo[metric.key];
+                }
             };
 
             let bestValue;
@@ -298,16 +382,18 @@ export function renderComparisonModal(master, comparisonSet) {
             }
             
             if (isMobile) {
-                html += `<div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"><div class="px-4 py-3 bg-gray-50 border-b"><h3 class="font-bold text-gray-800">${metric.label}</h3></div><div class="divide-y divide-gray-200">`;
+                const bgClass = metric.label === 'CEORaterScore' ? 'comparison-ceorater-highlight' : 'bg-white';
+                html += `<div class="${bgClass} border border-gray-200 rounded-lg shadow-sm overflow-hidden"><div class="px-4 py-3 bg-gray-50 border-b"><h3 class="font-bold text-gray-800">${metric.label}</h3></div><div class="divide-y divide-gray-200">`;
             } else {
-                html += `<tr class="bg-white border-b"><th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap sticky left-0 bg-white border-r z-10">${metric.label}</th>`;
+                const rowClass = metric.cssClass || '';
+                html += `<tr class="bg-white border-b ${rowClass}"><th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap sticky left-0 bg-white border-r z-10">${metric.label}</th>`;
             }
 
             selectedCeos.forEach(ceo => {
                 const rawValue = ceo[metric.key];
                 const comparableValue = getComparableValue(ceo);
-                const isBest = comparableValue === bestValue;
-                const fontClass = metric.label === 'AlphaScore' ? 'font-orbitron' : '';
+                const isBest = comparableValue === bestValue && comparableValue !== null;
+                const fontClass = (metric.label === 'AlphaScore' || metric.label === 'CEORaterScore') ? 'font-orbitron' : '';
 
                 if (isMobile) {
                     const highlightClass = isBest ? 'bg-green-50' : '';
