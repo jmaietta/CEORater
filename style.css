@@ -139,8 +139,10 @@ body { font-family: 'Inter', sans-serif; }
   white-space: nowrap;
   z-index: 50;
   
-  /* Center the text within the tooltip */
-  text-align: center;
+  /* Center the text both horizontally and vertically */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .weight-indicator:hover .weight-tooltip {
@@ -268,6 +270,7 @@ body { font-family: 'Inter', sans-serif; }
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
 
 
 
