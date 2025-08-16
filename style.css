@@ -118,9 +118,15 @@ body { font-family: 'Inter', sans-serif; }
 /* Weight Distribution Tooltip */
 .weight-tooltip {
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateX(-50%) translateY(10px);
   transition: all 0.3s ease;
   pointer-events: none;
+
+  /* Positioning - center on the card */
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  margin-top: 8px;
   
   /* Add solid background and styling */
   background-color: #1f2937;
@@ -132,27 +138,34 @@ body { font-family: 'Inter', sans-serif; }
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   white-space: nowrap;
   z-index: 50;
-  position: relative;
+  
+  /* Center the text within the tooltip */
+  text-align: center;
 }
 
 .weight-indicator:hover .weight-tooltip {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateX(-50%) translateY(0);
   pointer-events: auto;
 }
 
-/* Optional: Add a small arrow pointer */
+/* Ensure the weight indicator can position the tooltip */
+.weight-indicator {
+  position: relative;
+}
+
+/* Arrow pointer (centered) */
 .weight-tooltip::before {
   content: '';
   position: absolute;
-  top: 100%;
+  bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
   width: 0;
   height: 0;
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
-  border-top: 5px solid #1f2937;
+  border-bottom: 5px solid #1f2937;
 }
 
 /* Professional Comparison Table CEORaterScore Column */
@@ -255,5 +268,6 @@ body { font-family: 'Inter', sans-serif; }
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
 
 
