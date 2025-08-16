@@ -10,6 +10,12 @@ jobs:
   build_and_deploy:
     runs-on: ubuntu-latest # Specifies the operating system for the job
 
+    # Add permissions for GitHub Pages deployment
+    permissions:
+      contents: write # Needed to push generated files
+      pages: write    # Needed to update GitHub Pages
+      id-token: write # Needed for OIDC if Pages is configured with it (good practice to include)
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4 # Checks out your repository code
