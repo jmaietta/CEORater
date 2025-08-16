@@ -1,0 +1,39 @@
+name: Build Tailwind CSS and Deploy Frontend
+
+on:
+  push:
+    branches:
+      - test # This workflow runs on pushes to your 'test' branch
+  workflow_dispatch: # Allows manual triggering from the GitHub Actions UI
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest # Specifies the operating system for the job
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 # Checks out your repository code
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4 # Sets up Node.js environment
+        with:
+          node-version: '20' # Use a recent LTS Node.js version
+
+      - name: Install dependencies
+        run: npm install # Installs npm packages, including tailwindcss
+
+      - name: Build Tailwind CSS
+        # This command uses the npm script we defined in package.json
+        run: npm run build:css
+
+      - name: Deploy to GitHub Pages
+        # This action deploys your site to GitHub Pages.
+        # It assumes your site source is in the root or a specified directory.
+        # Adjust 'publish_dir' if your built files are in a different folder (e.g., './dist').
+        uses: peaceiris/actions-gh-pages@v3 # Use v3 for broader compatibility
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }} # Automatically provided by GitHub
+          publish_dir: ./ # Assumes your index.html and dist folder are at the root for Pages
+          # If your built site content (including index.html and dist/) is within a subdirectory
+          # after the build (e.g., a 'public' folder), change 'publish_dir' accordingly.
+          # Example: publish_dir: ./public
