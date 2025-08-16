@@ -1,0 +1,6 @@
+# Allow all web crawlers to access the site
+User-agent: *
+Allow: /
+
+# Location of the sitemap file
+Sitemap: https://www.ceorater.com/sitemap.xml
