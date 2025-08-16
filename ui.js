@@ -338,7 +338,6 @@ export function renderComparisonModal(master, comparisonSet) {
         { label: 'CEORaterScore', key: 'ceoRaterScore', format: v => v ? Math.round(v) : 'N/A', higherIsBetter: true, cssClass: 'ceorater-column' },
         { label: 'AlphaScore', key: 'alphaScore', format: v => Math.round(v), higherIsBetter: true },
         { label: 'CompScore', key: 'compensationScore', format: v => v || 'N/A', higherIsBetter: true },
-        { label: 'Quartile', key: 'quartile', format: v => v, higherIsBetter: null },
         { label: 'Ticker', key: 'ticker', format: v => v, higherIsBetter: null },
         { label: 'Founder', key: 'founder', format: v => (v?.toUpperCase() === 'Y' ? 'Yes' : 'No'), higherIsBetter: null },
         { label: 'Tenure (Yrs)', key: 'tenure', format: v => v.toFixed(1), higherIsBetter: true },
