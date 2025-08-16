@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "db:init": "node init-db.js"
+    "db:init": "node init-db.js",
+    "build:css": "tailwindcss -i ./src/input.css -o ./dist/output.css --minify"
   },
   "author": "",
   "license": "ISC",
@@ -28,3 +29,4 @@
     "node": ">=18.0.0"
   }
 }
+
