@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "db:init": "node init-db.js"
+    "db:init": "node init-db.js",
+    "build:css": "tailwindcss -i ./src/input.css -o ./dist/output.css --minify"
   },
   "author": "",
   "license": "ISC",
@@ -23,6 +24,11 @@
     "node-fetch": "^2.6.9",
     "pg": "^8.11.3",
     "validator": "^13.11.0"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.3",
+    "postcss": "^8.4.38",
+    "autoprefixer": "^10.4.19"
   },
   "engines": {
     "node": ">=18.0.0"
