@@ -52,7 +52,7 @@ function calculateAverage(arr) {
 function getScoreBadgeClass(score) {
     if (score >= 90) return 'score-badge-excellent';
     if (score >= 75) return 'score-badge-good';
-    if (score >= 60) return 'score-badge-average';
+    if (score >= 50) return 'score-badge-average';
     return 'score-badge-poor';
 }
 
@@ -128,7 +128,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
         borderColorClass = 'border-green-500';      // Excellent
     } else if (ceoRaterScore >= 75) {
         borderColorClass = 'border-blue-500';       // Good  
-    } else if (ceoRaterScore >= 60) {
+    } else if (ceoRaterScore >= 50) {
         borderColorClass = 'border-gray-600';       // Average (matches dark gray badge)
     } else if (ceoRaterScore) {
         borderColorClass = 'border-red-500';        // Poor
