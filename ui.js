@@ -50,8 +50,8 @@ function calculateAverage(arr) {
  * @returns {string} CSS class name
  */
 function getScoreBadgeClass(score) {
-    if (score >= 90) return 'score-badge-excellent';
-    if (score >= 75) return 'score-badge-good';
+    if (score >= 85) return 'score-badge-excellent';
+    if (score >= 70) return 'score-badge-good';
     if (score >= 50) return 'score-badge-average';
     return 'score-badge-poor';
 }
@@ -124,9 +124,9 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
 
     // CEORaterScore-based border colors (matches badge colors)
     let borderColorClass = 'border-red-500'; // default for no score = poor/red
-    if (ceoRaterScore >= 90) {
+    if (ceoRaterScore >= 85) {
         borderColorClass = 'border-green-500';      // Excellent
-    } else if (ceoRaterScore >= 75) {
+    } else if (ceoRaterScore >= 70) {
         borderColorClass = 'border-blue-500';       // Good  
     } else if (ceoRaterScore >= 50) {
         borderColorClass = 'border-gray-600';       // Average (matches dark gray badge)
