@@ -120,10 +120,10 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
 
     // Calculate CEORaterScore and score badge class
     const ceoRaterScore = c.ceoRaterScore;
-    const scoreBadgeClass = ceoRaterScore ? getScoreBadgeClass(ceoRaterScore) : 'score-badge-average';
+    const scoreBadgeClass = ceoRaterScore ? getScoreBadgeClass(ceoRaterScore) : 'score-badge-poor';
 
     // CEORaterScore-based border colors (matches badge colors)
-    let borderColorClass = 'border-gray-400'; // default for no score
+    let borderColorClass = 'border-red-500'; // default for no score = poor/red
     if (ceoRaterScore >= 90) {
         borderColorClass = 'border-green-500';      // Excellent
     } else if (ceoRaterScore >= 75) {
