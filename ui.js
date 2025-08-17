@@ -122,15 +122,19 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
     const ceoRaterScore = c.ceoRaterScore;
     const scoreBadgeClass = ceoRaterScore ? getScoreBadgeClass(ceoRaterScore) : 'score-badge-average';
 
-    let quartileColorClass = 'border-gray-200';
-    switch(c.quartile) {
-        case 'Top Quartile': quartileColorClass = 'border-green-500'; break;
-        case '3rd Quartile': quartileColorClass = 'border-yellow-500'; break;
-        case '2nd Quartile': quartileColorClass = 'border-orange-500'; break;
-        case 'Bottom Quartile': quartileColorClass = 'border-red-500'; break;
+    // CEORaterScore-based border colors (matches badge colors)
+    let borderColorClass = 'border-gray-400'; // default for no score
+    if (ceoRaterScore >= 90) {
+        borderColorClass = 'border-green-500';      // Excellent
+    } else if (ceoRaterScore >= 75) {
+        borderColorClass = 'border-blue-500';       // Good  
+    } else if (ceoRaterScore >= 60) {
+        borderColorClass = 'border-gray-600';       // Average (matches dark gray badge)
+    } else if (ceoRaterScore) {
+        borderColorClass = 'border-red-500';        // Poor
     }
 
-    card.className = `ceo-card relative bg-white border-l-4 ${quartileColorClass} rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer flex flex-col justify-between`;
+    card.className = `ceo-card relative bg-white border-l-4 ${borderColorClass} rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer flex flex-col justify-between`;
     
     // --- Badge & Button Definitions ---
     const founderBadge = (c.founder?.toUpperCase() === 'Y') ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
@@ -197,8 +201,8 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
                 </div>
                 
                 <!-- AlphaScore Tooltip -->
-                <div class="alpha-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity">
-                    Stock performance vs QQQ benchmark
+                <div class="alpha-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity z-50">
+                    Total Stock Return vs. QQQ, see Our Methodology
                     <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
                 </div>
             </div>
@@ -210,8 +214,8 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
                 </div>
                 
                 <!-- CompScore Tooltip -->
-                <div class="comp-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity">
-                    Compensation efficiency grade (A-F)
+                <div class="comp-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity z-50">
+                    Compensation efficiency grade, see Our Methodology
                     <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
                 </div>
             </div>
@@ -277,8 +281,8 @@ export function renderDetailModal(ceoData) {
         </div>
         
         <!-- AlphaScore Tooltip in Modal -->
-        <div class="alpha-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity">
-            Stock performance vs QQQ benchmark
+        <div class="alpha-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity z-50">
+            Total Stock Return vs. QQQ, see Our Methodology
             <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
         </div>
       </div>
@@ -292,8 +296,8 @@ export function renderDetailModal(ceoData) {
         </div>
         
         <!-- CompScore Tooltip in Modal -->
-        <div class="comp-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity">
-            Compensation efficiency grade (A-F)
+        <div class="comp-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity z-50">
+            Compensation efficiency grade, see Our Methodology
             <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
         </div>
       </div>
