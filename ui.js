@@ -195,12 +195,24 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
                 <div class="w-full bg-blue-200 rounded-full h-1.5 mt-2">
                     <div class="score-progress bg-blue-600 h-1.5 rounded-full" style="width: ${Math.min(c.alphaScore, 100)}%"></div>
                 </div>
+                
+                <!-- AlphaScore Tooltip -->
+                <div class="alpha-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity">
+                    Stock performance vs QQQ benchmark
+                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                </div>
             </div>
             <div class="bg-purple-50 border border-purple-200 rounded-lg py-3 px-2 relative">
                 <p class="text-xs text-purple-800 font-bold uppercase tracking-wider">CompScore</p>
                 <p class="text-3xl font-orbitron font-bold text-purple-600">${c.compensationScore || 'N/A'}</p>
                 <div class="w-full bg-purple-200 rounded-full h-1.5 mt-2">
                     <div class="score-progress bg-purple-600 h-1.5 rounded-full" style="width: ${c.compensationScore ? Math.min(parseFloat(c.compensationScore), 100) : 0}%"></div>
+                </div>
+                
+                <!-- CompScore Tooltip -->
+                <div class="comp-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity">
+                    Compensation efficiency grade (A-F)
+                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
                 </div>
             </div>
         </div>
@@ -256,21 +268,33 @@ export function renderDetailModal(ceoData) {
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-      <div class="bg-blue-50 rounded-lg p-6 text-center border border-blue-200">
+      <div class="bg-blue-50 rounded-lg p-6 text-center border border-blue-200 relative">
         <h4 class="text-sm font-semibold text-blue-800 uppercase tracking-wider mb-3">AlphaScore</h4>
         <div class="font-orbitron font-bold text-4xl text-blue-600 mb-2">${Math.round(c.alphaScore)}</div>
         <div class="text-sm text-blue-700">Stock Performance Rating</div>
         <div class="w-full bg-blue-200 rounded-full h-2 mt-3">
             <div class="score-progress bg-blue-600 h-2 rounded-full" style="width: ${Math.min(c.alphaScore, 100)}%"></div>
         </div>
+        
+        <!-- AlphaScore Tooltip in Modal -->
+        <div class="alpha-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity">
+            Stock performance vs QQQ benchmark
+            <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+        </div>
       </div>
       
-      <div class="bg-purple-50 rounded-lg p-6 text-center border border-purple-200">
+      <div class="bg-purple-50 rounded-lg p-6 text-center border border-purple-200 relative">
         <h4 class="text-sm font-semibold text-purple-800 uppercase tracking-wider mb-3">CompScore</h4>
         <div class="font-orbitron font-bold text-4xl text-purple-600 mb-2">${c.compensationScore || 'N/A'}</div>
         <div class="text-sm text-purple-700">Compensation Efficiency</div>
         <div class="w-full bg-purple-200 rounded-full h-2 mt-3">
             <div class="score-progress bg-purple-600 h-2 rounded-full" style="width: ${c.compensationScore ? Math.min(parseFloat(c.compensationScore), 100) : 0}%"></div>
+        </div>
+        
+        <!-- CompScore Tooltip in Modal -->
+        <div class="comp-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity">
+            Compensation efficiency grade (A-F)
+            <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
         </div>
       </div>
     </div>
