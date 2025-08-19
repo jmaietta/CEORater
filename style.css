@@ -90,13 +90,38 @@ body { font-family: 'Inter', sans-serif; }
   box-shadow: 0 20px 40px rgba(71, 85, 105, 0.2);
 }
 
-/* Professional Modal CEORaterScore Section */
+/* Enhanced Modal CEORaterScore Section with Score Badge Colors */
 .modal-ceorater-section {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border: 2px solid #475569;
   border-radius: 12px;
   position: relative;
   overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Apply score badge backgrounds to modal sections */
+.modal-ceorater-section.score-badge-excellent {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: none;
+  color: white;
+}
+
+.modal-ceorater-section.score-badge-good {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border: none;
+  color: white;
+}
+
+.modal-ceorater-section.score-badge-average {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  border: none;
+  color: white;
+}
+
+.modal-ceorater-section.score-badge-poor {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border: none;
+  color: white;
 }
 
 .modal-ceorater-section::before {
@@ -110,6 +135,13 @@ body { font-family: 'Inter', sans-serif; }
   animation: shimmer 3s infinite;
 }
 
+/* Default styling for when no score is available */
+.modal-ceorater-section:not(.score-badge-excellent):not(.score-badge-good):not(.score-badge-average):not(.score-badge-poor) {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 2px solid #475569;
+  color: #334155;
+}
+
 @keyframes shimmer {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
@@ -118,6 +150,7 @@ body { font-family: 'Inter', sans-serif; }
 /* Weight Distribution Tooltip */
 .weight-tooltip {
   opacity: 0;
+  visibility: hidden;
   transform: translateX(-50%) translateY(10px);
   transition: all 0.3s ease;
   pointer-events: none;
@@ -137,6 +170,7 @@ body { font-family: 'Inter', sans-serif; }
   font-weight: 500;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   white-space: nowrap;
+  text-align: center;
   z-index: 50;
   
   /* Center the text both horizontally and vertically */
@@ -145,15 +179,19 @@ body { font-family: 'Inter', sans-serif; }
   justify-content: center;
 }
 
-.weight-indicator:hover .weight-tooltip {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-  pointer-events: auto;
-}
-
 /* Ensure the weight indicator can position the tooltip */
 .weight-indicator {
   position: relative;
+}
+
+/* Weight tooltip only works on desktop */
+@media (min-width: 769px) {
+  .weight-indicator:hover .weight-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+  }
 }
 
 /* Arrow pointer (centered) */
@@ -170,11 +208,39 @@ body { font-family: 'Inter', sans-serif; }
   border-bottom: 5px solid #1f2937;
 }
 
-/* Make AlphaScore and CompScore tooltips appear on hover */
-.bg-blue-50:hover .alpha-score-tooltip,
-.bg-purple-50:hover .comp-score-tooltip {
+/* AlphaScore and CompScore tooltips - hidden by default */
+.alpha-score-tooltip,
+.comp-score-tooltip {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transform: translateX(-50%) translateY(10px);
+  transition: all 0.3s ease;
+  pointer-events: none !important;
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  margin-bottom: 8px;
+  background-color: #1f2937;
+  color: #ffffff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 180px;
+  text-align: center;
+  z-index: 50;
+}
+
+/* Make AlphaScore and CompScore tooltips appear on hover - desktop only */
+@media (min-width: 769px) {
+  .bg-blue-50:hover .alpha-score-tooltip,
+  .bg-purple-50:hover .comp-score-tooltip {
     opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateX(-50%) translateY(0);
     pointer-events: auto !important;
+  }
 }
 
 /* Professional Comparison Table CEORaterScore Column */
@@ -250,11 +316,24 @@ body { font-family: 'Inter', sans-serif; }
     font-size: 3rem;
   }
 
-  /* Hide tooltips on mobile */
+  /* Force hide all tooltips on mobile */
   .weight-tooltip,
   .alpha-score-tooltip,
   .comp-score-tooltip {
     display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+  
+  /* Disable hover effects on mobile */
+  .weight-indicator:hover .weight-tooltip,
+  .bg-blue-50:hover .alpha-score-tooltip,
+  .bg-purple-50:hover .comp-score-tooltip {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
   }
 }
 
@@ -283,4 +362,28 @@ body { font-family: 'Inter', sans-serif; }
 @keyframes loading-shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* Fix for CEO card borders being overridden */
+.ceo-card.border-l-4 {
+  border-left-width: 4px !important;
+}
+
+.ceo-card.border-green-500,
+.ceo-card.border-green-600 {
+  border-left-color: #16a34a !important;
+}
+
+.ceo-card.border-blue-500,
+.ceo-card.border-blue-600 {
+  border-left-color: #2563eb !important;
+}
+
+.ceo-card.border-gray-600 {
+  border-left-color: #4b5563 !important;
+}
+
+.ceo-card.border-red-500,
+.ceo-card.border-red-600 {
+  border-left-color: #dc2626 !important;
 }
