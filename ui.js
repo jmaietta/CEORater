@@ -185,7 +185,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
             <div class="score-weight-bar rounded-full"></div>
             
             <!-- Tooltip -->
-            <div class="weight-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg">
+            <div class="weight-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity z-50">
                 60% AlphaScore + 40% CompScore
                 <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
             </div>
