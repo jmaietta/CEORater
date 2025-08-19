@@ -123,15 +123,15 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
     const scoreBadgeClass = ceoRaterScore ? getScoreBadgeClass(ceoRaterScore) : 'score-badge-poor';
 
     // CEORaterScore-based border colors (matches badge colors)
-    let borderColorClass = 'border-red-500'; // default for no score = poor/red
+    let borderColorClass = 'border-red-600'; // default for no score = poor/red
     if (ceoRaterScore >= 85) {
-        borderColorClass = 'border-green-500';      // Excellent
+        borderColorClass = 'border-green-600';      // Excellent
     } else if (ceoRaterScore >= 70) {
-        borderColorClass = 'border-blue-500';       // Good  
+        borderColorClass = 'border-blue-600';       // Good  
     } else if (ceoRaterScore >= 50) {
         borderColorClass = 'border-gray-600';       // Average (matches dark gray badge)
     } else if (ceoRaterScore) {
-        borderColorClass = 'border-red-500';        // Poor
+        borderColorClass = 'border-red-600';        // Poor
     }
 
     card.className = `ceo-card relative bg-white border-l-4 ${borderColorClass} rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer flex flex-col justify-between`;
