@@ -169,7 +169,8 @@ body { font-family: 'Inter', sans-serif; }
   font-size: 0.875rem;
   font-weight: 500;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  white-space: nowrap;
+  max-width: 200px;
+  text-align: center;
   z-index: 50;
   
   /* Center the text both horizontally and vertically */
@@ -226,7 +227,8 @@ body { font-family: 'Inter', sans-serif; }
   font-size: 0.75rem;
   font-weight: 500;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  white-space: nowrap;
+  max-width: 180px;
+  text-align: center;
   z-index: 50;
 }
 
