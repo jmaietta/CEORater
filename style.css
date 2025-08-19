@@ -363,3 +363,27 @@ body { font-family: 'Inter', sans-serif; }
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* Fix for CEO card borders being overridden */
+.ceo-card.border-l-4 {
+  border-left-width: 4px !important;
+}
+
+.ceo-card.border-green-500,
+.ceo-card.border-green-600 {
+  border-left-color: #16a34a !important;
+}
+
+.ceo-card.border-blue-500,
+.ceo-card.border-blue-600 {
+  border-left-color: #2563eb !important;
+}
+
+.ceo-card.border-gray-600 {
+  border-left-color: #4b5563 !important;
+}
+
+.ceo-card.border-red-500,
+.ceo-card.border-red-600 {
+  border-left-color: #dc2626 !important;
+}
