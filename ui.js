@@ -63,10 +63,13 @@ function getScoreBadgeClass(score) {
 export function updateStatCards(masterData) {
     if (!masterData || masterData.length === 0) return;
 
-    // Calculate Median TSR
-    const tsrValues = masterData.map(c => c.tsrValue).filter(v => typeof v === 'number');
-    const medianTsr = calculateMedian(tsrValues);
-    medianTsrStat.textContent = pct(medianTsr);
+    // Calculate Avg. Founder CEORaterScore
+    const founderceoRaterScores = masterData
+        .filter(c => c.founder === 'Y')
+        .map(c => c.ceoRaterScore)
+        .filter(v => typeof v === 'number');
+    const avgFounderceoRaterScore = calculateAverage(founderceoRaterScores);
+    avgFounderceoRaterScoreStat.textContent = Math.round(avgFounderceoRaterScore);
 
     // Calculate Avg. Founder AlphaScore
     const founderAlphaScores = masterData
@@ -76,16 +79,17 @@ export function updateStatCards(masterData) {
     const avgFounderAlphaScore = calculateAverage(founderAlphaScores);
     avgFounderAlphaScoreStat.textContent = Math.round(avgFounderAlphaScore);
 
-    // Calculate Founder CEOs
-    const founderCount = masterData.filter(c => c.founder === 'Y').length;
-    founderCeoStat.textContent = founderCount;
-    
+    // Calculate Median TSR
+    const tsrValues = masterData.map(c => c.tsrValue).filter(v => typeof v === 'number');
+    const medianTsr = calculateMedian(tsrValues);
+    medianTsrStat.textContent = pct(medianTsr);
+
     // Calculate Median CEO Compensation
     const compValues = masterData.map(c => c.compensation).filter(v => typeof v === 'number');
     const medianComp = calculateMedian(compValues);
     medianCompStat.textContent = `$${money(medianComp, 1)}M`;
 
-    // NEW: Calculate Median CEORaterScore
+    // Calculate Median CEORaterScore
     const ceoRaterScores = masterData
         .map(c => c.ceoRaterScore)
         .filter(v => typeof v === 'number');
