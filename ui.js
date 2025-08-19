@@ -140,7 +140,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
     const founderBadge = (c.founder?.toUpperCase() === 'Y') ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
     
     const saved = userWatchlist.has(c.ticker);
-    const watchlistStar = `<button class="watchlist-star text-2xl align-middle transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? '★' : '☆'}</button>`;
+    const watchlistStar = `<button class="watchlist-star text-2xl align-middle transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? '⭐' : '☆'}</button>`;
 
     const isComparing = comparisonSet.has(c.ticker);
     const compareIcon = isComparing 
@@ -242,7 +242,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
 export function renderDetailModal(ceoData) {
   const c = ceoData;
   const ceoRaterScore = c.ceoRaterScore;
-  const scoreBadgeClass = ceoRaterScore ? getScoreBadgeClass(ceoRaterScore) : '';
+  const scoreBadgeClass = ceoRaterScore ? getScoreBadgeClass(ceoRaterScore) : 'score-badge-poor';
   
   const founder = (c.founder?.toUpperCase() === 'Y') ? `<span class="ml-3 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Founder</span>` : '';
   
@@ -260,14 +260,16 @@ export function renderDetailModal(ceoData) {
   
   modalBody.innerHTML = `
     <!-- CEORaterScore Hero Section in Modal -->
-    <div class="modal-ceorater-section p-6 text-center mb-6">
-        <h4 class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-3">CEORaterScore</h4>
-        <div class="font-orbitron font-black text-5xl text-slate-800 mb-3">${ceoRaterScore ? Math.round(ceoRaterScore) : 'N/A'}</div>
-        <div class="text-sm text-slate-600 mb-4">Comprehensive CEO Performance Rating</div>
-        <div class="flex items-center justify-center space-x-4 text-xs text-slate-500">
-            <span><strong>60% AlphaScore</strong> (${Math.round(c.alphaScore)})</span>
-            <span>•</span>
-            <span><strong>40% CompScore</strong> (${c.compensationScore || 'N/A'})</span>
+    <div class="modal-ceorater-section ${scoreBadgeClass} p-6 text-center mb-6 text-white relative overflow-hidden">
+        <div class="relative z-10">
+            <h4 class="text-sm font-semibold uppercase tracking-wider mb-3 opacity-90">CEORaterScore</h4>
+            <div class="font-orbitron font-black text-5xl mb-3">${ceoRaterScore ? Math.round(ceoRaterScore) : 'N/A'}</div>
+            <div class="text-sm mb-4 opacity-90">Comprehensive CEO Performance Rating</div>
+            <div class="flex items-center justify-center space-x-4 text-xs opacity-75">
+                <span><strong>60% AlphaScore</strong> (${Math.round(c.alphaScore)})</span>
+                <span>•</span>
+                <span><strong>40% CompScore</strong> (${c.compensationScore || 'N/A'})</span>
+            </div>
         </div>
     </div>
 
