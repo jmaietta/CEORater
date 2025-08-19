@@ -172,7 +172,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
             <div class="relative z-10">
                 <p class="text-xs font-bold uppercase tracking-wider mb-1">CEORaterScore</p>
                 <p class="text-4xl font-orbitron font-black">${ceoRaterScore ? Math.round(ceoRaterScore) : 'N/A'}</p>
-                <p class="text-xs opacity-90">60% Alpha • 40% Comp</p>
+                <p class="text-xs opacity-100">60% Alpha • 40% Comp</p>
             </div>
         </div>
 
