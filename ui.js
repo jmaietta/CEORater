@@ -123,15 +123,15 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
     const scoreBadgeClass = ceoRaterScore ? getScoreBadgeClass(ceoRaterScore) : 'score-badge-poor';
 
     // CEORaterScore-based border colors (matches badge colors)
-    let borderColorClass = 'border-red-600'; // default for no score = poor/red
+    let borderColorClass = 'border-red-500'; // default for no score = poor/red
     if (ceoRaterScore >= 85) {
-        borderColorClass = 'border-green-600';      // Excellent
+        borderColorClass = 'border-green-500';      // Excellent
     } else if (ceoRaterScore >= 70) {
-        borderColorClass = 'border-blue-600';       // Good  
+        borderColorClass = 'border-blue-500';       // Good  
     } else if (ceoRaterScore >= 50) {
         borderColorClass = 'border-gray-600';       // Average (matches dark gray badge)
     } else if (ceoRaterScore) {
-        borderColorClass = 'border-red-600';        // Poor
+        borderColorClass = 'border-red-500';        // Poor
     }
 
     card.className = `ceo-card relative bg-white border-l-4 ${borderColorClass} rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer flex flex-col justify-between`;
@@ -172,7 +172,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
             <div class="relative z-10">
                 <p class="text-xs font-bold uppercase tracking-wider mb-1">CEORaterScore</p>
                 <p class="text-4xl font-orbitron font-black">${ceoRaterScore ? Math.round(ceoRaterScore) : 'N/A'}</p>
-                <p class="text-xs opacity-100">60% Alpha • 40% Comp</p>
+                <p class="text-xs opacity-90">60% Alpha • 40% Comp</p>
             </div>
         </div>
 
@@ -262,10 +262,10 @@ export function renderDetailModal(ceoData) {
     <!-- CEORaterScore Hero Section in Modal -->
     <div class="modal-ceorater-section ${scoreBadgeClass} p-6 text-center mb-6 text-white relative overflow-hidden">
         <div class="relative z-10">
-            <h4 class="text-sm font-semibold uppercase tracking-wider mb-3 opacity-100">CEORaterScore</h4>
+            <h4 class="text-sm font-semibold uppercase tracking-wider mb-3 opacity-90">CEORaterScore</h4>
             <div class="font-orbitron font-black text-5xl mb-3">${ceoRaterScore ? Math.round(ceoRaterScore) : 'N/A'}</div>
             <div class="text-sm mb-4 opacity-90">Comprehensive CEO Performance Rating</div>
-            <div class="flex items-center justify-center space-x-4 text-xs opacity-90">
+            <div class="flex items-center justify-center space-x-4 text-xs opacity-75">
                 <span><strong>60% AlphaScore</strong> (${Math.round(c.alphaScore)})</span>
                 <span>•</span>
                 <span><strong>40% CompScore</strong> (${c.compensationScore || 'N/A'})</span>
@@ -365,9 +365,9 @@ export function renderComparisonModal(master, comparisonSet) {
     if (selectedCeos.length === 0) return;
 
     const metrics = [
-        { label: 'CEORaterScore', key: 'ceoRaterScore', format: v => v ? Math.round(v) : 'N/A', higherIsBetter: true, cssClass: 'ceorater-column' },
-        { label: 'AlphaScore', key: 'alphaScore', format: v => Math.round(v), higherIsBetter: true },
-        { label: 'CompScore', key: 'compensationScore', format: v => v || 'N/A', higherIsBetter: true },
+        { label: 'CEORaterScore', key: 'ceoRaterScore', format: v => v ? Math.round(v) : 'N/A', higherIsBetter: true, cssClass: 'ceorater-column', isMainScore: true },
+        { label: 'AlphaScore', key: 'alphaScore', format: v => Math.round(v), higherIsBetter: true, cssClass: 'alpha-column', isMainScore: true },
+        { label: 'CompScore', key: 'compensationScore', format: v => v || 'N/A', higherIsBetter: true, cssClass: 'comp-column', isMainScore: true },
         { label: 'Ticker', key: 'ticker', format: v => v, higherIsBetter: null },
         { label: 'Founder', key: 'founder', format: v => (v?.toUpperCase() === 'Y' ? 'Yes' : 'No'), higherIsBetter: null },
         { label: 'Tenure (Yrs)', key: 'tenure', format: v => v.toFixed(1), higherIsBetter: true },
@@ -375,17 +375,20 @@ export function renderComparisonModal(master, comparisonSet) {
         { label: 'Avg Annual TSR', key: 'avgAnnualTsr', format: pct, higherIsBetter: true },
         { label: 'TSR vs QQQ', key: 'tsrAlpha', format: pct, higherIsBetter: true },
         { label: 'Avg Ann. TSR vs QQQ', key: 'avgAnnualTsrAlpha', format: pct, higherIsBetter: true },
-        { label: 'CEO Comp ($M)', key: 'compensation', format: v => `$${money(v,1)}M`, higherIsBetter: false },
-        { label: 'Comp Cost / 1% Avg TSR ($MM)', key: 'compensationCost', format: v => `$${money(v, 3)}`, higherIsBetter: false }
+        { label: 'CEO Comp ($M)', key: 'compensation', format: v => `${money(v,1)}M`, higherIsBetter: false },
+        { label: 'Comp Cost / 1% Avg TSR ($MM)', key: 'compensationCost', format: v => `${money(v, 3)}`, higherIsBetter: false }
     ];
 
     const renderLogic = (isMobile) => {
         let html = isMobile ? '<div class="space-y-4">' : `<table class="w-full text-sm text-left text-gray-500">`;
         if (!isMobile) {
             html += `<thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr>`;
-            html += `<th scope="col" class="px-6 py-3 sticky left-0 bg-gray-50 z-10">Metric</th>`;
+            html += `<th scope="col" class="px-6 py-4 sticky left-0 bg-gray-50 z-10 font-bold">Metric</th>`;
             selectedCeos.forEach(ceo => {
-                html += `<th scope="col" class="px-6 py-3">${ceo.ceo}<br><span class="font-normal normal-case">${ceo.company} (${ceo.ticker})</span></th>`;
+                html += `<th scope="col" class="px-6 py-4 text-center">
+                    <div class="font-bold text-gray-900">${ceo.ceo}</div>
+                    <div class="font-normal normal-case text-gray-600 text-xs mt-1">${ceo.company} (${ceo.ticker})</div>
+                </th>`;
             });
             html += `</tr></thead><tbody>`;
         }
@@ -415,21 +418,29 @@ export function renderComparisonModal(master, comparisonSet) {
                 html += `<div class="${bgClass} border border-gray-200 rounded-lg shadow-sm overflow-hidden"><div class="px-4 py-3 bg-gray-50 border-b"><h3 class="font-bold text-gray-800">${metric.label}</h3></div><div class="divide-y divide-gray-200">`;
             } else {
                 const rowClass = metric.cssClass || '';
-                html += `<tr class="bg-white border-b ${rowClass}"><th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap sticky left-0 bg-white border-r z-10">${metric.label}</th>`;
+                html += `<tr class="bg-white border-b ${rowClass}">
+                    <th scope="row" class="px-6 py-4 font-bold text-gray-900 whitespace-nowrap sticky left-0 bg-white border-r z-10 ${metric.isMainScore ? 'text-base' : ''}">${metric.label}</th>`;
             }
 
             selectedCeos.forEach(ceo => {
                 const rawValue = ceo[metric.key];
                 const comparableValue = getComparableValue(ceo);
                 const isBest = comparableValue === bestValue && comparableValue !== null;
-                const fontClass = (metric.label === 'AlphaScore' || metric.label === 'CEORaterScore') ? 'font-orbitron' : '';
+                
+                // Enhanced styling for main scores in desktop view
+                let fontClass = '';
+                let sizeClass = '';
+                if (!isMobile && metric.isMainScore) {
+                    fontClass = 'font-orbitron';
+                    sizeClass = 'text-lg';
+                }
 
                 if (isMobile) {
                     const highlightClass = isBest ? 'bg-green-50' : '';
                     html += `<div class="p-4 flex justify-between items-center ${highlightClass}"><div><p class="font-semibold text-gray-800">${ceo.ceo}</p><p class="text-xs text-gray-500">${ceo.company}</p></div><p class="${fontClass} font-bold text-lg text-right ${isBest ? 'text-green-700' : 'text-gray-900'}">${metric.format(rawValue)}</p></div>`;
                 } else {
-                    const highlightClass = isBest ? 'bg-green-100 font-bold text-green-700' : '';
-                    html += `<td class="px-6 py-4 ${highlightClass} ${fontClass}">${metric.format(rawValue)}</td>`;
+                    const highlightClass = isBest ? 'bg-green-100 font-bold text-green-700' : 'font-semibold';
+                    html += `<td class="px-6 py-4 text-center ${highlightClass} ${fontClass} ${sizeClass}">${metric.format(rawValue)}</td>`;
                 }
             });
 
