@@ -99,14 +99,29 @@ body { font-family: 'Inter', sans-serif; }
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
-/* When using score badge classes, override the default background */
-.modal-ceorater-section.score-badge-excellent,
-.modal-ceorater-section.score-badge-good,
-.modal-ceorater-section.score-badge-average,
-.modal-ceorater-section.score-badge-poor {
-  /* Remove the default modal background since score badge classes provide their own */
-  background: inherit;
+/* Apply score badge backgrounds to modal sections */
+.modal-ceorater-section.score-badge-excellent {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   border: none;
+  color: white;
+}
+
+.modal-ceorater-section.score-badge-good {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border: none;
+  color: white;
+}
+
+.modal-ceorater-section.score-badge-average {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  border: none;
+  color: white;
+}
+
+.modal-ceorater-section.score-badge-poor {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border: none;
+  color: white;
 }
 
 .modal-ceorater-section::before {
@@ -118,14 +133,6 @@ body { font-family: 'Inter', sans-serif; }
   bottom: 0;
   background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
   animation: shimmer 3s infinite;
-}
-
-/* Ensure text is white when using colored backgrounds */
-.modal-ceorater-section.score-badge-excellent,
-.modal-ceorater-section.score-badge-good,
-.modal-ceorater-section.score-badge-average,
-.modal-ceorater-section.score-badge-poor {
-  color: white;
 }
 
 /* Default styling for when no score is available */
@@ -143,6 +150,7 @@ body { font-family: 'Inter', sans-serif; }
 /* Weight Distribution Tooltip */
 .weight-tooltip {
   opacity: 0;
+  visibility: hidden;
   transform: translateX(-50%) translateY(10px);
   transition: all 0.3s ease;
   pointer-events: none;
@@ -170,15 +178,19 @@ body { font-family: 'Inter', sans-serif; }
   justify-content: center;
 }
 
-.weight-indicator:hover .weight-tooltip {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-  pointer-events: auto;
-}
-
 /* Ensure the weight indicator can position the tooltip */
 .weight-indicator {
   position: relative;
+}
+
+/* Weight tooltip only works on desktop */
+@media (min-width: 769px) {
+  .weight-indicator:hover .weight-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+  }
 }
 
 /* Arrow pointer (centered) */
@@ -195,11 +207,38 @@ body { font-family: 'Inter', sans-serif; }
   border-bottom: 5px solid #1f2937;
 }
 
-/* Make AlphaScore and CompScore tooltips appear on hover */
-.bg-blue-50:hover .alpha-score-tooltip,
-.bg-purple-50:hover .comp-score-tooltip {
+/* AlphaScore and CompScore tooltips - hidden by default */
+.alpha-score-tooltip,
+.comp-score-tooltip {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transform: translateX(-50%) translateY(10px);
+  transition: all 0.3s ease;
+  pointer-events: none !important;
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  margin-bottom: 8px;
+  background-color: #1f2937;
+  color: #ffffff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+  z-index: 50;
+}
+
+/* Make AlphaScore and CompScore tooltips appear on hover - desktop only */
+@media (min-width: 769px) {
+  .bg-blue-50:hover .alpha-score-tooltip,
+  .bg-purple-50:hover .comp-score-tooltip {
     opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateX(-50%) translateY(0);
     pointer-events: auto !important;
+  }
 }
 
 /* Professional Comparison Table CEORaterScore Column */
@@ -275,11 +314,24 @@ body { font-family: 'Inter', sans-serif; }
     font-size: 3rem;
   }
 
-  /* Hide tooltips on mobile */
+  /* Force hide all tooltips on mobile */
   .weight-tooltip,
   .alpha-score-tooltip,
   .comp-score-tooltip {
     display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+  
+  /* Disable hover effects on mobile */
+  .weight-indicator:hover .weight-tooltip,
+  .bg-blue-50:hover .alpha-score-tooltip,
+  .bg-purple-50:hover .comp-score-tooltip {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
   }
 }
 
