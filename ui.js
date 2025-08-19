@@ -140,7 +140,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
     const founderBadge = (c.founder?.toUpperCase() === 'Y') ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
     
     const saved = userWatchlist.has(c.ticker);
-    const watchlistStar = `<button class="watchlist-star text-2xl align-middle transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? 'â˜…' : 'â˜†'}</button>`;
+    const watchlistStar = `<button class="watchlist-star text-2xl align-middle transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? '★' : '☆'}</button>`;
 
     const isComparing = comparisonSet.has(c.ticker);
     const compareIcon = isComparing 
@@ -172,7 +172,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
             <div class="relative z-10">
                 <p class="text-xs font-bold uppercase tracking-wider opacity-90 mb-1">CEORaterScore</p>
                 <p class="text-4xl font-orbitron font-black">${ceoRaterScore ? Math.round(ceoRaterScore) : 'N/A'}</p>
-                <p class="text-xs opacity-75">60% Alpha â€¢ 40% Comp</p>
+                <p class="text-xs opacity-75">60% Alpha • 40% Comp</p>
             </div>
         </div>
 
@@ -226,7 +226,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
           ${compareButton}
           <a href="#" class="details-link text-blue-600 font-semibold flex items-center">
             <span>View Details</span>
-            <span class="text-lg ml-1">â†'</span>
+            <span class="text-lg ml-1">→</span>
           </a>
       </div>
     `;
@@ -242,7 +242,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
 export function renderDetailModal(ceoData) {
   const c = ceoData;
   const ceoRaterScore = c.ceoRaterScore;
-  const scoreBadgeClass = ceoRaterScore ? getScoreBadgeClass(ceoRaterScore) : 'score-badge-poor';
+  const scoreBadgeClass = ceoRaterScore ? getScoreBadgeClass(ceoRaterScore) : '';
   
   const founder = (c.founder?.toUpperCase() === 'Y') ? `<span class="ml-3 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Founder</span>` : '';
   
