@@ -243,43 +243,6 @@ body { font-family: 'Inter', sans-serif; }
   }
 }
 
-/* Professional Comparison Table CEORaterScore Column */
-.ceorater-column {
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-  font-weight: bold;
-  color: #334155;
-}
-
-/* Enhanced Comparison Table Score Columns */
-.alpha-column {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  font-weight: bold;
-  color: #1e40af;
-}
-
-.comp-column {
-  background: linear-gradient(135deg, #faf5ff 0%, #e9d5ff 100%);
-  font-weight: bold;
-  color: #7c3aed;
-}
-
-/* Enhanced table header styling for comparison */
-.ceorater-column th,
-.alpha-column th,
-.comp-column th {
-  font-size: 0.875rem;
-  padding: 1rem 1.5rem;
-}
-
-/* Ensure main score values are prominent in comparison table */
-.ceorater-column td,
-.alpha-column td,
-.comp-column td {
-  font-weight: 600;
-  font-size: 1.125rem;
-  padding: 1rem 1.5rem;
-}
-
 /* Professional CEORaterScore in comparison cards (mobile) */
 .comparison-ceorater-highlight {
   background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
