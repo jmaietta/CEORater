@@ -242,7 +242,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
 export function renderDetailModal(ceoData) {
   const c = ceoData;
   const ceoRaterScore = c.ceoRaterScore;
-  const scoreBadgeClass = ceoRaterScore ? getScoreBadgeClass(ceoRaterScore) : '';
+  const scoreBadgeClass = ceoRaterScore ? getScoreBadgeClass(ceoRaterScore) : 'score-badge-poor';
   
   const founder = (c.founder?.toUpperCase() === 'Y') ? `<span class="ml-3 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Founder</span>` : '';
   
@@ -354,6 +354,7 @@ export function renderDetailModal(ceoData) {
       <span>${filings}</span>
     </div>`;
 }
+
 
 /**
  * Renders the comparison table modal for both desktop (table) and mobile (cards).
