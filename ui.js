@@ -123,15 +123,15 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
     const scoreBadgeClass = ceoRaterScore ? getScoreBadgeClass(ceoRaterScore) : 'score-badge-poor';
 
     // CEORaterScore-based border colors (matches badge colors)
-    let borderColorClass = 'border-red-500'; // default for no score = poor/red
+    let borderColorClass = 'border-red-600'; // default for no score = poor/red
     if (ceoRaterScore >= 85) {
-        borderColorClass = 'border-green-500';      // Excellent
+        borderColorClass = 'border-green-600';      // Excellent
     } else if (ceoRaterScore >= 70) {
-        borderColorClass = 'border-blue-500';       // Good  
+        borderColorClass = 'border-blue-600';       // Good  
     } else if (ceoRaterScore >= 50) {
         borderColorClass = 'border-gray-600';       // Average (matches dark gray badge)
     } else if (ceoRaterScore) {
-        borderColorClass = 'border-red-500';        // Poor
+        borderColorClass = 'border-red-600';        // Poor
     }
 
     card.className = `ceo-card relative bg-white border-l-4 ${borderColorClass} rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer flex flex-col justify-between`;
@@ -140,7 +140,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
     const founderBadge = (c.founder?.toUpperCase() === 'Y') ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
     
     const saved = userWatchlist.has(c.ticker);
-    const watchlistStar = `<button class="watchlist-star text-2xl align-middle transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? '★' : '☆'}</button>`;
+    const watchlistStar = `<button class="watchlist-star text-2xl align-middle transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? '⭐' : '☆'}</button>`;
 
     const isComparing = comparisonSet.has(c.ticker);
     const compareIcon = isComparing 
@@ -172,7 +172,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
             <div class="relative z-10">
                 <p class="text-xs font-bold uppercase tracking-wider mb-1">CEORaterScore</p>
                 <p class="text-4xl font-orbitron font-black">${ceoRaterScore ? Math.round(ceoRaterScore) : 'N/A'}</p>
-                <p class="text-xs opacity-90">60% Alpha • 40% Comp</p>
+                <p class="text-xs opacity-100">60% Alpha • 40% Comp</p>
             </div>
         </div>
 
@@ -242,7 +242,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
 export function renderDetailModal(ceoData) {
   const c = ceoData;
   const ceoRaterScore = c.ceoRaterScore;
-  const scoreBadgeClass = ceoRaterScore ? getScoreBadgeClass(ceoRaterScore) : '';
+  const scoreBadgeClass = ceoRaterScore ? getScoreBadgeClass(ceoRaterScore) : 'score-badge-poor';
   
   const founder = (c.founder?.toUpperCase() === 'Y') ? `<span class="ml-3 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Founder</span>` : '';
   
@@ -260,14 +260,16 @@ export function renderDetailModal(ceoData) {
   
   modalBody.innerHTML = `
     <!-- CEORaterScore Hero Section in Modal -->
-    <div class="modal-ceorater-section p-6 text-center mb-6">
-        <h4 class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-3">CEORaterScore</h4>
-        <div class="font-orbitron font-black text-5xl text-slate-800 mb-3">${ceoRaterScore ? Math.round(ceoRaterScore) : 'N/A'}</div>
-        <div class="text-sm text-slate-600 mb-4">Comprehensive CEO Performance Rating</div>
-        <div class="flex items-center justify-center space-x-4 text-xs text-slate-500">
-            <span><strong>60% AlphaScore</strong> (${Math.round(c.alphaScore)})</span>
-            <span>•</span>
-            <span><strong>40% CompScore</strong> (${c.compensationScore || 'N/A'})</span>
+    <div class="modal-ceorater-section ${scoreBadgeClass} p-6 text-center mb-6 text-white relative overflow-hidden">
+        <div class="relative z-10">
+            <h4 class="text-sm font-semibold uppercase tracking-wider mb-3 opacity-100">CEORaterScore</h4>
+            <div class="font-orbitron font-black text-5xl mb-3">${ceoRaterScore ? Math.round(ceoRaterScore) : 'N/A'}</div>
+            <div class="text-sm mb-4 opacity-90">Comprehensive CEO Performance Rating</div>
+            <div class="flex items-center justify-center space-x-4 text-xs opacity-90">
+                <span><strong>60% AlphaScore</strong> (${Math.round(c.alphaScore)})</span>
+                <span>•</span>
+                <span><strong>40% CompScore</strong> (${c.compensationScore || 'N/A'})</span>
+            </div>
         </div>
     </div>
 
