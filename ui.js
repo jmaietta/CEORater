@@ -247,11 +247,11 @@ export function renderDetailModal(ceoData) {
   const founder = (c.founder?.toUpperCase() === 'Y') ? `<span class="ml-3 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Founder</span>` : '';
   
   modalHeader.innerHTML = `
-    <h3 class="font-bold text-xl text-gray-900 flex items-center">
+    <h3 class="font-bold text-xl text-white-900 flex items-center">
       ${c.ceo}
       ${founder}
     </h3>
-    <p class="text-sm text-gray-600 font-bold mt-1">${c.company} (${c.ticker})</p>`;
+    <p class="text-sm text-white-600 font-bold mt-1">${c.company} (${c.ticker})</p>`;
 
   const tsrCol = c.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
   const avgCol = c.avgAnnualTsr >= 0 ? 'text-green-600' : 'text-red-600';
