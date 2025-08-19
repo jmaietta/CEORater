@@ -185,7 +185,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
             <div class="score-weight-bar rounded-full"></div>
             
             <!-- Tooltip -->
-            <div class="weight-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity z-50">
+            <div class="weight-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg">
                 60% AlphaScore + 40% CompScore
                 <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
             </div>
@@ -242,16 +242,16 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
 export function renderDetailModal(ceoData) {
   const c = ceoData;
   const ceoRaterScore = c.ceoRaterScore;
-  const scoreBadgeClass = ceoRaterScore ? getScoreBadgeClass(ceoRaterScore) : 'score-badge-poor';
+  const scoreBadgeClass = ceoRaterScore ? getScoreBadgeClass(ceoRaterScore) : '';
   
   const founder = (c.founder?.toUpperCase() === 'Y') ? `<span class="ml-3 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Founder</span>` : '';
   
   modalHeader.innerHTML = `
-    <h3 class="font-bold text-xl text-white-900 flex items-center">
+    <h3 class="font-bold text-xl text-gray-900 flex items-center">
       ${c.ceo}
       ${founder}
     </h3>
-    <p class="text-sm text-white-600 font-bold mt-1">${c.company} (${c.ticker})</p>`;
+    <p class="text-sm text-gray-600 font-bold mt-1">${c.company} (${c.ticker})</p>`;
 
   const tsrCol = c.tsrValue >= 0 ? 'text-green-600' : 'text-red-600';
   const avgCol = c.avgAnnualTsr >= 0 ? 'text-green-600' : 'text-red-600';
@@ -259,17 +259,15 @@ export function renderDetailModal(ceoData) {
   const avgAlphaCol = c.avgAnnualTsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
   
   modalBody.innerHTML = `
-    <!-- CEORaterScore Hero Section in Modal with Consistent Color Coding -->
-    <div class="modal-ceorater-section ${scoreBadgeClass} rounded-xl p-6 text-center text-white mb-6 relative overflow-hidden">
-        <div class="relative z-10">
-            <h4 class="text-xs font-bold uppercase tracking-wider opacity-90 mb-3">CEORaterScore</h4>
-            <div class="font-orbitron font-black text-5xl mb-3">${ceoRaterScore ? Math.round(ceoRaterScore) : 'N/A'}</div>
-            <div class="text-sm opacity-75 mb-4">Comprehensive CEO Performance Rating</div>
-            <div class="flex items-center justify-center space-x-4 text-xs opacity-75">
-                <span><strong>60% AlphaScore</strong> (${Math.round(c.alphaScore)})</span>
-                <span>•</span>
-                <span><strong>40% CompScore</strong> (${c.compensationScore || 'N/A'})</span>
-            </div>
+    <!-- CEORaterScore Hero Section in Modal -->
+    <div class="modal-ceorater-section p-6 text-center mb-6">
+        <h4 class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-3">CEORaterScore</h4>
+        <div class="font-orbitron font-black text-5xl text-slate-800 mb-3">${ceoRaterScore ? Math.round(ceoRaterScore) : 'N/A'}</div>
+        <div class="text-sm text-slate-600 mb-4">Comprehensive CEO Performance Rating</div>
+        <div class="flex items-center justify-center space-x-4 text-xs text-slate-500">
+            <span><strong>60% AlphaScore</strong> (${Math.round(c.alphaScore)})</span>
+            <span>•</span>
+            <span><strong>40% CompScore</strong> (${c.compensationScore || 'N/A'})</span>
         </div>
     </div>
 
@@ -354,7 +352,6 @@ export function renderDetailModal(ceoData) {
       <span>${filings}</span>
     </div>`;
 }
-
 
 /**
  * Renders the comparison table modal for both desktop (table) and mobile (cards).
