@@ -2,9 +2,24 @@
 module.exports = {
   content: [
     "./**/*.{html,js,ts,jsx,tsx}",
+    "./script.js",
+    "./ui.js", 
+    "./firebase-config.js",
+    "./index.html"
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        'sans': ['Inter', 'sans-serif'],
+        'orbitron': ['Orbitron', 'sans-serif'],
+      },
+    },
   },
   plugins: [],
+  // Purge optimization settings
+  corePlugins: {
+    preflight: true, // Keep CSS reset
+    // Disable unused features if you don't use them:
+    container: false, // Disable if you don't use .container class
+  }
 }
