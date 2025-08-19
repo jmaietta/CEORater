@@ -63,15 +63,15 @@ function getScoreBadgeClass(score) {
 export function updateStatCards(masterData) {
     if (!masterData || masterData.length === 0) return;
 
-    // Calculate Avg. Founder CEORaterScore
-    const founderceoRaterScores = masterData
+    // 1. Calculate Avg. Founder CEORaterScore (first position)
+    const founderCeoRaterScores = masterData
         .filter(c => c.founder === 'Y')
         .map(c => c.ceoRaterScore)
         .filter(v => typeof v === 'number');
-    const avgFounderceoRaterScore = calculateAverage(founderceoRaterScores);
-    avgFounderceoRaterScoreStat.textContent = Math.round(avgFounderceoRaterScore);
+    const avgFounderCeoRaterScore = calculateAverage(founderCeoRaterScores);
+    medianTsrStat.textContent = Math.round(avgFounderCeoRaterScore);
 
-    // Calculate Avg. Founder AlphaScore
+    // 2. Calculate Avg. Founder AlphaScore (second position)
     const founderAlphaScores = masterData
         .filter(c => c.founder === 'Y')
         .map(c => c.alphaScore)
@@ -79,17 +79,17 @@ export function updateStatCards(masterData) {
     const avgFounderAlphaScore = calculateAverage(founderAlphaScores);
     avgFounderAlphaScoreStat.textContent = Math.round(avgFounderAlphaScore);
 
-    // Calculate Median TSR
+    // 3. Calculate Median Total Stock Return (third position)
     const tsrValues = masterData.map(c => c.tsrValue).filter(v => typeof v === 'number');
     const medianTsr = calculateMedian(tsrValues);
-    medianTsrStat.textContent = pct(medianTsr);
-
-    // Calculate Median CEO Compensation
+    founderCeoStat.textContent = pct(medianTsr);
+    
+    // 4. Calculate Median CEO Compensation (fourth position - unchanged)
     const compValues = masterData.map(c => c.compensation).filter(v => typeof v === 'number');
     const medianComp = calculateMedian(compValues);
-    medianCompStat.textContent = `$${money(medianComp, 1)}M`;
+    medianCompStat.textContent = `${money(medianComp, 1)}M`;
 
-    // Calculate Median CEORaterScore
+    // Calculate Median CEORaterScore for hero card (unchanged)
     const ceoRaterScores = masterData
         .map(c => c.ceoRaterScore)
         .filter(v => typeof v === 'number');
@@ -404,6 +404,12 @@ export function renderComparisonModal(master, comparisonSet) {
                     return Math.round(ceo[metric.key] * 100);
                 } else if (metric.label === 'CEORaterScore') {
                     return ceo[metric.key] ? Math.round(ceo[metric.key] * 100) : null;
+                } else if (metric.label === 'CompScore') {
+                    // Convert letter grades to numbers for comparison (A=100, B=80, C=60, etc.)
+                    const grade = ceo[metric.key];
+                    if (!grade || grade === 'N/A') return null;
+                    const gradeMap = { 'A': 100, 'B': 80, 'C': 60, 'D': 40, 'F': 20 };
+                    return gradeMap[grade.toUpperCase()] || 0;
                 } else {
                     return ceo[metric.key];
                 }
@@ -411,7 +417,7 @@ export function renderComparisonModal(master, comparisonSet) {
 
             let bestValue;
             if (metric.higherIsBetter !== null) {
-                const values = selectedCeos.map(getComparableValue).filter(v => typeof v === 'number');
+                const values = selectedCeos.map(getComparableValue).filter(v => typeof v === 'number' && v !== null);
                 if (values.length > 0) {
                     bestValue = metric.higherIsBetter ? Math.max(...values) : Math.min(...values);
                 }
