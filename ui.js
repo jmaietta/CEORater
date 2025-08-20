@@ -69,12 +69,7 @@ export function updateStatCards(masterData) {
         .map(c => c.ceoRaterScore)
         .filter(v => typeof v === 'number');
     const avgFounderCeoRaterScore = calculateAverage(founderCeoRaterScores);
-    
-    // Update both mobile and desktop
-    const medianTsrStat = document.getElementById("medianTsrStat");
-    const medianTsrStatDesktop = document.getElementById("medianTsrStat-desktop");
-    if (medianTsrStat) medianTsrStat.textContent = Math.round(avgFounderCeoRaterScore);
-    if (medianTsrStatDesktop) medianTsrStatDesktop.textContent = Math.round(avgFounderCeoRaterScore);
+    medianTsrStat.textContent = Math.round(avgFounderCeoRaterScore);
 
     // 2. Calculate Avg. Founder AlphaScore (second position)
     const founderAlphaScores = masterData
@@ -82,40 +77,27 @@ export function updateStatCards(masterData) {
         .map(c => c.alphaScore)
         .filter(v => typeof v === 'number');
     const avgFounderAlphaScore = calculateAverage(founderAlphaScores);
-    
-    const avgFounderAlphaScoreStat = document.getElementById("avgFounderAlphaScoreStat");
-    const avgFounderAlphaScoreStatDesktop = document.getElementById("avgFounderAlphaScoreStat-desktop");
-    if (avgFounderAlphaScoreStat) avgFounderAlphaScoreStat.textContent = Math.round(avgFounderAlphaScore);
-    if (avgFounderAlphaScoreStatDesktop) avgFounderAlphaScoreStatDesktop.textContent = Math.round(avgFounderAlphaScore);
+    avgFounderAlphaScoreStat.textContent = Math.round(avgFounderAlphaScore);
 
     // 3. Calculate Median Total Stock Return (third position)
     const tsrValues = masterData.map(c => c.tsrValue).filter(v => typeof v === 'number');
     const medianTsr = calculateMedian(tsrValues);
+    founderCeoStat.textContent = pct(medianTsr);
     
-    const founderCeoStat = document.getElementById("founderCeoStat");
-    const founderCeoStatDesktop = document.getElementById("founderCeoStat-desktop");
-    if (founderCeoStat) founderCeoStat.textContent = pct(medianTsr);
-    if (founderCeoStatDesktop) founderCeoStatDesktop.textContent = pct(medianTsr);
-    
-    // 4. Calculate Median CEO Compensation (fourth position)
+    // 4. Calculate Median CEO Compensation (fourth position - unchanged)
     const compValues = masterData.map(c => c.compensation).filter(v => typeof v === 'number');
     const medianComp = calculateMedian(compValues);
-    
-    const medianCompStat = document.getElementById("medianCompStat");
-    const medianCompStatDesktop = document.getElementById("medianCompStat-desktop");
-    if (medianCompStat) medianCompStat.textContent = `${money(medianComp, 1)}M`;
-    if (medianCompStatDesktop) medianCompStatDesktop.textContent = `${money(medianComp, 1)}M`;
+    medianCompStat.textContent = `${money(medianComp, 1)}M`;
 
-    // Calculate Median CEORaterScore for hero card
+    // Calculate Median CEORaterScore for hero card (unchanged)
     const ceoRaterScores = masterData
         .map(c => c.ceoRaterScore)
         .filter(v => typeof v === 'number');
     const medianCeoRaterScore = calculateMedian(ceoRaterScores);
     
-    const medianCeoRaterScoreStat = document.getElementById("medianCeoRaterScoreStat");
-    const medianCeoRaterScoreStatDesktop = document.getElementById("medianCeoRaterScoreStat-desktop");
-    if (medianCeoRaterScoreStat) medianCeoRaterScoreStat.textContent = Math.round(medianCeoRaterScore);
-    if (medianCeoRaterScoreStatDesktop) medianCeoRaterScoreStatDesktop.textContent = Math.round(medianCeoRaterScore);
+    if (medianCeoRaterScoreStat) {
+        medianCeoRaterScoreStat.textContent = Math.round(medianCeoRaterScore);
+    }
 }
 
 /**
