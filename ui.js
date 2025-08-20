@@ -464,9 +464,11 @@ export function renderComparisonModal(master, comparisonSet) {
                 // Enhanced styling for main scores in desktop view
                 let fontClass = '';
                 let sizeClass = '';
-                if (!isMobile && metric.isMainScore) {
+                if (metric.isMainScore) {
                     fontClass = 'font-orbitron';
-                    sizeClass = 'text-lg';
+                    if (!isMobile) {
+                        sizeClass = 'text-lg';
+                    }
                 }
 
                 if (isMobile) {
