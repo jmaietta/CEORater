@@ -57,7 +57,116 @@ function getScoreBadgeClass(score) {
 }
 
 /**
- * Calculates and updates the main dashboard stat cards.
+ * Renders the stat cards layout for both desktop and mobile
+ * @param {HTMLElement} container - The container element to render the layout in
+ */
+export function renderStatCardsLayout(container) {
+    if (!container) return;
+    
+    container.innerHTML = `
+        <!-- Desktop Layout (hidden on mobile) -->
+        <div class="hidden md:block">
+            <div class="flex items-center justify-center gap-6 max-w-7xl mx-auto">
+                <!-- Left Column - 2 cards stacked -->
+                <div class="flex flex-col gap-4 flex-1">
+                    <!-- Avg. Founder CEORaterScore -->
+                    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 text-center">
+                        <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-2">
+                            Avg. Founder CEORaterScore
+                        </h3>
+                        <div class="text-3xl font-orbitron font-bold text-blue-600" id="medianTsrStat">--</div>
+                    </div>
+                    
+                    <!-- Avg. Founder AlphaScore -->
+                    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 text-center">
+                        <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-2">
+                            Avg. Founder AlphaScore
+                        </h3>
+                        <div class="text-3xl font-orbitron font-bold text-blue-600" id="avgFounderAlphaScoreStat">--</div>
+                    </div>
+                </div>
+
+                <!-- Center - Hero Card -->
+                <div class="flex-1 max-w-sm">
+                    <div class="bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl p-8 text-center text-white shadow-lg">
+                        <h2 class="text-sm font-bold uppercase tracking-wider mb-3 opacity-90">
+                            MEDIAN CEORATERSCORE
+                        </h2>
+                        <div class="text-6xl font-orbitron font-black mb-4" id="medianCeoRaterScoreStat">--</div>
+                        <div class="text-sm opacity-90 mb-2">60% Alpha • 40% Comp</div>
+                        <div class="text-xs opacity-75">Comprehensive CEO Performance Rating</div>
+                    </div>
+                </div>
+
+                <!-- Right Column - 2 cards stacked -->
+                <div class="flex flex-col gap-4 flex-1">
+                    <!-- Median Total Stock Return -->
+                    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 text-center">
+                        <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-2">
+                            Median Total Stock Return
+                        </h3>
+                        <div class="text-3xl font-orbitron font-bold text-green-600" id="founderCeoStat">--</div>
+                    </div>
+                    
+                    <!-- Median CEO Compensation -->
+                    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 text-center">
+                        <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-2">
+                            Median CEO Compensation
+                        </h3>
+                        <div class="text-3xl font-orbitron font-bold text-purple-600" id="medianCompStat">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Layout (unchanged - shown on small screens) -->
+        <div class="block md:hidden">
+            <!-- Hero Card -->
+            <div class="bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl p-6 text-center text-white shadow-lg mb-6">
+                <h2 class="text-sm font-bold uppercase tracking-wider mb-2 opacity-90">
+                    MEDIAN CEORATERSCORE
+                </h2>
+                <div class="text-5xl font-orbitron font-black mb-3" id="medianCeoRaterScoreStat-mobile">--</div>
+                <div class="text-sm opacity-90 mb-1">60% Alpha • 40% Comp</div>
+                <div class="text-xs opacity-75">Comprehensive CEO Performance Rating</div>
+            </div>
+
+            <!-- Mobile Grid - 2x2 -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 text-center">
+                    <h3 class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
+                        Avg. Founder CEORaterScore
+                    </h3>
+                    <div class="text-2xl font-orbitron font-bold text-blue-600" id="medianTsrStat-mobile">--</div>
+                </div>
+                
+                <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 text-center">
+                    <h3 class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
+                        Avg. Founder AlphaScore
+                    </h3>
+                    <div class="text-2xl font-orbitron font-bold text-blue-600" id="avgFounderAlphaScoreStat-mobile">--</div>
+                </div>
+                
+                <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 text-center">
+                    <h3 class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
+                        Median Total Stock Return
+                    </h3>
+                    <div class="text-2xl font-orbitron font-bold text-green-600" id="founderCeoStat-mobile">--</div>
+                </div>
+                
+                <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 text-center">
+                    <h3 class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
+                        Median CEO Compensation
+                    </h3>
+                    <div class="text-2xl font-orbitron font-bold text-purple-600" id="medianCompStat-mobile">--</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Calculates and updates the main dashboard stat cards for both desktop and mobile.
  * @param {Array<Object>} masterData - The full list of all CEOs.
  */
 export function updateStatCards(masterData) {
@@ -69,7 +178,12 @@ export function updateStatCards(masterData) {
         .map(c => c.ceoRaterScore)
         .filter(v => typeof v === 'number');
     const avgFounderCeoRaterScore = calculateAverage(founderCeoRaterScores);
-    medianTsrStat.textContent = Math.round(avgFounderCeoRaterScore);
+    
+    // Update desktop elements
+    const medianTsrStatEl = document.getElementById("medianTsrStat");
+    const medianTsrStatMobileEl = document.getElementById("medianTsrStat-mobile");
+    if (medianTsrStatEl) medianTsrStatEl.textContent = Math.round(avgFounderCeoRaterScore);
+    if (medianTsrStatMobileEl) medianTsrStatMobileEl.textContent = Math.round(avgFounderCeoRaterScore);
 
     // 2. Calculate Avg. Founder AlphaScore (second position)
     const founderAlphaScores = masterData
@@ -77,27 +191,40 @@ export function updateStatCards(masterData) {
         .map(c => c.alphaScore)
         .filter(v => typeof v === 'number');
     const avgFounderAlphaScore = calculateAverage(founderAlphaScores);
-    avgFounderAlphaScoreStat.textContent = Math.round(avgFounderAlphaScore);
+    
+    const avgFounderAlphaScoreStatEl = document.getElementById("avgFounderAlphaScoreStat");
+    const avgFounderAlphaScoreStatMobileEl = document.getElementById("avgFounderAlphaScoreStat-mobile");
+    if (avgFounderAlphaScoreStatEl) avgFounderAlphaScoreStatEl.textContent = Math.round(avgFounderAlphaScore);
+    if (avgFounderAlphaScoreStatMobileEl) avgFounderAlphaScoreStatMobileEl.textContent = Math.round(avgFounderAlphaScore);
 
     // 3. Calculate Median Total Stock Return (third position)
     const tsrValues = masterData.map(c => c.tsrValue).filter(v => typeof v === 'number');
     const medianTsr = calculateMedian(tsrValues);
-    founderCeoStat.textContent = pct(medianTsr);
     
-    // 4. Calculate Median CEO Compensation (fourth position - unchanged)
+    const founderCeoStatEl = document.getElementById("founderCeoStat");
+    const founderCeoStatMobileEl = document.getElementById("founderCeoStat-mobile");
+    if (founderCeoStatEl) founderCeoStatEl.textContent = pct(medianTsr);
+    if (founderCeoStatMobileEl) founderCeoStatMobileEl.textContent = pct(medianTsr);
+    
+    // 4. Calculate Median CEO Compensation (fourth position)
     const compValues = masterData.map(c => c.compensation).filter(v => typeof v === 'number');
     const medianComp = calculateMedian(compValues);
-    medianCompStat.textContent = `${money(medianComp, 1)}M`;
+    
+    const medianCompStatEl = document.getElementById("medianCompStat");
+    const medianCompStatMobileEl = document.getElementById("medianCompStat-mobile");
+    if (medianCompStatEl) medianCompStatEl.textContent = `${money(medianComp, 1)}M`;
+    if (medianCompStatMobileEl) medianCompStatMobileEl.textContent = `${money(medianComp, 1)}M`;
 
-    // Calculate Median CEORaterScore for hero card (unchanged)
+    // Calculate Median CEORaterScore for hero card
     const ceoRaterScores = masterData
         .map(c => c.ceoRaterScore)
         .filter(v => typeof v === 'number');
     const medianCeoRaterScore = calculateMedian(ceoRaterScores);
     
-    if (medianCeoRaterScoreStat) {
-        medianCeoRaterScoreStat.textContent = Math.round(medianCeoRaterScore);
-    }
+    const medianCeoRaterScoreStatEl = document.getElementById("medianCeoRaterScoreStat");
+    const medianCeoRaterScoreStatMobileEl = document.getElementById("medianCeoRaterScoreStat-mobile");
+    if (medianCeoRaterScoreStatEl) medianCeoRaterScoreStatEl.textContent = Math.round(medianCeoRaterScore);
+    if (medianCeoRaterScoreStatMobileEl) medianCeoRaterScoreStatMobileEl.textContent = Math.round(medianCeoRaterScore);
 }
 
 /**
@@ -144,7 +271,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
     const founderBadge = (c.founder?.toUpperCase() === 'Y') ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Founder</span>` : '';
     
     const saved = userWatchlist.has(c.ticker);
-    const watchlistStar = `<button class="watchlist-star text-2xl align-middle transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? '⭐' : '☆'}</button>`;
+    const watchlistStar = `<button class="watchlist-star text-2xl align-middle transition-colors ${saved ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" data-ticker="${c.ticker}" title="${saved ? 'Remove from' : 'Add to'} watchlist">${saved ? '★' : '☆'}</button>`;
 
     const isComparing = comparisonSet.has(c.ticker);
     const compareIcon = isComparing 
