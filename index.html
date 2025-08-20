@@ -137,13 +137,13 @@
   <div class="container mx-auto p-4 md:p-8">
     
     <div id="statCardContainer" class="mb-6">
-      <!-- Mobile Layout (unchanged) -->
-      <div class="block md:hidden">
+      <!-- Mobile Layout: Original stacked layout -->
+      <div class="block lg:hidden">
         <!-- Hero CEORaterScore Card -->
         <div class="mb-4">
           <div class="ceorater-stat-card rounded-xl p-6 text-center shadow-lg max-w-md mx-auto">
             <h3 class="text-lg font-semibold text-slate-700 uppercase tracking-wider mb-2">Median CEORaterScore</h3>
-            <p id="medianCeoRaterScoreStat" class="text-5xl font-orbitron font-black text-slate-800 mb-2">--</p>
+            <p id="medianCeoRaterScoreStatMobile" class="text-5xl font-orbitron font-black text-slate-800 mb-2">--</p>
             <div class="text-sm text-slate-600 font-medium">60% Alpha • 40% Comp</div>
             <div class="text-xs text-slate-500 mt-1">Comprehensive CEO Performance Rating</div>
           </div>
@@ -153,61 +153,61 @@
         <div class="grid grid-cols-2 gap-4">
           <div class="bg-white p-4 rounded-lg shadow text-center">
             <h3 class="text-sm font-medium text-gray-500">Avg. Founder CEORaterScore</h3>
-            <p id="medianTsrStat" class="text-2xl font-bold mt-1 font-orbitron text-blue-600">--</p>
+            <p id="medianTsrStatMobile" class="text-2xl font-bold mt-1 font-orbitron text-blue-600">--</p>
           </div>
           
           <div class="bg-white p-4 rounded-lg shadow text-center">
             <h3 class="text-sm font-medium text-gray-500">Avg. Founder AlphaScore</h3>
-            <p id="avgFounderAlphaScoreStat" class="text-2xl font-bold mt-1 font-orbitron text-blue-600">--</p>
+            <p id="avgFounderAlphaScoreStatMobile" class="text-2xl font-bold mt-1 font-orbitron text-blue-600">--</p>
           </div>
           
           <div class="bg-white p-4 rounded-lg shadow text-center">
             <h3 class="text-sm font-medium text-gray-500">Median Total Stock Return</h3>
-            <p id="founderCeoStat" class="text-2xl font-bold text-gray-900 mt-1">--</p>
+            <p id="founderCeoStatMobile" class="text-2xl font-bold text-gray-900 mt-1">--</p>
           </div>
           
           <div class="bg-white p-4 rounded-lg shadow text-center">
             <h3 class="text-sm font-medium text-gray-500">Median CEO Compensation</h3>
-            <p id="medianCompStat" class="text-2xl font-bold text-gray-900 mt-1">--</p>
+            <p id="medianCompStatMobile" class="text-2xl font-bold text-gray-900 mt-1">--</p>
           </div>
         </div>
       </div>
 
-      <!-- Desktop Layout -->
-      <div class="hidden md:flex md:items-center md:gap-6 md:max-w-7xl md:mx-auto">
-        <!-- Left Column -->
-        <div class="flex flex-col gap-4 flex-1">
-          <div class="bg-white p-4 rounded-lg shadow text-center">
-            <h3 class="text-sm font-medium text-gray-500">Avg. Founder CEORaterScore</h3>
-            <p id="medianTsrStat-desktop" class="text-2xl font-bold mt-1 font-orbitron text-blue-600">--</p>
+      <!-- Desktop Layout: Cards on sides of hero -->
+      <div class="hidden lg:flex lg:items-stretch lg:gap-6">
+        <!-- Left Side Stats -->
+        <div class="flex-1 grid grid-rows-2 gap-4">
+          <div class="bg-white p-4 rounded-lg shadow flex flex-col justify-center">
+            <h3 class="text-sm font-medium text-gray-500 text-center">Avg. Founder CEORaterScore</h3>
+            <p id="medianTsrStat" class="text-2xl font-bold mt-1 font-orbitron text-blue-600 text-center">--</p>
           </div>
           
-          <div class="bg-white p-4 rounded-lg shadow text-center">
-            <h3 class="text-sm font-medium text-gray-500">Avg. Founder AlphaScore</h3>
-            <p id="avgFounderAlphaScoreStat-desktop" class="text-2xl font-bold mt-1 font-orbitron text-blue-600">--</p>
+          <div class="bg-white p-4 rounded-lg shadow flex flex-col justify-center">
+            <h3 class="text-sm font-medium text-gray-500 text-center">Avg. Founder AlphaScore</h3>
+            <p id="avgFounderAlphaScoreStat" class="text-2xl font-bold mt-1 font-orbitron text-blue-600 text-center">--</p>
           </div>
         </div>
 
-        <!-- Center Hero -->
-        <div class="flex-1 max-w-md">
-          <div class="ceorater-stat-card rounded-xl p-6 text-center shadow-lg">
+        <!-- Center Hero CEORaterScore Card -->
+        <div class="flex-shrink-0" style="width: 400px;">
+          <div class="ceorater-stat-card rounded-xl p-6 text-center shadow-lg h-full flex flex-col justify-center">
             <h3 class="text-lg font-semibold text-slate-700 uppercase tracking-wider mb-2">Median CEORaterScore</h3>
-            <p id="medianCeoRaterScoreStat-desktop" class="text-5xl font-orbitron font-black text-slate-800 mb-2">--</p>
+            <p id="medianCeoRaterScoreStat" class="text-5xl font-orbitron font-black text-slate-800 mb-2">--</p>
             <div class="text-sm text-slate-600 font-medium">60% Alpha • 40% Comp</div>
             <div class="text-xs text-slate-500 mt-1">Comprehensive CEO Performance Rating</div>
           </div>
         </div>
 
-        <!-- Right Column -->
-        <div class="flex flex-col gap-4 flex-1">
-          <div class="bg-white p-4 rounded-lg shadow text-center">
-            <h3 class="text-sm font-medium text-gray-500">Median Total Stock Return</h3>
-            <p id="founderCeoStat-desktop" class="text-2xl font-bold text-gray-900 mt-1">--</p>
+        <!-- Right Side Stats -->
+        <div class="flex-1 grid grid-rows-2 gap-4">
+          <div class="bg-white p-4 rounded-lg shadow flex flex-col justify-center">
+            <h3 class="text-sm font-medium text-gray-500 text-center">Median Total Stock Return</h3>
+            <p id="founderCeoStat" class="text-2xl font-bold text-gray-900 mt-1 text-center">--</p>
           </div>
           
-          <div class="bg-white p-4 rounded-lg shadow text-center">
-            <h3 class="text-sm font-medium text-gray-500">Median CEO Compensation</h3>
-            <p id="medianCompStat-desktop" class="text-2xl font-bold text-gray-900 mt-1">--</p>
+          <div class="bg-white p-4 rounded-lg shadow flex flex-col justify-center">
+            <h3 class="text-sm font-medium text-gray-500 text-center">Median CEO Compensation</h3>
+            <p id="medianCompStat" class="text-2xl font-bold text-gray-900 mt-1 text-center">--</p>
           </div>
         </div>
       </div>
@@ -303,6 +303,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
   <script src="firebase-config.js"></script>
   <script type="module" src="script.js"></script>
+  <script type="module" src="ui-updated.js"></script>
 
   <script>
     if ('serviceWorker' in navigator) {
