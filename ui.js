@@ -106,7 +106,7 @@ export function updateStatCards(masterData) {
     // 4. Calculate Median CEO Compensation (fourth position)
     const compValues = masterData.map(c => c.compensation).filter(v => typeof v === 'number');
     const medianComp = calculateMedian(compValues);
-    const medianCompText = `$${money(medianComp, 1)}M`;
+    const medianCompText = `${money(medianComp, 1)}M`;
     
     // Update both desktop and mobile versions
     if (medianCompStat) medianCompStat.textContent = medianCompText;
@@ -464,9 +464,11 @@ export function renderComparisonModal(master, comparisonSet) {
                 // Enhanced styling for main scores in desktop view
                 let fontClass = '';
                 let sizeClass = '';
-                if (!isMobile && metric.isMainScore) {
+                if (metric.isMainScore) {
                     fontClass = 'font-orbitron';
-                    sizeClass = 'text-lg';
+                    if (!isMobile) {
+                        sizeClass = 'text-lg';
+                    }
                 }
 
                 if (isMobile) {
