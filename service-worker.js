@@ -1,7 +1,7 @@
 // service-worker.js
 
 // Define a name for the cache
-const CACHE_NAME = 'ceorater-cache-v5'; // Incremented cache version
+const CACHE_NAME = 'ceorater-cache-v5.1'; // Incremented cache version
 
 // List only the essential local files that make up the app shell
 const urlsToCacheOnInstall = [
