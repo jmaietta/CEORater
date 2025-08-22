@@ -1,3 +1,4 @@
+import { fetchData, getCacheStatus, getCachedData } from "./GoogleSheet.js";
 import { pct, money, formatMarketCap } from './utils.js';
 
 // Get references to DOM elements that the UI functions will manipulate.
@@ -13,6 +14,8 @@ const comparisonTitle = document.getElementById("comparisonTitle");
 const trayTickers = document.getElementById("trayTickers");
 const industryFilter = document.getElementById("industryFilter");
 const sectorFilter = document.getElementById("sectorFilter");
+const errorMessage = document.getElementById('error-message');
+const lastUpdatedElement = document.getElementById('last-updated');
 
 // Desktop Stat Card Elements
 const medianTsrStat = document.getElementById("medianTsrStat");
@@ -27,6 +30,9 @@ const avgFounderAlphaScoreStatMobile = document.getElementById("avgFounderAlphaS
 const founderCeoStatMobile = document.getElementById("founderCeoStatMobile");
 const medianCompStatMobile = document.getElementById("medianCompStatMobile");
 const medianCeoRaterScoreStatMobile = document.getElementById("medianCeoRaterScoreStatMobile");
+
+// Global data store
+let ceoData = [];
 
 /**
  * Calculates the median of a given array of numbers.
@@ -333,7 +339,6 @@ export function renderDetailModal(ceoData) {
       <div class="bg-purple-50 rounded-lg p-6 text-center border border-purple-200 relative">
         <h4 class="text-sm font-semibold text-purple-800 uppercase tracking-wider mb-3">CompScore</h4>
         <div class="font-orbitron font-bold text-4xl text-purple-600 mb-2">${c.compensationScore || 'N/A'}</div>
-        <div class="text-sm text-purple-700">Compensation Efficiency</div>
         <div class="w-full bg-purple-200 rounded-full h-2 mt-3">
             <div class="score-progress bg-purple-600 h-2 rounded-full" style="width: ${c.compensationScore ? Math.min(parseFloat(c.compensationScore), 100) : 0}%"></div>
         </div>
@@ -530,7 +535,7 @@ export function updateComparisonTray(comparisonSet) {
     });
     // Add a clear all button if there's more than one CEO selected
     if (comparisonSet.size > 1) {
-        tickerHTML += `<button id="clearCompareBtn" class="text-xs text-blue-600 hover:underline ml-3" title="Clear all selections">Clear All</button>`;
+        tickerHTML += `<button id="clearCompareBtn" class="text-xs text-blue-600 hover:underline ml-3" title="Clear All">Clear All</button>`;
     }
     trayTickers.innerHTML = tickerHTML;
     document.getElementById("comparisonTray").classList.remove('hidden');
@@ -548,4 +553,87 @@ export function refreshFilters(master) {
   const secs = [...new Set(master.map(c => c.sector).filter(Boolean))].sort();
   industryFilter.innerHTML = '<option value="">All Industries</option>' + inds.map(i => `<option>${i}</option>`).join('');
   sectorFilter.innerHTML = '<option value="">All Sectors</option>' + secs.map(s => `<option>${s}</option>`).join('');
+}
+
+/**
+ * Displays an error message to the user.
+ * @param {string} message The error message to display.
+ */
+function showError(message) {
+    if (errorMessage) {
+        errorMessage.textContent = message;
+        errorMessage.classList.remove('hidden');
+    }
+}
+
+/**
+ * Hides the error message.
+ */
+function hideError() {
+    if (errorMessage) {
+        errorMessage.classList.add('hidden');
+        errorMessage.textContent = '';
+    }
+}
+
+/**
+ * Displays the last updated time from cache status.
+ */
+function displayLastUpdatedTime() {
+    const cacheStatus = getCacheStatus();
+    if (lastUpdatedElement) {
+        if (cacheStatus.lastFetch) {
+            const lastUpdate = cacheStatus.lastFetch.toLocaleString();
+            lastUpdatedElement.textContent = `Last updated: ${lastUpdate}`;
+            lastUpdatedElement.classList.remove('hidden');
+        } else {
+            lastUpdatedElement.classList.add('hidden');
+        }
+    }
+}
+
+/**
+ * Main function to load and render the dashboard data.
+ * @returns {Promise<void>}
+ */
+export async function loadDashboard() {
+    hideError();
+    
+    try {
+        // This single call handles both cached and fresh data from GoogleSheet.js
+        ceoData = await fetchData();
+        
+        // Render the stats and cards with the fetched data
+        updateStatCards(ceoData);
+        renderCards(ceoData, new Set(), new Set(), 'all');
+        displayLastUpdatedTime(); // Update the timestamp
+        
+        // Add event listener for search input after data is loaded
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                filterAndRenderCards(ceoData, e.target.value);
+            });
+        }
+    } catch (error) {
+        // If fetch fails, get and display the cached data as a fallback
+        const cacheStatus = getCacheStatus();
+        if (cacheStatus.hasCachedData) {
+            // Data was successfully loaded from cache
+            console.warn('Failed to fetch fresh data, rendering cached data:', error.message);
+            ceoData = getCachedData();
+            updateStatCards(ceoData);
+            renderCards(ceoData, new Set(), new Set(), 'all');
+            displayLastUpdatedTime(); // Update the timestamp
+            showError(`Failed to fetch fresh data. Displaying cached data from ${cacheStatus.lastFetch.toLocaleString()}.`);
+        } else {
+            // No cached data available, display a full error message
+            showError(`Failed to load data. Please check your internet connection or try again later. Error: ${error.message}`);
+            console.error('Fatal error: No data could be loaded.', error);
+            // Hide stat cards
+            allCards.forEach(card => card.classList.add('hidden'));
+            if (companyCardsContainer) {
+                companyCardsContainer.innerHTML = '';
+            }
+        }
+    }
 }
