@@ -111,8 +111,9 @@ function parseRows(data) {
 /**
  * Retrieves data from localStorage cache.
  * @returns {Array<Object>|null} Cached data or null if not available
+ * @export
  */
-function getCachedData() {
+export function getCachedData() {
   try {
     const cachedData = localStorage.getItem(CACHE_KEYS.DATA);
     return cachedData ? JSON.parse(cachedData) : null;
