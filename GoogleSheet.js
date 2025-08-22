@@ -67,8 +67,6 @@ const getNumber = (row, index) => {
   return isNaN(parsed) ? 0 : parsed;
 };
 
-// REMOVED: calculateCEORaterScore function - using backend calculation instead
-
 /**
  * Parses the array data from Cloud Run service into structured objects.
  * @param {Array} data The array data from Cloud Run service.
@@ -85,8 +83,6 @@ function parseRows(data) {
       console.warn('Invalid row data:', row);
       return null;
     }
-
-    // REMOVED: Local CEORaterScore calculation - using backend value instead
 
     return {
       company: getString(row, FIELDS.COMPANY),
@@ -107,21 +103,9 @@ function parseRows(data) {
       alphaScore: getNumber(row, FIELDS.ALPHA_SCORE),
       quartile: getString(row, FIELDS.QUARTILE),
       compensationScore: getString(row, FIELDS.COMPENSATION_SCORE),
-      ceoRaterScore: getNumber(row, FIELDS.CEO_RATER_SCORE) // Use backend calculation ONLY
+      ceoRaterScore: getNumber(row, FIELDS.CEO_RATER_SCORE)
     };
   }).filter(Boolean); // Remove any null entries from invalid rows
-}
-
-/**
- * Checks if cached data is still valid.
- * @returns {boolean} True if cache is valid
- */
-function isCacheValid() {
-  const lastFetch = localStorage.getItem(CACHE_KEYS.TIMESTAMP);
-  if (!lastFetch) return false;
-  
-  const cacheAge = Date.now() - parseInt(lastFetch, 10);
-  return cacheAge < CACHE_TIME;
 }
 
 /**
@@ -134,7 +118,6 @@ function getCachedData() {
     return cachedData ? JSON.parse(cachedData) : null;
   } catch (error) {
     console.warn('Failed to parse cached data:', error);
-    // Clear corrupted cache
     localStorage.removeItem(CACHE_KEYS.DATA);
     localStorage.removeItem(CACHE_KEYS.TIMESTAMP);
     return null;
@@ -156,7 +139,7 @@ function setCachedData(data) {
 }
 
 /**
- * Fetches fresh data from the API using CORS-safe approach.
+ * Fetches fresh data from the API.
  * @returns {Promise<Array<Object>>} A promise that resolves to parsed CEO data
  */
 async function fetchFreshData() {
@@ -166,7 +149,6 @@ async function fetchFreshData() {
   const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
   
   try {
-    // Use original CORS-safe approach (no headers)
     const response = await fetch(SERVICE_URL + `?t=${Date.now()}`, {
       signal: controller.signal
     });
@@ -180,7 +162,6 @@ async function fetchFreshData() {
     const jsonData = await response.json();
     const parsedData = parseRows(jsonData);
     
-    // Validate we got some data
     if (parsedData.length === 0) {
       throw new Error('No valid data received from API');
     }
@@ -202,52 +183,37 @@ async function fetchFreshData() {
 }
 
 /**
- * Internal fetch function with all the logic.
+ * Implements the stale-while-revalidate caching strategy.
  * @returns {Promise<Array<Object>>} A promise that resolves to CEO data
  */
 async function fetchDataInternal() {
-  // Check cache first
-  if (isCacheValid()) {
-    const cachedData = getCachedData();
-    if (cachedData && cachedData.length > 0) {
-      console.log('Using cached data (less than 60 minutes old)');
-      return cachedData;
-    }
-  }
-  
-  try {
-    // Attempt to fetch fresh data
+  const cachedData = getCachedData();
+
+  if (cachedData) {
+    // Stale-while-revalidate: Serve stale data immediately
+    console.log('Serving stale data from cache');
+    // Don't await this, let it run in the background
+    fetchFreshData().catch(error => console.error('Background fetch failed:', error));
+    return cachedData;
+  } else {
+    // No cache: Fetch fresh data and wait for it
+    console.log('No cache found, fetching fresh data and waiting');
     return await fetchFreshData();
-    
-  } catch (error) {
-    console.error('Error fetching fresh data:', error);
-    
-    // Fallback to cached data if available (even if stale)
-    const cachedData = getCachedData();
-    if (cachedData && cachedData.length > 0) {
-      console.log('Using cached data as fallback due to fetch error');
-      return cachedData;
-    }
-    
-    // No cached data available, re-throw the error
-    throw error;
   }
 }
 
+
 /**
- * Fetches data from the secure Cloud Run service with 60-minute caching and request deduplication.
- * MAIN API-LIMITING FEATURE: Prevents multiple simultaneous requests.
+ * Fetches data from the secure Cloud Run service with stale-while-revalidate caching and request deduplication.
  * @returns {Promise<Array<Object>>} A promise that resolves to an array of CEO data objects.
  */
 export async function fetchData() {
   // REQUEST DEDUPLICATION - KEY API-LIMITING FEATURE!
-  // If a request is already in flight, return that promise instead of making a new one
   if (pendingRequest) {
     console.log('Request already in progress, returning existing promise');
     return pendingRequest;
   }
   
-  // Start new request
   pendingRequest = fetchDataInternal();
   
   try {
@@ -284,4 +250,14 @@ export function getCacheStatus() {
     isValid: isCacheValid(),
     dataSize: cachedData ? cachedData.length : 0
   };
+}
+
+// NOTE: The isCacheValid function is no longer used in the main fetchDataInternal logic,
+// but is kept for the getCacheStatus function.
+function isCacheValid() {
+  const lastFetch = localStorage.getItem(CACHE_KEYS.TIMESTAMP);
+  if (!lastFetch) return false;
+  
+  const cacheAge = Date.now() - parseInt(lastFetch, 10);
+  return cacheAge < CACHE_TIME;
 }
