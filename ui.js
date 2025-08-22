@@ -64,6 +64,18 @@ function getScoreBadgeClass(score) {
 }
 
 /**
+ * Helper function to remove the shimmer class from elements.
+ * @param {HTMLElement[]} elements - The array of HTML elements to update.
+ */
+function removeShimmer(elements) {
+    elements.forEach(el => {
+        if (el) {
+            el.classList.remove('shimmer-placeholder');
+        }
+    });
+}
+
+/**
  * Calculates and updates the main dashboard stat cards.
  * @param {Array<Object>} masterData - The full list of all CEOs.
  */
@@ -122,6 +134,15 @@ export function updateStatCards(masterData) {
     // Update both desktop and mobile versions
     if (medianCeoRaterScoreStat) medianCeoRaterScoreStat.textContent = medianCeoRaterScoreText;
     if (medianCeoRaterScoreStatMobile) medianCeoRaterScoreStatMobile.textContent = medianCeoRaterScoreText;
+    
+    // After updating all the values, remove the shimmer class from the stat cards.
+    removeShimmer([
+        medianTsrStat, 
+        avgFounderAlphaScoreStat, 
+        founderCeoStat, 
+        medianCompStat, 
+        medianCeoRaterScoreStat
+    ]);
 }
 
 /**
@@ -195,7 +216,6 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
             <p class="text-sm text-gray-600 font-bold truncate mt-1" title="${c.company} (${c.ticker})">${c.company} (${c.ticker})</p>
         </div>
 
-        <!-- CEORaterScore Hero Section -->
         <div class="ceorater-hero ${scoreBadgeClass} rounded-xl p-4 text-center text-white mb-4 relative overflow-hidden">
             <div class="relative z-10">
                 <p class="text-xs font-bold uppercase tracking-wider mb-1">CEORaterScore</p>
@@ -204,7 +224,6 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
             </div>
         </div>
 
-        <!-- Weight Distribution Indicator -->
         <div class="weight-indicator mb-4 relative">
             <div class="flex items-center justify-between text-xs text-gray-600 mb-2">
                 <span>Alpha (60%)</span>
@@ -212,14 +231,12 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
             </div>
             <div class="score-weight-bar rounded-full"></div>
             
-            <!-- Tooltip -->
             <div class="weight-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg">
                 60% AlphaScore + 40% CompScore
                 <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
             </div>
         </div>
 
-        <!-- Component Scores -->
         <div class="grid grid-cols-2 gap-3 text-center">
             <div class="bg-blue-50 border border-blue-200 rounded-lg py-3 px-2 relative">
                 <p class="text-xs text-blue-800 font-bold uppercase tracking-wider">AlphaScore</p>
@@ -228,7 +245,6 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
                     <div class="score-progress bg-blue-600 h-1.5 rounded-full" style="width: ${Math.min(c.alphaScore, 100)}%"></div>
                 </div>
                 
-                <!-- AlphaScore Tooltip -->
                 <div class="alpha-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity z-50">
                     Total Stock Return vs. QQQ, see Our Methodology
                     <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
@@ -241,7 +257,6 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
                     <div class="score-progress bg-purple-600 h-1.5 rounded-full" style="width: ${c.compensationScore ? Math.min(parseFloat(c.compensationScore), 100) : 0}%"></div>
                 </div>
                 
-                <!-- CompScore Tooltip -->
                 <div class="comp-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity z-50">
                     Compensation efficiency grade, see Our Methodology
                     <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
@@ -287,7 +302,6 @@ export function renderDetailModal(ceoData) {
   const avgAlphaCol = c.avgAnnualTsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
   
   modalBody.innerHTML = `
-    <!-- CEORaterScore Hero Section in Modal -->
     <div class="modal-ceorater-section ${scoreBadgeClass} p-6 text-center mb-6 text-white relative overflow-hidden">
         <div class="relative z-10">
             <h4 class="text-sm font-semibold uppercase tracking-wider mb-3 opacity-90">CEORaterScore</h4>
@@ -310,7 +324,6 @@ export function renderDetailModal(ceoData) {
             <div class="score-progress bg-blue-600 h-2 rounded-full" style="width: ${Math.min(c.alphaScore, 100)}%"></div>
         </div>
         
-        <!-- AlphaScore Tooltip in Modal -->
         <div class="alpha-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity z-50">
             Total Stock Return vs. QQQ, see Our Methodology
             <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
@@ -325,7 +338,6 @@ export function renderDetailModal(ceoData) {
             <div class="score-progress bg-purple-600 h-2 rounded-full" style="width: ${c.compensationScore ? Math.min(parseFloat(c.compensationScore), 100) : 0}%"></div>
         </div>
         
-        <!-- CompScore Tooltip in Modal -->
         <div class="comp-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity z-50">
             Compensation efficiency grade, see Our Methodology
             <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
