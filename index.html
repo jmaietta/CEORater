@@ -6,10 +6,9 @@
   
   <title>CEORater</title>
 
-  <link rel="preconnect" href="https://get-ceos-test-847610982404.us-east4.run.app" crossorigin>
-  <link rel="dns-prefetch" href="https://get-ceos-test-847610982404.us-east4.run.app">
+  <link rel="preconnect" href="https://ceorater-backend-697273542938.us-south1.run.app" crossorigin>
+  <link rel="dns-prefetch" href="https://ceorater-backend-697273542938.us-south1.run.app">
   
-  <!-- Preload favicon -->
   <link rel="preload" href="favicon-32x32.png" as="image" type="image/png">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -23,36 +22,28 @@
   <meta property="og:image" content="https://www.ceorater.com/android-chrome-512x512.png" />
   <meta property="og:url" content="https://www.ceorater.com/" />
 
-  <!-- Twitter Card tags -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="CEORater">
   <meta name="twitter:description" content="NASDAQ 100 CEO Performance & Compensation Analytics">
   <meta name="twitter:image" content="https://www.ceorater.com/android-chrome-512x512.png">
 
-  <!-- iOS-Specific PWA Meta Tags (Updated) -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="CEORater">
   
-  <!-- iOS Splash Screens (Optional but recommended) -->
   <link rel="apple-touch-startup-image" href="apple-touch-icon.png">
   
-  <!-- Prevent iOS Safari from auto-detecting phone numbers (if desired) -->
   <meta name="format-detection" content="telephone=no">
 
-  <!-- REMOVED Tailwind CSS CDN and its config script -->
-  <!-- The compiled CSS will be loaded from the 'dist' directory -->
-  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
 
-  <!-- Link to your compiled Tailwind CSS file -->
   <link rel="stylesheet" href="./dist/output.css"> 
   
   <script>
     // Start fetching data immediately, before anything else loads
-    window.dataPromise = fetch('https://get-ceos-test-847610982404.us-east4.run.app/api/data')
+    window.dataPromise = fetch('https://ceorater-backend-697273542938.us-south1.run.app/api/data')
       .then(r => r.json())
       .catch(err => console.error('Early fetch failed:', err));
   </script>
@@ -122,6 +113,23 @@
         display: flex;
         flex-direction: column;
         justify-content: center;
+      }
+    }
+    .shimmer-placeholder {
+      background: #f6f7f8;
+      background-image: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%);
+      background-repeat: no-repeat;
+      background-size: 800px 104px;
+      animation: shimmer 1s linear infinite;
+      color: transparent !important; /* Hides the placeholder text */
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: -468px 0;
+      }
+      100% {
+        background-position: 468px 0;
       }
     }
   </style>
@@ -204,26 +212,22 @@
   <div class="container mx-auto p-4 md:p-8">
     
     <div id="statCardContainer" class="mb-6">
-      <!-- Desktop: Flex layout with cards on sides -->
-      <!-- Mobile: Stacked layout -->
-      
       <div class="left-stats">
         <div class="bg-white p-4 rounded-lg shadow text-center stat-card">
           <h3 class="text-sm font-medium text-gray-500">Avg. Founder CEORaterScore</h3>
-          <p id="medianTsrStat" class="text-2xl font-bold mt-1 font-orbitron text-blue-600">--</p>
+          <p id="medianTsrStat" class="text-2xl font-bold mt-1 font-orbitron text-blue-600 shimmer-placeholder">--</p>
         </div>
         
         <div class="bg-white p-4 rounded-lg shadow text-center stat-card">
           <h3 class="text-sm font-medium text-gray-500">Avg. Founder AlphaScore</h3>
-          <p id="avgFounderAlphaScoreStat" class="text-2xl font-bold mt-1 font-orbitron text-blue-600">--</p>
+          <p id="avgFounderAlphaScoreStat" class="text-2xl font-bold mt-1 font-orbitron text-blue-600 shimmer-placeholder">--</p>
         </div>
       </div>
       
-      <!-- Hero CEORaterScore Card -->
       <div class="center-hero mb-4 lg:mb-0">
         <div class="ceorater-stat-card rounded-xl p-6 text-center shadow-lg max-w-md mx-auto lg:max-w-none h-full flex flex-col justify-center">
           <h3 class="text-lg font-semibold text-slate-700 uppercase tracking-wider mb-2">Median CEORaterScore</h3>
-          <p id="medianCeoRaterScoreStat" class="text-5xl font-orbitron font-black text-slate-800 mb-2">--</p>
+          <p id="medianCeoRaterScoreStat" class="text-5xl font-orbitron font-black text-slate-800 shimmer-placeholder">--</p>
           <div class="text-sm text-slate-600 font-medium">60% Alpha • 40% Comp</div>
           <div class="text-xs text-slate-500 mt-1">Comprehensive CEO Performance Rating</div>
         </div>
@@ -232,12 +236,12 @@
       <div class="right-stats">
         <div class="bg-white p-4 rounded-lg shadow text-center stat-card">
           <h3 class="text-sm font-medium text-gray-500">Median Total Stock Return</h3>
-          <p id="founderCeoStat" class="text-2xl font-bold text-gray-900 mt-1">--</p>
+          <p id="founderCeoStat" class="text-2xl font-bold text-gray-900 mt-1 shimmer-placeholder">--</p>
         </div>
         
         <div class="bg-white p-4 rounded-lg shadow text-center stat-card">
           <h3 class="text-sm font-medium text-gray-500">Median CEO Compensation</h3>
-          <p id="medianCompStat" class="text-2xl font-bold text-gray-900 mt-1">--</p>
+          <p id="medianCompStat" class="text-2xl font-bold text-gray-900 mt-1 shimmer-placeholder">--</p>
         </div>
       </div>
     </div>
@@ -261,7 +265,8 @@
     <footer class="text-center mt-8 py-8 border-t text-sm text-gray-500">
         <p class="mb-2">
             <a href="/methodology.html" class="text-blue-600 hover:underline">Our Methodology</a> | 
-            <a href="/privacy.html" class="text-blue-600 hover:underline">Privacy Policy</a>
+            <a href="/privacy.html" class="text-blue-600 hover:underline">Privacy Policy</a> |
+            <a href="/support.html" class="text-blue-600 hover:underline">Support</a>
         </p>
         <p>CEORater 2025. A TEK2day Holdings company.</p>
     </footer>
