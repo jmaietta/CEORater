@@ -7,6 +7,9 @@ module.exports = {
     "./firebase-config.js",
     "./index.html"
   ],
+  safelist: [
+    'shimmer-placeholder',
+  ],
   theme: {
     extend: {
       fontFamily: {
