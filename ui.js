@@ -1,4 +1,3 @@
-import { fetchData, getCacheStatus, getCachedData } from "./GoogleSheet.js";
 import { pct, money, formatMarketCap } from './utils.js';
 
 // Get references to DOM elements that the UI functions will manipulate.
@@ -14,8 +13,6 @@ const comparisonTitle = document.getElementById("comparisonTitle");
 const trayTickers = document.getElementById("trayTickers");
 const industryFilter = document.getElementById("industryFilter");
 const sectorFilter = document.getElementById("sectorFilter");
-const errorMessage = document.getElementById('error-message');
-const lastUpdatedElement = document.getElementById('last-updated');
 
 // Desktop Stat Card Elements
 const medianTsrStat = document.getElementById("medianTsrStat");
@@ -30,9 +27,6 @@ const avgFounderAlphaScoreStatMobile = document.getElementById("avgFounderAlphaS
 const founderCeoStatMobile = document.getElementById("founderCeoStatMobile");
 const medianCompStatMobile = document.getElementById("medianCompStatMobile");
 const medianCeoRaterScoreStatMobile = document.getElementById("medianCeoRaterScoreStatMobile");
-
-// Global data store
-let ceoData = [];
 
 /**
  * Calculates the median of a given array of numbers.
@@ -67,18 +61,6 @@ function getScoreBadgeClass(score) {
     if (score >= 70) return 'score-badge-good';
     if (score >= 50) return 'score-badge-average';
     return 'score-badge-poor';
-}
-
-/**
- * Helper function to remove the shimmer class from elements.
- * @param {HTMLElement[]} elements - The array of HTML elements to update.
- */
-function removeShimmer(elements) {
-    elements.forEach(el => {
-        if (el) {
-            el.classList.remove('shimmer-placeholder');
-        }
-    });
 }
 
 /**
@@ -140,15 +122,6 @@ export function updateStatCards(masterData) {
     // Update both desktop and mobile versions
     if (medianCeoRaterScoreStat) medianCeoRaterScoreStat.textContent = medianCeoRaterScoreText;
     if (medianCeoRaterScoreStatMobile) medianCeoRaterScoreStatMobile.textContent = medianCeoRaterScoreText;
-    
-    // After updating all the values, remove the shimmer class from the stat cards.
-    removeShimmer([
-        medianTsrStat, 
-        avgFounderAlphaScoreStat, 
-        founderCeoStat, 
-        medianCompStat, 
-        medianCeoRaterScoreStat
-    ]);
 }
 
 /**
@@ -222,6 +195,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
             <p class="text-sm text-gray-600 font-bold truncate mt-1" title="${c.company} (${c.ticker})">${c.company} (${c.ticker})</p>
         </div>
 
+        <!-- CEORaterScore Hero Section -->
         <div class="ceorater-hero ${scoreBadgeClass} rounded-xl p-4 text-center text-white mb-4 relative overflow-hidden">
             <div class="relative z-10">
                 <p class="text-xs font-bold uppercase tracking-wider mb-1">CEORaterScore</p>
@@ -230,6 +204,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
             </div>
         </div>
 
+        <!-- Weight Distribution Indicator -->
         <div class="weight-indicator mb-4 relative">
             <div class="flex items-center justify-between text-xs text-gray-600 mb-2">
                 <span>Alpha (60%)</span>
@@ -237,12 +212,14 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
             </div>
             <div class="score-weight-bar rounded-full"></div>
             
+            <!-- Tooltip -->
             <div class="weight-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg">
                 60% AlphaScore + 40% CompScore
                 <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
             </div>
         </div>
 
+        <!-- Component Scores -->
         <div class="grid grid-cols-2 gap-3 text-center">
             <div class="bg-blue-50 border border-blue-200 rounded-lg py-3 px-2 relative">
                 <p class="text-xs text-blue-800 font-bold uppercase tracking-wider">AlphaScore</p>
@@ -251,6 +228,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
                     <div class="score-progress bg-blue-600 h-1.5 rounded-full" style="width: ${Math.min(c.alphaScore, 100)}%"></div>
                 </div>
                 
+                <!-- AlphaScore Tooltip -->
                 <div class="alpha-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity z-50">
                     Total Stock Return vs. QQQ, see Our Methodology
                     <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
@@ -263,6 +241,7 @@ export function renderCards(data, userWatchlist, comparisonSet, currentView) {
                     <div class="score-progress bg-purple-600 h-1.5 rounded-full" style="width: ${c.compensationScore ? Math.min(parseFloat(c.compensationScore), 100) : 0}%"></div>
                 </div>
                 
+                <!-- CompScore Tooltip -->
                 <div class="comp-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity z-50">
                     Compensation efficiency grade, see Our Methodology
                     <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
@@ -308,6 +287,7 @@ export function renderDetailModal(ceoData) {
   const avgAlphaCol = c.avgAnnualTsrAlpha >= 0 ? 'text-green-600' : 'text-red-600';
   
   modalBody.innerHTML = `
+    <!-- CEORaterScore Hero Section in Modal -->
     <div class="modal-ceorater-section ${scoreBadgeClass} p-6 text-center mb-6 text-white relative overflow-hidden">
         <div class="relative z-10">
             <h4 class="text-sm font-semibold uppercase tracking-wider mb-3 opacity-90">CEORaterScore</h4>
@@ -330,6 +310,7 @@ export function renderDetailModal(ceoData) {
             <div class="score-progress bg-blue-600 h-2 rounded-full" style="width: ${Math.min(c.alphaScore, 100)}%"></div>
         </div>
         
+        <!-- AlphaScore Tooltip in Modal -->
         <div class="alpha-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity z-50">
             Total Stock Return vs. QQQ, see Our Methodology
             <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
@@ -339,10 +320,12 @@ export function renderDetailModal(ceoData) {
       <div class="bg-purple-50 rounded-lg p-6 text-center border border-purple-200 relative">
         <h4 class="text-sm font-semibold text-purple-800 uppercase tracking-wider mb-3">CompScore</h4>
         <div class="font-orbitron font-bold text-4xl text-purple-600 mb-2">${c.compensationScore || 'N/A'}</div>
+        <div class="text-sm text-purple-700">Compensation Efficiency</div>
         <div class="w-full bg-purple-200 rounded-full h-2 mt-3">
             <div class="score-progress bg-purple-600 h-2 rounded-full" style="width: ${c.compensationScore ? Math.min(parseFloat(c.compensationScore), 100) : 0}%"></div>
         </div>
         
+        <!-- CompScore Tooltip in Modal -->
         <div class="comp-score-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 pointer-events-none transition-opacity z-50">
             Compensation efficiency grade, see Our Methodology
             <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
@@ -535,7 +518,7 @@ export function updateComparisonTray(comparisonSet) {
     });
     // Add a clear all button if there's more than one CEO selected
     if (comparisonSet.size > 1) {
-        tickerHTML += `<button id="clearCompareBtn" class="text-xs text-blue-600 hover:underline ml-3" title="Clear All">Clear All</button>`;
+        tickerHTML += `<button id="clearCompareBtn" class="text-xs text-blue-600 hover:underline ml-3" title="Clear all selections">Clear All</button>`;
     }
     trayTickers.innerHTML = tickerHTML;
     document.getElementById("comparisonTray").classList.remove('hidden');
@@ -553,87 +536,4 @@ export function refreshFilters(master) {
   const secs = [...new Set(master.map(c => c.sector).filter(Boolean))].sort();
   industryFilter.innerHTML = '<option value="">All Industries</option>' + inds.map(i => `<option>${i}</option>`).join('');
   sectorFilter.innerHTML = '<option value="">All Sectors</option>' + secs.map(s => `<option>${s}</option>`).join('');
-}
-
-/**
- * Displays an error message to the user.
- * @param {string} message The error message to display.
- */
-function showError(message) {
-    if (errorMessage) {
-        errorMessage.textContent = message;
-        errorMessage.classList.remove('hidden');
-    }
-}
-
-/**
- * Hides the error message.
- */
-function hideError() {
-    if (errorMessage) {
-        errorMessage.classList.add('hidden');
-        errorMessage.textContent = '';
-    }
-}
-
-/**
- * Displays the last updated time from cache status.
- */
-function displayLastUpdatedTime() {
-    const cacheStatus = getCacheStatus();
-    if (lastUpdatedElement) {
-        if (cacheStatus.lastFetch) {
-            const lastUpdate = cacheStatus.lastFetch.toLocaleString();
-            lastUpdatedElement.textContent = `Last updated: ${lastUpdate}`;
-            lastUpdatedElement.classList.remove('hidden');
-        } else {
-            lastUpdatedElement.classList.add('hidden');
-        }
-    }
-}
-
-/**
- * Main function to load and render the dashboard data.
- * @returns {Promise<void>}
- */
-export async function loadDashboard() {
-    hideError();
-    
-    try {
-        // This single call handles both cached and fresh data from GoogleSheet.js
-        ceoData = await fetchData();
-        
-        // Render the stats and cards with the fetched data
-        updateStatCards(ceoData);
-        renderCards(ceoData, new Set(), new Set(), 'all');
-        displayLastUpdatedTime(); // Update the timestamp
-        
-        // Add event listener for search input after data is loaded
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                filterAndRenderCards(ceoData, e.target.value);
-            });
-        }
-    } catch (error) {
-        // If fetch fails, get and display the cached data as a fallback
-        const cacheStatus = getCacheStatus();
-        if (cacheStatus.hasCachedData) {
-            // Data was successfully loaded from cache
-            console.warn('Failed to fetch fresh data, rendering cached data:', error.message);
-            ceoData = getCachedData();
-            updateStatCards(ceoData);
-            renderCards(ceoData, new Set(), new Set(), 'all');
-            displayLastUpdatedTime(); // Update the timestamp
-            showError(`Failed to fetch fresh data. Displaying cached data from ${cacheStatus.lastFetch.toLocaleString()}.`);
-        } else {
-            // No cached data available, display a full error message
-            showError(`Failed to load data. Please check your internet connection or try again later. Error: ${error.message}`);
-            console.error('Fatal error: No data could be loaded.', error);
-            // Hide stat cards
-            allCards.forEach(card => card.classList.add('hidden'));
-            if (companyCardsContainer) {
-                companyCardsContainer.innerHTML = '';
-            }
-        }
-    }
 }
