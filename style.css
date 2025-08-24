@@ -380,3 +380,9 @@ body { font-family: 'Inter', sans-serif; }
 .ceo-card.border-red-600 {
   border-left-color: #dc2626 !important;
 }
+
+.py-3 {
+  padding-top: calc(env(safe-area-inset-top) + 0.75rem)!important;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 0.75rem)!important;
+}
+
