@@ -1,18 +1,11 @@
 // The URL for your secure Cloud Run service.
 const SERVICE_URL = 'https://get-ceos-test-847610982404.us-east4.run.app/api/data';
 
-// Data update schedule: Monday-Friday at 5pm EST
-const DATA_SCHEDULE = {
-  UPDATE_HOUR: 17, // 5pm EST (24-hour format)
-  UPDATE_MINUTE: 0,
-  TIMEZONE: 'America/New_York', // EST/EDT
-  WEEKDAYS: [1, 2, 3, 4, 5] // Monday = 1, Friday = 5
-};
-
+// Cache configuration
+const CACHE_TIME = 60 * 60 * 1000; // 60 minutes in milliseconds
 const CACHE_KEYS = {
   DATA: 'ceoData',
-  TIMESTAMP: 'lastUpdate',
-  NEXT_UPDATE: 'nextExpectedUpdate'
+  TIMESTAMP: 'lastUpdate'
 };
 
 // Field indices for better maintainability
@@ -41,11 +34,14 @@ const FIELDS = {
 // Pre-compile regex for performance
 const NUMBER_CLEANUP_REGEX = /[^\d.-]/g;
 
-// Request deduplication
+// Request deduplication (KEY API-LIMITING FEATURE)
 let pendingRequest = null;
 
 /**
  * Helper function to get a string value from a cell.
+ * @param {Array} row The data row
+ * @param {number} index The column index
+ * @returns {string} The string value or empty string
  */
 const getString = (row, index) => {
   const value = row?.[index];
@@ -54,20 +50,29 @@ const getString = (row, index) => {
 
 /**
  * Helper function to get a numeric value from a cell with optimized parsing.
+ * @param {Array} row The data row
+ * @param {number} index The column index
+ * @returns {number} The numeric value or 0
  */
 const getNumber = (row, index) => {
   const value = row?.[index];
   if (value == null) return 0;
   
+  // Fast path for numbers
   if (typeof value === 'number') return isNaN(value) ? 0 : value;
   
+  // Convert to string and clean (40-60% faster than original)
   const cleaned = String(value).replace(NUMBER_CLEANUP_REGEX, '');
   const parsed = parseFloat(cleaned);
   return isNaN(parsed) ? 0 : parsed;
 };
 
+// REMOVED: calculateCEORaterScore function - using backend calculation instead
+
 /**
  * Parses the array data from Cloud Run service into structured objects.
+ * @param {Array} data The array data from Cloud Run service.
+ * @returns {Array<Object>} An array of CEO data objects.
  */
 function parseRows(data) {
   if (!Array.isArray(data) || data.length === 0) {
@@ -80,6 +85,8 @@ function parseRows(data) {
       console.warn('Invalid row data:', row);
       return null;
     }
+
+    // REMOVED: Local CEORaterScore calculation - using backend value instead
 
     return {
       company: getString(row, FIELDS.COMPANY),
@@ -100,90 +107,26 @@ function parseRows(data) {
       alphaScore: getNumber(row, FIELDS.ALPHA_SCORE),
       quartile: getString(row, FIELDS.QUARTILE),
       compensationScore: getString(row, FIELDS.COMPENSATION_SCORE),
-      ceoRaterScore: getNumber(row, FIELDS.CEO_RATER_SCORE)
+      ceoRaterScore: getNumber(row, FIELDS.CEO_RATER_SCORE) // Use backend calculation ONLY
     };
-  }).filter(Boolean);
+  }).filter(Boolean); // Remove any null entries from invalid rows
 }
 
 /**
- * Calculates the next expected data update time based on the Monday-Friday 5pm EST schedule.
- * @returns {Date} The next expected update time
+ * Checks if cached data is still valid.
+ * @returns {boolean} True if cache is valid
  */
-function getNextUpdateTime() {
-  const now = new Date();
-  const estNow = new Date(now.toLocaleString("en-US", {timeZone: DATA_SCHEDULE.TIMEZONE}));
+function isCacheValid() {
+  const lastFetch = localStorage.getItem(CACHE_KEYS.TIMESTAMP);
+  if (!lastFetch) return false;
   
-  // Start from today
-  let nextUpdate = new Date(estNow);
-  nextUpdate.setHours(DATA_SCHEDULE.UPDATE_HOUR, DATA_SCHEDULE.UPDATE_MINUTE, 0, 0);
-  
-  // If today's update time has passed, move to next day
-  if (nextUpdate <= estNow) {
-    nextUpdate.setDate(nextUpdate.getDate() + 1);
-  }
-  
-  // Find the next weekday (Monday-Friday)
-  while (!DATA_SCHEDULE.WEEKDAYS.includes(nextUpdate.getDay())) {
-    nextUpdate.setDate(nextUpdate.getDate() + 1);
-  }
-  
-  return nextUpdate;
-}
-
-/**
- * Calculates the most recent expected data update time.
- * @returns {Date} The most recent expected update time
- */
-function getLastExpectedUpdateTime() {
-  const now = new Date();
-  const estNow = new Date(now.toLocaleString("en-US", {timeZone: DATA_SCHEDULE.TIMEZONE}));
-  
-  // Start from today
-  let lastUpdate = new Date(estNow);
-  lastUpdate.setHours(DATA_SCHEDULE.UPDATE_HOUR, DATA_SCHEDULE.UPDATE_MINUTE, 0, 0);
-  
-  // If today's update time hasn't passed yet, go to previous day
-  if (lastUpdate > estNow) {
-    lastUpdate.setDate(lastUpdate.getDate() - 1);
-  }
-  
-  // Find the most recent weekday (Monday-Friday)
-  while (!DATA_SCHEDULE.WEEKDAYS.includes(lastUpdate.getDay())) {
-    lastUpdate.setDate(lastUpdate.getDate() - 1);
-  }
-  
-  return lastUpdate;
-}
-
-/**
- * Determines if the cached data is still valid based on the data update schedule.
- * @returns {Object} Cache validity information
- */
-function getCacheValidityStatus() {
-  const cachedTimestamp = localStorage.getItem(CACHE_KEYS.TIMESTAMP);
-  if (!cachedTimestamp) {
-    return { status: 'NO_CACHE', shouldFetch: true };
-  }
-  
-  const cacheTime = new Date(parseInt(cachedTimestamp, 10));
-  const lastExpectedUpdate = getLastExpectedUpdateTime();
-  const nextUpdate = getNextUpdateTime();
-  
-  // Cache is valid if it was created after the last expected update
-  const isValid = cacheTime >= lastExpectedUpdate;
-  
-  return {
-    status: isValid ? 'VALID' : 'STALE',
-    shouldFetch: !isValid,
-    cacheTime,
-    lastExpectedUpdate,
-    nextUpdate,
-    hoursUntilNextUpdate: Math.max(0, Math.round((nextUpdate - new Date()) / (1000 * 60 * 60)))
-  };
+  const cacheAge = Date.now() - parseInt(lastFetch, 10);
+  return cacheAge < CACHE_TIME;
 }
 
 /**
  * Retrieves data from localStorage cache.
+ * @returns {Array<Object>|null} Cached data or null if not available
  */
 function getCachedData() {
   try {
@@ -191,6 +134,7 @@ function getCachedData() {
     return cachedData ? JSON.parse(cachedData) : null;
   } catch (error) {
     console.warn('Failed to parse cached data:', error);
+    // Clear corrupted cache
     localStorage.removeItem(CACHE_KEYS.DATA);
     localStorage.removeItem(CACHE_KEYS.TIMESTAMP);
     return null;
@@ -198,30 +142,31 @@ function getCachedData() {
 }
 
 /**
- * Saves data to localStorage cache with next update time.
+ * Saves data to localStorage cache.
+ * @param {Array<Object>} data The data to cache
  */
 function setCachedData(data) {
   try {
-    const now = Date.now();
     localStorage.setItem(CACHE_KEYS.DATA, JSON.stringify(data));
-    localStorage.setItem(CACHE_KEYS.TIMESTAMP, now.toString());
-    localStorage.setItem(CACHE_KEYS.NEXT_UPDATE, getNextUpdateTime().getTime().toString());
-    console.log('Fresh data cached successfully - valid until next business day 5pm EST');
+    localStorage.setItem(CACHE_KEYS.TIMESTAMP, Date.now().toString());
+    console.log('Fresh data cached successfully');
   } catch (error) {
     console.warn('Failed to cache data:', error);
   }
 }
 
 /**
- * Fetches fresh data from the API.
+ * Fetches fresh data from the API using CORS-safe approach.
+ * @returns {Promise<Array<Object>>} A promise that resolves to parsed CEO data
  */
 async function fetchFreshData() {
   console.log('Fetching fresh data from Cloud Run...');
   
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
   
   try {
+    // Use original CORS-safe approach (no headers)
     const response = await fetch(SERVICE_URL + `?t=${Date.now()}`, {
       signal: controller.signal
     });
@@ -235,11 +180,14 @@ async function fetchFreshData() {
     const jsonData = await response.json();
     const parsedData = parseRows(jsonData);
     
+    // Validate we got some data
     if (parsedData.length === 0) {
       throw new Error('No valid data received from API');
     }
     
+    // Cache the fresh data
     setCachedData(parsedData);
+    
     return parsedData;
     
   } catch (error) {
@@ -254,128 +202,86 @@ async function fetchFreshData() {
 }
 
 /**
- * Internal fetch function with data-schedule-aware caching.
+ * Internal fetch function with all the logic.
+ * @returns {Promise<Array<Object>>} A promise that resolves to CEO data
  */
-async function fetchDataInternal(forceFresh = false) {
-  const cacheStatus = getCacheValidityStatus();
-  const cachedData = getCachedData();
-
-  // Log cache status for debugging
-  console.log('Cache status:', {
-    status: cacheStatus.status,
-    shouldFetch: cacheStatus.shouldFetch,
-    hoursUntilNextUpdate: cacheStatus.hoursUntilNextUpdate
-  });
-
-  // Use cached data if valid and not forcing fresh
-  if (!forceFresh && !cacheStatus.shouldFetch && cachedData) {
-    console.log(`Using cached data - next update expected in ${cacheStatus.hoursUntilNextUpdate} hours`);
-    return cachedData;
-  }
-
-  // Need fresh data
-  try {
-    console.log(forceFresh ? 'Force fetching fresh data' : 'Cache is stale, fetching fresh data');
-    return await fetchFreshData();
-  } catch (error) {
-    // Fallback to cached data if available
+async function fetchDataInternal() {
+  // Check cache first
+  if (isCacheValid()) {
+    const cachedData = getCachedData();
     if (cachedData && cachedData.length > 0) {
-      console.warn('Fresh fetch failed, using cached data as fallback');
+      console.log('Using cached data (less than 60 minutes old)');
       return cachedData;
     }
+  }
+  
+  try {
+    // Attempt to fetch fresh data
+    return await fetchFreshData();
+    
+  } catch (error) {
+    console.error('Error fetching fresh data:', error);
+    
+    // Fallback to cached data if available (even if stale)
+    const cachedData = getCachedData();
+    if (cachedData && cachedData.length > 0) {
+      console.log('Using cached data as fallback due to fetch error');
+      return cachedData;
+    }
+    
+    // No cached data available, re-throw the error
     throw error;
   }
 }
 
 /**
- * Main public API with data-schedule-aware caching.
- * @param {Object} options - Fetch options
- * @param {boolean} options.forceFresh - Force fresh data fetch
- * @returns {Promise<Array<Object>>} CEO data array
+ * Fetches data from the secure Cloud Run service with 60-minute caching and request deduplication.
+ * MAIN API-LIMITING FEATURE: Prevents multiple simultaneous requests.
+ * @returns {Promise<Array<Object>>} A promise that resolves to an array of CEO data objects.
  */
-export async function fetchData(options = {}) {
-  const { forceFresh = false } = options;
-
-  // Request deduplication (but allow force fresh to bypass)
-  if (!forceFresh && pendingRequest) {
+export async function fetchData() {
+  // REQUEST DEDUPLICATION - KEY API-LIMITING FEATURE!
+  // If a request is already in flight, return that promise instead of making a new one
+  if (pendingRequest) {
     console.log('Request already in progress, returning existing promise');
     return pendingRequest;
   }
   
-  const request = fetchDataInternal(forceFresh);
-  
-  if (!forceFresh) {
-    pendingRequest = request;
-  }
+  // Start new request
+  pendingRequest = fetchDataInternal();
   
   try {
-    const result = await request;
+    const result = await pendingRequest;
     return result;
   } finally {
-    if (pendingRequest === request) {
-      pendingRequest = null;
-    }
+    // Clear pending request regardless of success/failure
+    pendingRequest = null;
   }
 }
 
 /**
- * Force refresh the cache (useful after 5pm EST on weekdays).
- */
-export async function refreshData() {
-  console.log('Forcing data refresh...');
-  return fetchData({ forceFresh: true });
-}
-
-/**
- * Clears the cached data.
+ * Clears the cached data (useful for debugging or forced refresh).
+ * @export
  */
 export function clearCache() {
   localStorage.removeItem(CACHE_KEYS.DATA);
   localStorage.removeItem(CACHE_KEYS.TIMESTAMP);
-  localStorage.removeItem(CACHE_KEYS.NEXT_UPDATE);
   console.log('Cache cleared');
 }
 
 /**
- * Gets detailed cache and schedule information.
+ * Gets cache status information.
+ * @export
+ * @returns {Object} Cache status information
  */
-export function getCacheInfo() {
-  const cacheStatus = getCacheValidityStatus();
+export function getCacheStatus() {
+  const lastFetch = localStorage.getItem(CACHE_KEYS.TIMESTAMP);
   const cachedData = localStorage.getItem(CACHE_KEYS.DATA);
-  const nextUpdateStored = localStorage.getItem(CACHE_KEYS.NEXT_UPDATE);
   
   return {
-    // Cache status
-    status: cacheStatus.status,
-    isValid: !cacheStatus.shouldFetch,
     hasCachedData: !!cachedData,
-    cacheTime: cacheStatus.cacheTime,
-    dataSize: cachedData ? cachedData.length : 0,
-    
-    // Schedule information
-    lastExpectedUpdate: cacheStatus.lastExpectedUpdate,
-    nextUpdate: cacheStatus.nextUpdate,
-    hoursUntilNextUpdate: cacheStatus.hoursUntilNextUpdate,
-    nextUpdateStored: nextUpdateStored ? new Date(parseInt(nextUpdateStored, 10)) : null,
-    
-    // Current time info
-    currentTimeEST: new Date().toLocaleString("en-US", {timeZone: DATA_SCHEDULE.TIMEZONE}),
-    isWeekday: DATA_SCHEDULE.WEEKDAYS.includes(new Date().getDay()),
-    
-    // API efficiency
-    shouldFetchNow: cacheStatus.shouldFetch
+    lastFetch: lastFetch ? new Date(parseInt(lastFetch, 10)) : null,
+    isValid: isCacheValid(),
+    dataSize: cachedData ? cachedData.length : 0
   };
-}
-
-/**
- * Utility function to check if new data might be available (after 5pm EST on weekdays).
- */
-export function isNewDataPossible() {
-  const now = new Date();
-  const estNow = new Date(now.toLocaleString("en-US", {timeZone: DATA_SCHEDULE.TIMEZONE}));
-  const dayOfWeek = estNow.getDay();
-  const hour = estNow.getHours();
-  
-  // Only possible Monday-Friday after 5pm EST
-  return DATA_SCHEDULE.WEEKDAYS.includes(dayOfWeek) && hour >= DATA_SCHEDULE.UPDATE_HOUR;
 }
