@@ -1,29 +1,167 @@
-body { font-family: 'Inter', sans-serif; }
+/* ============================================
+   SAFE AREA SUPPORT FOR iPhone 16 SERIES
+   ============================================ */
+
+/* Global safe area variables for easier management */
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+}
+
+/* Ensure the HTML and body respect safe areas */
+html {
+  /* Ensure viewport-fit=cover works properly */
+  height: 100%;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  /* Add safe area padding to body */
+  padding-top: var(--safe-area-inset-top);
+  padding-bottom: var(--safe-area-inset-bottom);
+  padding-left: var(--safe-area-inset-left);
+  padding-right: var(--safe-area-inset-right);
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Fixed header/navigation bars should respect safe areas */
+.fixed, [class*="fixed-"] {
+  padding-top: var(--safe-area-inset-top);
+}
+
+.fixed.top-0, [class*="fixed-top"] {
+  top: var(--safe-area-inset-top) !important;
+}
+
+/* Sticky elements should also respect safe areas */
+.sticky {
+  top: var(--safe-area-inset-top);
+}
+
+/* Modal overlays should cover full screen including safe areas */
+.modal-overlay, [role="dialog"] {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Ensure modal backdrop covers everything */
+  padding: 0;
+}
+
+/* Modal content should respect safe areas */
+.modal-content, .modal {
+  backdrop-filter: blur(4px);
+  /* Add safe area padding to modal content */
+  padding-top: calc(var(--safe-area-inset-top) + 1rem);
+  padding-bottom: calc(var(--safe-area-inset-bottom) + 1rem);
+  padding-left: calc(var(--safe-area-inset-left) + 1rem);
+  padding-right: calc(var(--safe-area-inset-right) + 1rem);
+}
+
+/* Modal headers specifically need top safe area padding */
+.modal-header, #modalHeader {
+  padding-top: calc(var(--safe-area-inset-top) + 1.5rem) !important;
+  padding-left: calc(var(--safe-area-inset-left) + 1rem);
+  padding-right: calc(var(--safe-area-inset-right) + 1rem);
+}
+
+/* CEO Detail Card modal adjustments */
+.modal-body, #modalBody {
+  max-height: calc(100vh - var(--safe-area-inset-top) - var(--safe-area-inset-bottom) - 8rem);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-left: calc(var(--safe-area-inset-left) + 1rem);
+  padding-right: calc(var(--safe-area-inset-right) + 1rem);
+}
+
+/* Comparison tray at bottom needs safe area handling */
+#comparisonTray {
+  transition: transform 0.3s ease-in-out;
+  padding-bottom: calc(var(--safe-area-inset-bottom) + 0.5rem) !important;
+  padding-left: calc(var(--safe-area-inset-left) + 1rem);
+  padding-right: calc(var(--safe-area-inset-right) + 1rem);
+  /* If it's fixed to bottom */
+  bottom: var(--safe-area-inset-bottom);
+}
+
+/* Firebase Auth specific adjustments */
+.firebase-auth-container,
+.firebaseui-container,
+[class*="firebaseui"] {
+  padding-top: calc(var(--safe-area-inset-top) + 1rem) !important;
+  padding-bottom: calc(var(--safe-area-inset-bottom) + 1rem) !important;
+  padding-left: var(--safe-area-inset-left);
+  padding-right: var(--safe-area-inset-right);
+}
+
+/* FirebaseUI card should respect safe areas */
+.firebaseui-card-content {
+  padding: calc(var(--safe-area-inset-top) + 1rem) 1rem 1rem 1rem !important;
+}
+
+/* Main content area adjustments */
+#ceoCardView {
+  padding-top: calc(var(--safe-area-inset-top) + 0.5rem);
+  padding-bottom: calc(var(--safe-area-inset-bottom) + 0.5rem);
+}
+
+/* Stat cards container */
+#statCardContainer {
+  padding-left: var(--safe-area-inset-left);
+  padding-right: var(--safe-area-inset-right);
+}
+
+/* Navigation tabs */
+.watchlist-tab {
+  transition: all 0.3s ease;
+}
+
+.watchlist-tab.active {
+  background-color: #3b82f6;
+  color: white;
+}
+
+/* Any fixed positioned buttons (like FABs) */
+.fixed.bottom-4 {
+  bottom: calc(var(--safe-area-inset-bottom) + 1rem) !important;
+}
+
+.fixed.right-4 {
+  right: calc(var(--safe-area-inset-right) + 1rem) !important;
+}
+
+/* ============================================
+   ORIGINAL STYLES (with safe area modifications)
+   ============================================ */
+
 .font-orbitron { font-family: 'Orbitron', sans-serif; }
-#loading-spinner{border:4px solid rgba(0,0,0,.1);width:36px;height:36px;border-radius:50%;border-left-color:#09f;animation:spin 1s linear infinite}
-@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
-.modal { backdrop-filter: blur(4px); }
-.watchlist-tab { transition: all 0.3s ease; }
-.watchlist-tab.active { background-color: #3b82f6; color: white; }
+
+#loading-spinner {
+  border: 4px solid rgba(0,0,0,.1);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border-left-color: #09f;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0) }
+  100% { transform: rotate(360deg) }
+}
+
 .truncate {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-#comparisonTray {
-  transition: transform 0.3s ease-in-out;
-}
-
-/* This rule was removed as it prevents "position: sticky" from working correctly.
-  
-  html, body {
-    overflow-x: hidden;
-  }
-*/
 
 /* CEORaterScore Enhancements - PROFESSIONAL VERSION */
 
-/* Professional CEORaterScore Hero Section */
 .ceorater-hero {
   background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
   box-shadow: 0 8px 25px rgba(30, 41, 59, 0.3);
@@ -35,7 +173,6 @@ body { font-family: 'Inter', sans-serif; }
   box-shadow: 0 12px 35px rgba(30, 41, 59, 0.4);
 }
 
-/* Score Weight Indicator */
 .score-weight-bar {
   background: linear-gradient(to right, #3b82f6 0%, #3b82f6 60%, #8b5cf6 60%, #8b5cf6 100%);
   height: 6px;
@@ -47,7 +184,6 @@ body { font-family: 'Inter', sans-serif; }
   height: 8px;
 }
 
-/* Enhanced Card Animations */
 .ceo-card {
   transition: all 0.3s ease;
   background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
@@ -58,12 +194,10 @@ body { font-family: 'Inter', sans-serif; }
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
 }
 
-/* Score Progress Bars */
 .score-progress {
   transition: width 0.8s ease-in-out;
 }
 
-/* Enhanced Hero CEORaterScore Stat Card */
 .ceorater-stat-card {
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   border: 3px solid #475569;
@@ -90,7 +224,6 @@ body { font-family: 'Inter', sans-serif; }
   box-shadow: 0 20px 40px rgba(71, 85, 105, 0.2);
 }
 
-/* Enhanced Modal CEORaterScore Section with Score Badge Colors */
 .modal-ceorater-section {
   border-radius: 12px;
   position: relative;
@@ -99,7 +232,6 @@ body { font-family: 'Inter', sans-serif; }
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
-/* Apply score badge backgrounds to modal sections */
 .modal-ceorater-section.score-badge-excellent {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   border: none;
@@ -135,7 +267,6 @@ body { font-family: 'Inter', sans-serif; }
   animation: shimmer 3s infinite;
 }
 
-/* Default styling for when no score is available */
 .modal-ceorater-section:not(.score-badge-excellent):not(.score-badge-good):not(.score-badge-average):not(.score-badge-poor) {
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   border: 2px solid #475569;
@@ -147,21 +278,16 @@ body { font-family: 'Inter', sans-serif; }
   100% { transform: translateX(100%); }
 }
 
-/* Weight Distribution Tooltip */
 .weight-tooltip {
   opacity: 0;
   visibility: hidden;
   transform: translateX(-50%) translateY(10px);
   transition: all 0.3s ease;
   pointer-events: none;
-
-  /* Positioning - center on the card */
   position: absolute;
   left: 50%;
   top: 100%;
   margin-top: 8px;
-  
-  /* Add solid background and styling */
   background-color: #1f2937;
   color: #ffffff;
   padding: 12px 16px;
@@ -172,19 +298,15 @@ body { font-family: 'Inter', sans-serif; }
   white-space: nowrap;
   text-align: center;
   z-index: 50;
-  
-  /* Center the text both horizontally and vertically */
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* Ensure the weight indicator can position the tooltip */
 .weight-indicator {
   position: relative;
 }
 
-/* Weight tooltip only works on desktop */
 @media (min-width: 769px) {
   .weight-indicator:hover .weight-tooltip {
     opacity: 1;
@@ -194,7 +316,6 @@ body { font-family: 'Inter', sans-serif; }
   }
 }
 
-/* Arrow pointer (centered) */
 .weight-tooltip::before {
   content: '';
   position: absolute;
@@ -208,7 +329,6 @@ body { font-family: 'Inter', sans-serif; }
   border-bottom: 5px solid #1f2937;
 }
 
-/* AlphaScore and CompScore tooltips - hidden by default */
 .alpha-score-tooltip,
 .comp-score-tooltip {
   opacity: 0 !important;
@@ -232,7 +352,6 @@ body { font-family: 'Inter', sans-serif; }
   z-index: 50;
 }
 
-/* Make AlphaScore and CompScore tooltips appear on hover - desktop only */
 @media (min-width: 769px) {
   .bg-blue-50:hover .alpha-score-tooltip,
   .bg-purple-50:hover .comp-score-tooltip {
@@ -243,13 +362,11 @@ body { font-family: 'Inter', sans-serif; }
   }
 }
 
-/* Professional CEORaterScore in comparison cards (mobile) */
 .comparison-ceorater-highlight {
   background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
   border-left: 4px solid #475569;
 }
 
-/* Score badge variants */
 .score-badge-excellent { 
   background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
 }
@@ -263,7 +380,6 @@ body { font-family: 'Inter', sans-serif; }
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); 
 }
 
-/* Enhanced hover states for interactive elements */
 .compare-btn, .watchlist-star {
   transition: all 0.3s ease;
 }
@@ -276,7 +392,6 @@ body { font-family: 'Inter', sans-serif; }
   transform: scale(1.2) rotate(5deg);
 }
 
-/* Ensure secondary stat cards are visually subordinate */
 #statCardContainer .grid .bg-white {
   transition: all 0.2s ease;
 }
@@ -286,10 +401,12 @@ body { font-family: 'Inter', sans-serif; }
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
 
-/* Responsive CEORaterScore on mobile */
+/* Responsive adjustments with safe area support */
 @media (max-width: 768px) {
   .ceorater-hero {
     padding: 1rem;
+    padding-left: calc(var(--safe-area-inset-left) + 1rem);
+    padding-right: calc(var(--safe-area-inset-right) + 1rem);
   }
   
   .ceorater-hero .font-orbitron {
@@ -300,7 +417,6 @@ body { font-family: 'Inter', sans-serif; }
     height: 4px;
   }
   
-  /* Hero card responsive adjustments */
   .ceorater-stat-card {
     padding: 1.5rem;
   }
@@ -309,7 +425,6 @@ body { font-family: 'Inter', sans-serif; }
     font-size: 3rem;
   }
 
-  /* Force hide all tooltips on mobile */
   .weight-tooltip,
   .alpha-score-tooltip,
   .comp-score-tooltip {
@@ -319,7 +434,6 @@ body { font-family: 'Inter', sans-serif; }
     pointer-events: none !important;
   }
   
-  /* Disable hover effects on mobile */
   .weight-indicator:hover .weight-tooltip,
   .bg-blue-50:hover .alpha-score-tooltip,
   .bg-purple-50:hover .comp-score-tooltip {
@@ -328,16 +442,20 @@ body { font-family: 'Inter', sans-serif; }
     visibility: hidden !important;
     pointer-events: none !important;
   }
+  
+  /* Mobile specific safe area adjustments */
+  body {
+    /* Extra padding for mobile landscape */
+    padding-left: max(var(--safe-area-inset-left), 1rem);
+    padding-right: max(var(--safe-area-inset-right), 1rem);
+  }
 }
 
-/* Responsive stat cards */
 @media (max-width: 1024px) {
-  /* On medium screens, show 2 rows of stat cards */
   #statCardContainer.grid.lg\:grid-cols-5 {
     grid-template-columns: repeat(2, 1fr);
   }
   
-  /* Make CEORaterScore card span full width on small screens for emphasis */
   @media (max-width: 640px) {
     .ceorater-stat-card {
       grid-column: 1 / -1;
@@ -345,7 +463,6 @@ body { font-family: 'Inter', sans-serif; }
   }
 }
 
-/* Loading state for CEORaterScore calculation */
 .ceorater-loading {
   background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
   background-size: 200% 100%;
@@ -357,7 +474,6 @@ body { font-family: 'Inter', sans-serif; }
   100% { background-position: -200% 0; }
 }
 
-/* Fix for CEO card borders being overridden */
 .ceo-card.border-l-4 {
   border-left-width: 4px !important;
 }
@@ -381,7 +497,21 @@ body { font-family: 'Inter', sans-serif; }
   border-left-color: #dc2626 !important;
 }
 
+/* Updated padding classes with safe area support */
 .py-3 {
-  padding-top: calc(env(safe-area-inset-top) + 0.75rem)!important;
-  padding-bottom: calc(env(safe-area-inset-bottom) + 0.75rem)!important;
+  padding-top: calc(var(--safe-area-inset-top) + 0.75rem) !important;
+  padding-bottom: calc(var(--safe-area-inset-bottom) + 0.75rem) !important;
+}
+
+.px-4 {
+  padding-left: calc(var(--safe-area-inset-left) + 1rem);
+  padding-right: calc(var(--safe-area-inset-right) + 1rem);
+}
+
+.pt-4 {
+  padding-top: calc(var(--safe-area-inset-top) + 1rem);
+}
+
+.pb-4 {
+  padding-bottom: calc(var(--safe-area-inset-bottom) + 1rem);
 }
