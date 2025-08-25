@@ -1,8 +1,8 @@
 /* ===================================================================
    CEORater – style.css (safe-area hardened, no stretch on iOS)
    - Cards & auth respect safe areas (top/bottom/left/right)
+   - Sticky header & modal close respect Dynamic Island
    - No global utility overrides that inflate heights
-   - Robust dvh/svh + -webkit-fill-available fallbacks
    - Firebase Auth buttons never sit behind the mic/home-indicator
    =================================================================== */
 
@@ -20,10 +20,10 @@ html {
 
 /* Safe-area variables (env() is 0 when unsupported) */
 :root {
-  --sat: env(safe-area-inset-top);
-  --sar: env(safe-area-inset-right);
-  --sab: env(safe-area-inset-bottom);
-  --sal: env(safe-area-inset-left);
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
 
   /* App chrome padding you can tweak globally */
   --app-gap: 16px;
@@ -51,18 +51,18 @@ body {
 ------------------------------------------------- */
 .app-shell {
   /* All primary screens live inside .app-shell */
-  padding-top: calc(var(--sat, 0px) + var(--app-gap));
-  padding-right: calc(var(--sar, 0px) + var(--app-gap));
-  padding-bottom: calc(var(--sab, 0px) + var(--app-gap));
-  padding-left: calc(var(--sal, 0px) + var(--app-gap));
+  padding-top: calc(var(--sat) + var(--app-gap));
+  padding-right: calc(var(--sar) + var(--app-gap));
+  padding-bottom: calc(var(--sab) + var(--app-gap));
+  padding-left: calc(var(--sal) + var(--app-gap));
   min-height: 100%;
   display: flex;
   flex-direction: column;
 }
 
 /* Optional header/footer that hug the edges add extra breathing room */
-.site-header { margin-top: calc(var(--sat, 0px)); }
-.site-footer { margin-bottom: calc(var(--sab, 0px)); }
+.site-header { margin-top: var(--sat); }
+.site-footer { margin-bottom: var(--sab); }
 
 /* Never globally add safe-area padding to body or utility classes. */
 
@@ -91,7 +91,6 @@ img, svg, video, canvas, audio, iframe, embed, object {
   height: auto;
 }
 
-
 /* -------------------------------------------------
    FirebaseUI – Safe, Non-stretch, Touch-friendly
 ------------------------------------------------- */
@@ -99,7 +98,7 @@ img, svg, video, canvas, audio, iframe, embed, object {
 .firebaseui-auth-container,
 .firebaseui-card-content {
   /* Respect left/right safe areas; add comfortable inner gaps */
-  padding-inline: calc(var(--sal, 0px) + 12px) calc(var(--sar, 0px) + 12px);
+  padding-inline: calc(var(--sal) + 12px) calc(var(--sar) + 12px);
   display: block;
   max-width: 600px;
   margin: 0 auto;
@@ -108,11 +107,11 @@ img, svg, video, canvas, audio, iframe, embed, object {
 /* Critical: bottom padding so buttons never sit behind mic/home-indicator */
 .firebaseui-auth-container,
 .firebaseui-card-content {
-  padding-bottom: calc(var(--sab, 0px) + 24px);
+  padding-bottom: calc(var(--sab) + 24px);
 }
 
 /* Top spacing under the dynamic notch/status area */
-.firebaseui-container { padding-top: calc(var(--sat, 0px) + 12px); }
+.firebaseui-container { padding-top: calc(var(--sat) + 12px); }
 
 /* Buttons: no fixed heights; keep minimum touch target */
 .firebaseui-idp-button,
@@ -167,27 +166,26 @@ img, svg, video, canvas, audio, iframe, embed, object {
   position: sticky;                 /* or fixed if desired */
   bottom: 0;
   padding: 12px 16px;
-  padding-bottom: calc(12px + var(--sab, 0px));
+  padding-bottom: calc(12px + var(--sab));
   background: #ffffffcc;
   backdrop-filter: blur(6px);
   border-top: 1px solid #e5e7eb;
   z-index: 20;
 }
 
-
 /* -------------------------------------------------
-   CEO Detail + Summary Cards (safe edges, no stretch)
+   CEO Detail Cards (no stretch, safe edges)
 ------------------------------------------------- */
 .ceo-detail,
 .ceo-detail .content {
   width: 100%;
   max-width: 1100px;
   margin-inline: auto;
-  padding-inline: calc(var(--sal, 0px) + 12px) calc(var(--sar, 0px) + 12px);
+  padding-inline: calc(var(--sal) + 12px) calc(var(--sar) + 12px);
 }
 
 .ceo-card {
-  position: relative; /* required for corner actions */
+  position: relative; /* for corner actions */
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   border-radius: 14px;
@@ -211,13 +209,15 @@ img, svg, video, canvas, audio, iframe, embed, object {
 .ceo-card.border-gray-600                            { border-left-color: #4b5563; }
 .ceo-card.border-red-500,   .ceo-card.border-red-600   { border-left-color: #dc2626; }
 
-/* Corner actions: ensure no overlap */
+/* Action corners: "+" (left) and "View Details →" (right) */
 .ceo-card .compare-btn {
   position: absolute;
   left: 0.75rem;
   bottom: 0.75rem;
   z-index: 2;
 }
+
+/* Your markup uses "details-link"; keep "view-details-link" as a fallback */
 .ceo-card a.details-link,
 .ceo-card .view-details-link {
   position: absolute;
@@ -231,7 +231,7 @@ img, svg, video, canvas, audio, iframe, embed, object {
   text-decoration: none;
   border-radius: .5rem;
   padding: .375rem .6rem;
-  background: rgba(255,255,255,.9);
+  background: rgba(255,255,255,.85);
   backdrop-filter: blur(6px);
   border: 1px solid #e5e7eb;
   transition: transform .15s ease, box-shadow .15s ease;
@@ -242,20 +242,17 @@ img, svg, video, canvas, audio, iframe, embed, object {
   transform: translateY(-1px);
   box-shadow: 0 6px 14px rgba(0,0,0,.08);
 }
+
 /* Ensure content doesn't hide behind the fixed-corner actions */
 .ceo-card .card-body,
-.ceo-card .content,
-.ceo-card .card-content {
-  padding-bottom: 3rem; /* space for the two corner buttons */
-}
-
+.ceo-card .content { padding-bottom: 3rem; }
 
 /* -------------------------------------------------
    CEO Comparison – grid that never forces row height
 ------------------------------------------------- */
 .comparison-wrap {
   width: 100%;
-  padding-inline: calc(var(--sal, 0px) + 12px) calc(var(--sar, 0px) + 12px);
+  padding-inline: calc(var(--sal) + 12px) calc(var(--sar) + 12px);
   margin-inline: auto;
 }
 
@@ -280,7 +277,6 @@ img, svg, video, canvas, audio, iframe, embed, object {
   background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
   border-left: 4px solid #475569;
 }
-
 
 /* -------------------------------------------------
    CEORaterScore – hero & stat cards
@@ -357,12 +353,9 @@ img, svg, video, canvas, audio, iframe, embed, object {
   color: #334155;
 }
 
-
 /* -------------------------------------------------
-   SCORE BADGES (GLOBAL) – summary + detail cards
+   Score badges (ensure consistent colors across views)
 ------------------------------------------------- */
-
-/* Base badge appearance */
 .score-badge {
   display: inline-flex;
   align-items: center;
@@ -372,27 +365,27 @@ img, svg, video, canvas, audio, iframe, embed, object {
   font-weight: 600;
   font-size: .75rem;
   line-height: 1;
-  color: #fff !important; /* readable text on gradients */
+  color: #fff !important;
 }
-
-/* Force our gradients to win over any Tailwind bg-* utilities */
-.score-badge-excellent { 
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-  border: none !important;
+.ceo-card .score-badge-excellent,
+.ceo-card .score-badge-good,
+.ceo-card .score-badge-average,
+.ceo-card .score-badge-poor,
+.ceorater-stat-card .score-badge-excellent,
+.ceorater-stat-card .score-badge-good,
+.ceorater-stat-card .score-badge-average,
+.ceorater-stat-card .score-badge-poor,
+.ceo-detail .score-badge-excellent,
+.ceo-detail .score-badge-good,
+.ceo-detail .score-badge-average,
+.ceo-detail .score-badge-poor {
+  background-image: none !important;
+  background-color: transparent !important;
 }
-.score-badge-good { 
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
-  border: none !important;
-}
-.score-badge-average { 
-  background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
-  border: none !important;
-}
-.score-badge-poor { 
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-  border: none !important;
-}
-
+.score-badge-excellent { background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; border: none !important; }
+.score-badge-good      { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; border: none !important; }
+.score-badge-average   { background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important; border: none !important; }
+.score-badge-poor      { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important; border: none !important; }
 
 /* -------------------------------------------------
    Tooltips (desktop only activation below)
@@ -457,7 +450,6 @@ img, svg, video, canvas, audio, iframe, embed, object {
   z-index: 50;
 }
 
-
 /* -------------------------------------------------
    Utilities & Small Components
 ------------------------------------------------- */
@@ -479,7 +471,7 @@ img, svg, video, canvas, audio, iframe, embed, object {
 /* Bottom tray that respects the home indicator */
 #comparisonTray {
   transition: transform 0.3s ease-in-out;
-  padding-bottom: calc(var(--sab, 0px) + 8px);
+  padding-bottom: calc(var(--sab) + 8px);
 }
 
 /* Subtle hovers */
@@ -504,20 +496,18 @@ img, svg, video, canvas, audio, iframe, embed, object {
 }
 @keyframes loading-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-
 /* -------------------------------------------------
    Modal Layout with Safe-Area Awareness
 ------------------------------------------------- */
 .modal-header, #modalHeader {
-  padding-top: calc(1.5rem + var(--sat, 0px));
+  padding-top: calc(1.5rem + var(--sat));
 }
 .modal-body, #modalBody {
   /* dvh avoids 100vh overshoot under dynamic bars */
-  max-height: calc(100dvh - var(--sat, 0px) - var(--sab, 0px) - 8rem);
+  max-height: calc(100dvh - var(--sat) - var(--sab) - 8rem);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
-
 
 /* -------------------------------------------------
    Responsive Tweaks
@@ -550,7 +540,6 @@ img, svg, video, canvas, audio, iframe, embed, object {
   .ceorater-stat-card { grid-column: 1 / -1; }
 }
 
-
 /* -------------------------------------------------
    Desktop-only Tooltip Activation
 ------------------------------------------------- */
@@ -569,4 +558,54 @@ img, svg, video, canvas, audio, iframe, embed, object {
     transform: translateX(-50%) translateY(0);
     pointer-events: auto !important;
   }
+}
+
+/* =================================================
+   SAFE-AREA PATCH: Sticky header + modal close buttons
+   (these rules should be near the end)
+================================================= */
+
+/* Keep sticky header content out of the Dynamic Island / notch
+   (Make sure your <header> has id="appHeader") */
+#appHeader {
+  padding-top: max(8px, var(--sat));
+  padding-left: var(--sal);
+  padding-right: var(--sar);
+  background: #fff; /* paint behind the notch */
+}
+
+/* Add safe insets to the header’s inner Tailwind container */
+#appHeader > .container {
+  padding-left: calc(1rem + var(--sal)) !important;
+  padding-right: calc(1rem + var(--sar)) !important;
+}
+
+/* Modal close buttons respect safe-area insets */
+#closeDetailModal,
+#closeComparisonModalBtn,
+#closeLoginModalBtn {
+  position: absolute;
+  top: calc(var(--sat) + 0.75rem) !important;
+  right: calc(var(--sar) + 0.75rem) !important;
+  touch-action: manipulation;
+}
+
+/* Keep modal content below the notch and away from edges */
+#ceoDetailModal .bg-white,
+#loginModal .bg-white,
+#comparisonModal .bg-white {
+  padding-top: max(1rem, var(--sat));
+  padding-left: max(1rem, var(--sal));
+  padding-right: max(1rem, var(--sar));
+}
+
+/* Optional: tiny cushion inside header so scroll bounce looks nice */
+#appHeader .container > .flex { padding-bottom: 4px; }
+
+/* -------------------------------------------------
+   Fixed padding utility that includes safe areas
+------------------------------------------------- */
+.py-3 {
+  padding-top: calc(var(--sat) + 0.75rem) !important;
+  padding-bottom: calc(var(--sab) + 0.75rem) !important;
 }
