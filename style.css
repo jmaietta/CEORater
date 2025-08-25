@@ -176,7 +176,7 @@ img, svg, video, canvas, audio, iframe, embed, object {
 
 
 /* -------------------------------------------------
-   CEO Detail Cards (no stretch, safe edges)
+   CEO Detail + Summary Cards (safe edges, no stretch)
 ------------------------------------------------- */
 .ceo-detail,
 .ceo-detail .content {
@@ -187,7 +187,7 @@ img, svg, video, canvas, audio, iframe, embed, object {
 }
 
 .ceo-card {
-  position: relative; /* needed for corner actions */
+  position: relative; /* required for corner actions */
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   border-radius: 14px;
@@ -218,6 +218,7 @@ img, svg, video, canvas, audio, iframe, embed, object {
   bottom: 0.75rem;
   z-index: 2;
 }
+.ceo-card a.details-link,
 .ceo-card .view-details-link {
   position: absolute;
   right: 0.75rem;
@@ -236,6 +237,7 @@ img, svg, video, canvas, audio, iframe, embed, object {
   transition: transform .15s ease, box-shadow .15s ease;
   z-index: 2;
 }
+.ceo-card a.details-link:hover,
 .ceo-card .view-details-link:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 14px rgba(0,0,0,.08);
