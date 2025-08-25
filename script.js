@@ -51,9 +51,10 @@ const toggleFiltersBtn = $("toggleFiltersBtn");
 const mobileFilterControls = $("mobileFilterControls");
 const toggleFiltersIcon = $("toggleFiltersIcon");
 
-// ---------- Small addition: choose redirect on iOS app, popup on web ----------
+// ---------- Small addition: choose redirect on iOS app, and on GitHub Pages; popup elsewhere ----------
+const FORCE_REDIRECT_ON_GITHUB = (location.hostname === 'jmaietta.github.io'); // <-- NEW
 const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-const useRedirect = isNative;
+const useRedirect = FORCE_REDIRECT_ON_GITHUB || isNative; // <-- NEW
 
 function signInWithProvider(provider) {
   // persist session locally
@@ -222,7 +223,7 @@ function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTi
 document.addEventListener('DOMContentLoaded', () => {
   auth.initAuth(handleAuthStateChange);
 
-  // Handle redirect result after returning from Google/Microsoft on iOS
+  // Handle redirect result after returning from Google/Microsoft on iOS (and GH Pages when forced)
   if (window.firebase?.auth) {
     firebase.auth().getRedirectResult()
       .then(result => {
@@ -342,7 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   logoutBtn.addEventListener('click', () => auth.signOut());
   
-  // ----- CHANGED: use redirect on iOS (Capacitor), popup on web -----
+  // ----- use redirect on iOS (Capacitor) and on GitHub Pages; popup on other web -----
   googleSignIn.addEventListener('click', () => {
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
@@ -369,7 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('Sign in failed: ' + error.message);
       });
   });
-  // ----- END CHANGES -----
+  // ----- END -----
   
   forgotPasswordLink.addEventListener('click', (e) => {
     e.preventDefault();
