@@ -61,12 +61,8 @@ body {
 }
 
 /* Optional header/footer that hug the edges add extra breathing room */
-.site-header {
-  margin-top: calc(var(--sat, 0px));
-}
-.site-footer {
-  margin-bottom: calc(var(--sab, 0px));
-}
+.site-header { margin-top: calc(var(--sat, 0px)); }
+.site-footer { margin-bottom: calc(var(--sab, 0px)); }
 
 /* Never globally add safe-area padding to body or utility classes. */
 
@@ -94,6 +90,7 @@ img, svg, video, canvas, audio, iframe, embed, object {
   max-width: 100%;
   height: auto;
 }
+
 
 /* -------------------------------------------------
    FirebaseUI – Safe, Non-stretch, Touch-friendly
@@ -177,8 +174,9 @@ img, svg, video, canvas, audio, iframe, embed, object {
   z-index: 20;
 }
 
+
 /* -------------------------------------------------
-   CEO Detail Cards (no stretch, safe edges)
+   CEO Detail + Summary Cards (safe edges, no stretch)
 ------------------------------------------------- */
 .ceo-detail,
 .ceo-detail .content {
@@ -189,6 +187,7 @@ img, svg, video, canvas, audio, iframe, embed, object {
 }
 
 .ceo-card {
+  position: relative; /* required for corner actions */
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   border-radius: 14px;
@@ -211,6 +210,45 @@ img, svg, video, canvas, audio, iframe, embed, object {
 .ceo-card.border-blue-500,  .ceo-card.border-blue-600  { border-left-color: #2563eb; }
 .ceo-card.border-gray-600                            { border-left-color: #4b5563; }
 .ceo-card.border-red-500,   .ceo-card.border-red-600   { border-left-color: #dc2626; }
+
+/* Corner actions: ensure no overlap */
+.ceo-card .compare-btn {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 2;
+}
+.ceo-card a.details-link,
+.ceo-card .view-details-link {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-weight: 600;
+  font-size: .875rem;
+  text-decoration: none;
+  border-radius: .5rem;
+  padding: .375rem .6rem;
+  background: rgba(255,255,255,.9);
+  backdrop-filter: blur(6px);
+  border: 1px solid #e5e7eb;
+  transition: transform .15s ease, box-shadow .15s ease;
+  z-index: 2;
+}
+.ceo-card a.details-link:hover,
+.ceo-card .view-details-link:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0,0,0,.08);
+}
+/* Ensure content doesn't hide behind the fixed-corner actions */
+.ceo-card .card-body,
+.ceo-card .content,
+.ceo-card .card-content {
+  padding-bottom: 3rem; /* space for the two corner buttons */
+}
+
 
 /* -------------------------------------------------
    CEO Comparison – grid that never forces row height
@@ -242,6 +280,7 @@ img, svg, video, canvas, audio, iframe, embed, object {
   background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
   border-left: 4px solid #475569;
 }
+
 
 /* -------------------------------------------------
    CEORaterScore – hero & stat cards
@@ -318,6 +357,43 @@ img, svg, video, canvas, audio, iframe, embed, object {
   color: #334155;
 }
 
+
+/* -------------------------------------------------
+   SCORE BADGES (GLOBAL) – summary + detail cards
+------------------------------------------------- */
+
+/* Base badge appearance */
+.score-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .375rem;
+  padding: .25rem .5rem;
+  border-radius: .5rem;
+  font-weight: 600;
+  font-size: .75rem;
+  line-height: 1;
+  color: #fff !important; /* readable text on gradients */
+}
+
+/* Force our gradients to win over any Tailwind bg-* utilities */
+.score-badge-excellent { 
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  border: none !important;
+}
+.score-badge-good { 
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+  border: none !important;
+}
+.score-badge-average { 
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+  border: none !important;
+}
+.score-badge-poor { 
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  border: none !important;
+}
+
+
 /* -------------------------------------------------
    Tooltips (desktop only activation below)
 ------------------------------------------------- */
@@ -381,6 +457,7 @@ img, svg, video, canvas, audio, iframe, embed, object {
   z-index: 50;
 }
 
+
 /* -------------------------------------------------
    Utilities & Small Components
 ------------------------------------------------- */
@@ -427,6 +504,7 @@ img, svg, video, canvas, audio, iframe, embed, object {
 }
 @keyframes loading-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
+
 /* -------------------------------------------------
    Modal Layout with Safe-Area Awareness
 ------------------------------------------------- */
@@ -439,6 +517,7 @@ img, svg, video, canvas, audio, iframe, embed, object {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
+
 
 /* -------------------------------------------------
    Responsive Tweaks
@@ -470,6 +549,7 @@ img, svg, video, canvas, audio, iframe, embed, object {
 @media (max-width: 640px) {
   .ceorater-stat-card { grid-column: 1 / -1; }
 }
+
 
 /* -------------------------------------------------
    Desktop-only Tooltip Activation
