@@ -457,7 +457,6 @@ img, svg, video, canvas, audio, iframe, embed, object {
   z-index: 50;
 }
 
-
 /* -------------------------------------------------
    Utilities & Small Components
 ------------------------------------------------- */
@@ -569,4 +568,51 @@ img, svg, video, canvas, audio, iframe, embed, object {
     transform: translateX(-50%) translateY(0);
     pointer-events: auto !important;
   }
+}
+
+/* ===== Safe-area patch: sticky header + modal close buttons ===== */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+}
+
+/* Keep sticky header content out of the Dynamic Island / notch.
+   Make sure your <header> has id="appHeader" in index.html */
+#appHeader {
+  padding-top: max(8px, var(--sat));
+  padding-left: var(--sal);
+  padding-right: var(--sar);
+  background: #fff;
+}
+
+/* Add safe insets to the header’s inner Tailwind container */
+#appHeader > .container {
+  padding-left: calc(1rem + var(--sal)) !important;
+  padding-right: calc(1rem + var(--sar)) !important;
+}
+
+/* Modal close buttons respect safe-area insets */
+#closeDetailModal,
+#closeComparisonModalBtn,
+#closeLoginModalBtn {
+  position: absolute;
+  top: calc(var(--sat) + 0.75rem) !important;
+  right: calc(var(--sar) + 0.75rem) !important;
+  touch-action: manipulation;
+}
+
+/* Keep modal content below the notch and away from edges */
+#ceoDetailModal .bg-white,
+#loginModal .bg-white,
+#comparisonModal .bg-white {
+  padding-top: max(1rem, var(--sat));
+  padding-left: max(1rem, var(--sal));
+  padding-right: max(1rem, var(--sar));
+}
+
+/* Optional: tiny cushion inside header so scroll bounce looks nice */
+#appHeader .container > .flex {
+  padding-bottom: 4px;
 }
