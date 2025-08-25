@@ -489,4 +489,96 @@ img, svg, video, canvas, audio, iframe, embed, object {
     transform: translateX(-50%) translateY(0);
     pointer-events: auto !important;
   }
+
+   /* ==== PATCH: Force consistent score badge colors everywhere ==== */
+/* Base badge styling (optional; keep your existing badge styles if you have them) */
+.score-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .375rem;
+  padding: .25rem .5rem;
+  border-radius: .5rem;
+  font-weight: 600;
+  font-size: .75rem;
+  line-height: 1;
+  color: #fff !important; /* ensure readable text on gradients */
 }
+
+/* Make our performance classes outrank Tailwind bg-* utilities */
+.ceo-card .score-badge-excellent,
+.ceo-card .score-badge-good,
+.ceo-card .score-badge-average,
+.ceo-card .score-badge-poor,
+.ceorater-stat-card .score-badge-excellent,
+.ceorater-stat-card .score-badge-good,
+.ceorater-stat-card .score-badge-average,
+.ceorater-stat-card .score-badge-poor,
+.ceo-detail .score-badge-excellent,
+.ceo-detail .score-badge-good,
+.ceo-detail .score-badge-average,
+.ceo-detail .score-badge-poor {
+  background-image: none !important; /* neutralize any prior bg */
+  background-color: transparent !important;
+}
+
+/* Final colors (same palette you already use) */
+.score-badge-excellent { 
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  border: none !important;
+}
+.score-badge-good { 
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+  border: none !important;
+}
+.score-badge-average { 
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+  border: none !important;
+}
+.score-badge-poor { 
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  border: none !important;
+}
+
+/* If any badge had an explicit Tailwind bg-*, this wins due to !important + specificity */
+
+/* ==== PATCH: Place actions at card corners (no overlap) ==== */
+.ceo-card { position: relative; }
+
+/* The "+" compare button already exists; anchor it bottom-left */
+.ceo-card .compare-btn {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 2;
+}
+
+/* Style & place the "view details →" link bottom-right */
+.ceo-card .view-details-link {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-weight: 600;
+  font-size: .875rem;
+  text-decoration: none;
+  border-radius: .5rem;
+  padding: .375rem .6rem;
+  background: rgba(255,255,255,.85);
+  backdrop-filter: blur(6px);
+  border: 1px solid #e5e7eb;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.ceo-card .view-details-link:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0,0,0,.08);
+}
+
+/* Ensure content doesn't hide behind the fixed-corner actions */
+.ceo-card .card-body,
+.ceo-card .content {
+  padding-bottom: 3rem; /* space for the two corner buttons */
+}
+      
+
