@@ -360,6 +360,14 @@
     </div>
   </div>
 
+  <!-- Force Firebase to use web (not Cordova) inside Capacitor -->
+  <script>
+    if (window.Capacitor && window.cordova) {
+      // Prevent Firebase Auth from taking the Cordova branch
+      try { delete window.cordova; } catch (e) { window.cordova = undefined; }
+    }
+  </script>
+  
   <!-- Firebase -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
@@ -386,5 +394,6 @@
   </script>
 </body>
 </html>
+
 
 
