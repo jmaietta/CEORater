@@ -1,173 +1,261 @@
-/* ============================================
-   SAFE AREA SUPPORT FOR iPhone 16 SERIES
-   ============================================ */
+/* ===================================================================
+   CEORater – style.css (safe-area hardened, no stretch on iOS)
+   - Cards & auth respect safe areas (top/bottom/left/right)
+   - No global utility overrides that inflate heights
+   - Robust dvh/svh + -webkit-fill-available fallbacks
+   - Firebase Auth buttons never sit behind the mic/home-indicator
+   =================================================================== */
 
-/* Global safe area variables for easier management */
-:root {
-  --safe-area-inset-top: env(safe-area-inset-top, 0px);
-  --safe-area-inset-right: env(safe-area-inset-right, 0px);
-  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+/* -------------------------------------------------
+   Base / Reset
+------------------------------------------------- */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Ensure the HTML and body respect safe areas */
-html {
-  /* Ensure viewport-fit=cover works properly */
-  height: 100%;
+/* Safe-area variables (env() is 0 when unsupported) */
+:root {
+  --sat: env(safe-area-inset-top);
+  --sar: env(safe-area-inset-right);
+  --sab: env(safe-area-inset-bottom);
+  --sal: env(safe-area-inset-left);
+
+  /* App chrome padding you can tweak globally */
+  --app-gap: 16px;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  /* Robust viewport sizing on iOS (dynamic toolbars) */
+  min-height: 100svh;
+  height: 100dvh;
+  min-height: -webkit-fill-available; /* iOS fallback */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 body {
-  font-family: 'Inter', sans-serif;
-  /* Add safe area padding to body */
-  padding-top: var(--safe-area-inset-top);
-  padding-bottom: var(--safe-area-inset-bottom);
-  padding-left: var(--safe-area-inset-left);
-  padding-right: var(--safe-area-inset-right);
-  min-height: 100vh;
-  position: relative;
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  color: #0f172a;            /* slate-900 */
+  background: #f8fafc;       /* slate-50 */
 }
 
-/* Fixed header/navigation bars should respect safe areas */
-.fixed, [class*="fixed-"] {
-  padding-top: var(--safe-area-inset-top);
+/* -------------------------------------------------
+   App Shell (apply safe area here, not on body)
+------------------------------------------------- */
+.app-shell {
+  /* All primary screens live inside .app-shell */
+  padding-top: calc(var(--sat, 0px) + var(--app-gap));
+  padding-right: calc(var(--sar, 0px) + var(--app-gap));
+  padding-bottom: calc(var(--sab, 0px) + var(--app-gap));
+  padding-left: calc(var(--sal, 0px) + var(--app-gap));
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-.fixed.top-0, [class*="fixed-top"] {
-  top: var(--safe-area-inset-top) !important;
+/* Optional header/footer that hug the edges add extra breathing room */
+.site-header {
+  margin-top: calc(var(--sat, 0px));
+}
+.site-footer {
+  margin-bottom: calc(var(--sab, 0px));
 }
 
-/* Sticky elements should also respect safe areas */
-.sticky {
-  top: var(--safe-area-inset-top);
+/* Never globally add safe-area padding to body or utility classes. */
+
+
+/* -------------------------------------------------
+   Non-stretch Card Defaults
+   (Prevents flex parents from making cards fill the column)
+------------------------------------------------- */
+.card,
+.ceo-card,
+.ceorater-stat-card,
+.firebase-card {
+  align-self: start;         /* do not stretch in flex parents */
+  width: 100%;
+  max-width: 1200px;         /* guardrail for widescreens */
+  height: auto;              /* content-driven height */
 }
 
-/* Modal overlays should cover full screen including safe areas */
-.modal-overlay, [role="dialog"] {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  /* Ensure modal backdrop covers everything */
-  padding: 0;
+/* If a grid/flex container uses align-stretch, normalize children */
+.no-stretch > * { align-self: start; }
+
+/* Ensure images/video don’t force card growth unexpectedly */
+img, svg, video, canvas, audio, iframe, embed, object {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
 
-/* Modal content should respect safe areas */
-.modal-content, .modal {
-  backdrop-filter: blur(4px);
-  /* Add safe area padding to modal content */
-  padding-top: calc(var(--safe-area-inset-top) + 1rem);
-  padding-bottom: calc(var(--safe-area-inset-bottom) + 1rem);
-  padding-left: calc(var(--safe-area-inset-left) + 1rem);
-  padding-right: calc(var(--safe-area-inset-right) + 1rem);
-}
-
-/* Modal headers specifically need top safe area padding */
-.modal-header, #modalHeader {
-  padding-top: calc(var(--safe-area-inset-top) + 1.5rem) !important;
-  padding-left: calc(var(--safe-area-inset-left) + 1rem);
-  padding-right: calc(var(--safe-area-inset-right) + 1rem);
-}
-
-/* CEO Detail Card modal adjustments */
-.modal-body, #modalBody {
-  max-height: calc(100vh - var(--safe-area-inset-top) - var(--safe-area-inset-bottom) - 8rem);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-left: calc(var(--safe-area-inset-left) + 1rem);
-  padding-right: calc(var(--safe-area-inset-right) + 1rem);
-}
-
-/* Comparison tray at bottom needs safe area handling */
-#comparisonTray {
-  transition: transform 0.3s ease-in-out;
-  padding-bottom: calc(var(--safe-area-inset-bottom) + 0.5rem) !important;
-  padding-left: calc(var(--safe-area-inset-left) + 1rem);
-  padding-right: calc(var(--safe-area-inset-right) + 1rem);
-  /* If it's fixed to bottom */
-  bottom: var(--safe-area-inset-bottom);
-}
-
-/* Firebase Auth specific adjustments */
-.firebase-auth-container,
+/* -------------------------------------------------
+   FirebaseUI – Safe, Non-stretch, Touch-friendly
+------------------------------------------------- */
 .firebaseui-container,
-[class*="firebaseui"] {
-  padding-top: calc(var(--safe-area-inset-top) + 1rem) !important;
-  padding-bottom: calc(var(--safe-area-inset-bottom) + 1rem) !important;
-  padding-left: var(--safe-area-inset-left);
-  padding-right: var(--safe-area-inset-right);
-}
-
-/* FirebaseUI card should respect safe areas */
+.firebaseui-auth-container,
 .firebaseui-card-content {
-  padding: calc(var(--safe-area-inset-top) + 1rem) 1rem 1rem 1rem !important;
+  /* Respect left/right safe areas; add comfortable inner gaps */
+  padding-inline: calc(var(--sal, 0px) + 12px) calc(var(--sar, 0px) + 12px);
+  display: block;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
-/* Main content area adjustments */
-#ceoCardView {
-  padding-top: calc(var(--safe-area-inset-top) + 0.5rem);
-  padding-bottom: calc(var(--safe-area-inset-bottom) + 0.5rem);
+/* Critical: bottom padding so buttons never sit behind mic/home-indicator */
+.firebaseui-auth-container,
+.firebaseui-card-content {
+  padding-bottom: calc(var(--sab, 0px) + 24px);
 }
 
-/* Stat cards container */
-#statCardContainer {
-  padding-left: var(--safe-area-inset-left);
-  padding-right: var(--safe-area-inset-right);
+/* Top spacing under the dynamic notch/status area */
+.firebaseui-container { padding-top: calc(var(--sat, 0px) + 12px); }
+
+/* Buttons: no fixed heights; keep minimum touch target */
+.firebaseui-idp-button,
+.firebaseui-idp-list .mdl-button {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;                 /* accessible target */
+  padding: 10px 16px;
+  line-height: 1.2;
+  font-size: 16px;                  /* avoids iOS zoom-on-focus */
+  border-radius: 10px;
+  box-sizing: border-box;
+  height: auto;                     /* let content define */
+  max-width: 100%;
 }
 
-/* Navigation tabs */
-.watchlist-tab {
-  transition: all 0.3s ease;
+/* Ensure container items expand naturally, not a fixed row height */
+.firebaseui-list-item {
+  display: block;
+  margin: 6px 0;
+  height: auto;
 }
 
-.watchlist-tab.active {
-  background-color: #3b82f6;
-  color: white;
+/* Text inside buttons aligns properly */
+.firebaseui-idp-text {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.2;
 }
 
-/* Any fixed positioned buttons (like FABs) */
-.fixed.bottom-4 {
-  bottom: calc(var(--safe-area-inset-bottom) + 1rem) !important;
+/* Inputs: comfortable padding, no fixed heights */
+.mdl-textfield__input,
+.firebaseui-textfield,
+.firebaseui-input {
+  -webkit-appearance: none;
+  appearance: none;
+  font-size: 16px;
+  line-height: 1.3;
+  padding: 10px 12px;
+  height: auto;
+  border-radius: 8px;
+  box-sizing: border-box;
+  width: 100%;
 }
 
-.fixed.right-4 {
-  right: calc(var(--safe-area-inset-right) + 1rem) !important;
+/* If you have a fixed bottom bar within auth screens, pad for safe area */
+.auth-bottom-bar,
+.fixed-cta {
+  position: sticky;                 /* or fixed if desired */
+  bottom: 0;
+  padding: 12px 16px;
+  padding-bottom: calc(12px + var(--sab, 0px));
+  background: #ffffffcc;
+  backdrop-filter: blur(6px);
+  border-top: 1px solid #e5e7eb;
+  z-index: 20;
 }
 
-/* ============================================
-   ORIGINAL STYLES (with safe area modifications)
-   ============================================ */
+/* -------------------------------------------------
+   CEO Detail Cards (no stretch, safe edges)
+------------------------------------------------- */
+.ceo-detail,
+.ceo-detail .content {
+  width: 100%;
+  max-width: 1100px;
+  margin-inline: auto;
+  padding-inline: calc(var(--sal, 0px) + 12px) calc(var(--sar, 0px) + 12px);
+}
 
+.ceo-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.ceo-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Prevent inner flex columns from stretching children vertically */
+.ceo-card .col,
+.ceo-card [class*="flex"],
+.ceo-card [class*="grid"] > * { align-self: start; }
+
+/* Borders that shouldn’t be overridden */
+.ceo-card.border-l-4 { border-left-width: 4px; }
+.ceo-card.border-green-500, .ceo-card.border-green-600 { border-left-color: #16a34a; }
+.ceo-card.border-blue-500,  .ceo-card.border-blue-600  { border-left-color: #2563eb; }
+.ceo-card.border-gray-600                            { border-left-color: #4b5563; }
+.ceo-card.border-red-500,   .ceo-card.border-red-600   { border-left-color: #dc2626; }
+
+/* -------------------------------------------------
+   CEO Comparison – grid that never forces row height
+------------------------------------------------- */
+.comparison-wrap {
+  width: 100%;
+  padding-inline: calc(var(--sal, 0px) + 12px) calc(var(--sar, 0px) + 12px);
+  margin-inline: auto;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 16px;
+  align-items: start;          /* don’t stretch rows */
+}
+
+.comparison-card {
+  grid-column: span 6;
+  align-self: start;
+  height: auto;
+}
+
+@media (max-width: 1024px) {
+  .comparison-card { grid-column: span 12; }
+}
+
+.comparison-ceorater-highlight {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  border-left: 4px solid #475569;
+}
+
+/* -------------------------------------------------
+   CEORaterScore – hero & stat cards
+------------------------------------------------- */
 .font-orbitron { font-family: 'Orbitron', sans-serif; }
-
-#loading-spinner {
-  border: 4px solid rgba(0,0,0,.1);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border-left-color: #09f;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0) }
-  100% { transform: rotate(360deg) }
-}
-
-.truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* CEORaterScore Enhancements - PROFESSIONAL VERSION */
 
 .ceorater-hero {
   background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
+  border-radius: 16px;
   box-shadow: 0 8px 25px rgba(30, 41, 59, 0.3);
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
 }
-
 .ceorater-hero:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 35px rgba(30, 41, 59, 0.4);
@@ -177,52 +265,33 @@ body {
   background: linear-gradient(to right, #3b82f6 0%, #3b82f6 60%, #8b5cf6 60%, #8b5cf6 100%);
   height: 6px;
   border-radius: 3px;
-  transition: all 0.3s ease;
+  transition: height 0.3s ease, width 0.8s ease-in-out;
 }
+.score-weight-bar:hover { height: 8px; }
 
-.score-weight-bar:hover {
-  height: 8px;
-}
-
-.ceo-card {
-  transition: all 0.3s ease;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-}
-
-.ceo-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-}
-
-.score-progress {
-  transition: width 0.8s ease-in-out;
-}
+.score-progress { transition: width 0.8s ease-in-out; }
 
 .ceorater-stat-card {
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   border: 3px solid #475569;
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
   position: relative;
   overflow: hidden;
+  border-radius: 14px;
 }
-
 .ceorater-stat-card::before {
   content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: absolute; inset: 0;
   background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
   animation: shimmer 4s infinite;
   opacity: 0.5;
 }
-
 .ceorater-stat-card:hover {
   background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
   transform: scale(1.02);
   box-shadow: 0 20px 40px rgba(71, 85, 105, 0.2);
 }
+@keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
 
 .modal-ceorater-section {
   border-radius: 12px;
@@ -231,53 +300,27 @@ body {
   transition: all 0.3s ease;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
-
-.modal-ceorater-section.score-badge-excellent {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  border: none;
-  color: white;
-}
-
-.modal-ceorater-section.score-badge-good {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  border: none;
-  color: white;
-}
-
-.modal-ceorater-section.score-badge-average {
-  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-  border: none;
-  color: white;
-}
-
-.modal-ceorater-section.score-badge-poor {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  border: none;
-  color: white;
-}
-
+.modal-ceorater-section.score-badge-excellent { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; border: none; }
+.modal-ceorater-section.score-badge-good      { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: #fff; border: none; }
+.modal-ceorater-section.score-badge-average   { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: #fff; border: none; }
+.modal-ceorater-section.score-badge-poor      { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #fff; border: none; }
 .modal-ceorater-section::before {
   content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: absolute; inset: 0;
   background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
   animation: shimmer 3s infinite;
 }
 
+/* Default modal section if no score tag */
 .modal-ceorater-section:not(.score-badge-excellent):not(.score-badge-good):not(.score-badge-average):not(.score-badge-poor) {
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   border: 2px solid #475569;
   color: #334155;
 }
 
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
+/* -------------------------------------------------
+   Tooltips (desktop only activation below)
+------------------------------------------------- */
 .weight-tooltip {
   opacity: 0;
   visibility: hidden;
@@ -302,28 +345,14 @@ body {
   align-items: center;
   justify-content: center;
 }
-
-.weight-indicator {
-  position: relative;
-}
-
-@media (min-width: 769px) {
-  .weight-indicator:hover .weight-tooltip {
-    opacity: 1;
-    visibility: visible;
-    transform: translateX(-50%) translateY(0);
-    pointer-events: auto;
-  }
-}
+.weight-indicator { position: relative; }
 
 .weight-tooltip::before {
   content: '';
   position: absolute;
-  bottom: 100%;
-  left: 50%;
+  bottom: 100%; left: 50%;
   transform: translateX(-50%);
-  width: 0;
-  height: 0;
+  width: 0; height: 0;
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
   border-bottom: 5px solid #1f2937;
@@ -331,11 +360,11 @@ body {
 
 .alpha-score-tooltip,
 .comp-score-tooltip {
-  opacity: 0 !important;
-  visibility: hidden !important;
+  opacity: 0;
+  visibility: hidden;
   transform: translateX(-50%) translateY(10px);
   transition: all 0.3s ease;
-  pointer-events: none !important;
+  pointer-events: none;
   position: absolute;
   left: 50%;
   bottom: 100%;
@@ -352,79 +381,77 @@ body {
   z-index: 50;
 }
 
-@media (min-width: 769px) {
-  .bg-blue-50:hover .alpha-score-tooltip,
-  .bg-purple-50:hover .comp-score-tooltip {
-    opacity: 1 !important;
-    visibility: visible !important;
-    transform: translateX(-50%) translateY(0);
-    pointer-events: auto !important;
-  }
+/* -------------------------------------------------
+   Utilities & Small Components
+------------------------------------------------- */
+#loading-spinner{
+  border:4px solid rgba(0,0,0,.1);
+  width:36px; height:36px; border-radius:50%;
+  border-left-color:#09f;
+  animation:spin 1s linear infinite
+}
+@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+
+.modal { backdrop-filter: blur(4px); }
+
+.watchlist-tab { transition: all 0.3s ease; }
+.watchlist-tab.active { background-color: #3b82f6; color: #fff; }
+
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Bottom tray that respects the home indicator */
+#comparisonTray {
+  transition: transform 0.3s ease-in-out;
+  padding-bottom: calc(var(--sab, 0px) + 8px);
 }
 
-.comparison-ceorater-highlight {
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-  border-left: 4px solid #475569;
-}
+/* Subtle hovers */
+.compare-btn, .watchlist-star { transition: transform 0.3s ease; }
+.compare-btn:hover { transform: scale(1.1); }
+.watchlist-star:hover { transform: scale(1.2) rotate(5deg); }
 
-.score-badge-excellent { 
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
-}
-.score-badge-good { 
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); 
-}
-.score-badge-average { 
-  background: linear-gradient(135deg, #1e293b 0%, #334155 100%); 
-}
-.score-badge-poor { 
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); 
-}
-
-.compare-btn, .watchlist-star {
-  transition: all 0.3s ease;
-}
-
-.compare-btn:hover {
-  transform: scale(1.1);
-}
-
-.watchlist-star:hover {
-  transform: scale(1.2) rotate(5deg);
-}
-
+/* Secondary stat cards – subtle hover */
 #statCardContainer .grid .bg-white {
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-
 #statCardContainer .grid .bg-white:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
 
-/* Responsive adjustments with safe area support */
-@media (max-width: 768px) {
-  .ceorater-hero {
-    padding: 1rem;
-    padding-left: calc(var(--safe-area-inset-left) + 1rem);
-    padding-right: calc(var(--safe-area-inset-right) + 1rem);
-  }
-  
-  .ceorater-hero .font-orbitron {
-    font-size: 2.5rem;
-  }
-  
-  .score-weight-bar {
-    height: 4px;
-  }
-  
-  .ceorater-stat-card {
-    padding: 1.5rem;
-  }
-  
-  .ceorater-stat-card .text-5xl {
-    font-size: 3rem;
-  }
+/* Loading shimmer */
+.ceorater-loading {
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.5s infinite;
+}
+@keyframes loading-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
+/* -------------------------------------------------
+   Modal Layout with Safe-Area Awareness
+------------------------------------------------- */
+.modal-header, #modalHeader {
+  padding-top: calc(1.5rem + var(--sat, 0px));
+}
+.modal-body, #modalBody {
+  /* dvh avoids 100vh overshoot under dynamic bars */
+  max-height: calc(100dvh - var(--sat, 0px) - var(--sab, 0px) - 8rem);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* -------------------------------------------------
+   Responsive Tweaks
+------------------------------------------------- */
+@media (max-width: 768px) {
+  .ceorater-hero { padding: 1rem; }
+  .ceorater-hero .font-orbitron { font-size: 2.5rem; }
+  .score-weight-bar { height: 4px; }
+
+  .ceorater-stat-card { padding: 1.5rem; }
+  .ceorater-stat-card .text-5xl { font-size: 3rem; }
+
+  /* Hide tooltips on touch */
   .weight-tooltip,
   .alpha-score-tooltip,
   .comp-score-tooltip {
@@ -433,85 +460,33 @@ body {
     visibility: hidden !important;
     pointer-events: none !important;
   }
-  
-  .weight-indicator:hover .weight-tooltip,
-  .bg-blue-50:hover .alpha-score-tooltip,
-  .bg-purple-50:hover .comp-score-tooltip {
-    display: none !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
-  }
-  
-  /* Mobile specific safe area adjustments */
-  body {
-    /* Extra padding for mobile landscape */
-    padding-left: max(var(--safe-area-inset-left), 1rem);
-    padding-right: max(var(--safe-area-inset-right), 1rem);
-  }
 }
 
 @media (max-width: 1024px) {
-  #statCardContainer.grid.lg\:grid-cols-5 {
-    grid-template-columns: repeat(2, 1fr);
+  /* When Tailwind sets .lg:grid-cols-5 we can override to 2 columns at <=1024px */
+  #statCardContainer.grid.lg\:grid-cols-5 { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .ceorater-stat-card { grid-column: 1 / -1; }
+}
+
+/* -------------------------------------------------
+   Desktop-only Tooltip Activation
+------------------------------------------------- */
+@media (min-width: 769px) {
+  .weight-indicator:hover .weight-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
   }
-  
-  @media (max-width: 640px) {
-    .ceorater-stat-card {
-      grid-column: 1 / -1;
-    }
+
+  .bg-blue-50:hover .alpha-score-tooltip,
+  .bg-purple-50:hover .comp-score-tooltip {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto !important;
   }
-}
-
-.ceorater-loading {
-  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
-  background-size: 200% 100%;
-  animation: loading-shimmer 1.5s infinite;
-}
-
-@keyframes loading-shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-.ceo-card.border-l-4 {
-  border-left-width: 4px !important;
-}
-
-.ceo-card.border-green-500,
-.ceo-card.border-green-600 {
-  border-left-color: #16a34a !important;
-}
-
-.ceo-card.border-blue-500,
-.ceo-card.border-blue-600 {
-  border-left-color: #2563eb !important;
-}
-
-.ceo-card.border-gray-600 {
-  border-left-color: #4b5563 !important;
-}
-
-.ceo-card.border-red-500,
-.ceo-card.border-red-600 {
-  border-left-color: #dc2626 !important;
-}
-
-/* Updated padding classes with safe area support */
-.py-3 {
-  padding-top: calc(var(--safe-area-inset-top) + 0.75rem) !important;
-  padding-bottom: calc(var(--safe-area-inset-bottom) + 0.75rem) !important;
-}
-
-.px-4 {
-  padding-left: calc(var(--safe-area-inset-left) + 1rem);
-  padding-right: calc(var(--safe-area-inset-right) + 1rem);
-}
-
-.pt-4 {
-  padding-top: calc(var(--safe-area-inset-top) + 1rem);
-}
-
-.pb-4 {
-  padding-bottom: calc(var(--safe-area-inset-bottom) + 1rem);
 }
