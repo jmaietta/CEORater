@@ -1,6 +1,6 @@
 const firebaseConfig = {
   apiKey: "AIzaSyDxHijS3cGbVq-mHFc5SfdgyqnbKUJarYQ",
-  authDomain: "ceorater.com",
+  authDomain: "ceorater-dacef.firebaseapp.com",
   projectId: "ceorater-dacef",
   storageBucket: "ceorater-dacef.firebasestorage.app",
   messagingSenderId: "772315733470",
