@@ -1,5 +1,4 @@
 // auth.js
-
 // Import the initialized Firebase services.
 import { auth, db } from './firebase-init.js';
 
@@ -49,19 +48,29 @@ export async function saveUserWatchlist(uid, watchlist) {
 
 /**
  * Signs the user in with Google.
+ * Uses redirect for mobile compatibility.
  */
 export function signInWithGoogle() {
   const provider = new firebase.auth.GoogleAuthProvider();
-  return auth.signInWithPopup(provider);
+  return auth.signInWithRedirect(provider);
 }
 
 /**
  * Signs the user in with Microsoft.
+ * Uses redirect for mobile compatibility.
  */
 export function signInWithMicrosoft() {
   const provider = new firebase.auth.OAuthProvider('microsoft.com');
   provider.setCustomParameters({ prompt: 'select_account' });
-  return auth.signInWithPopup(provider);
+  return auth.signInWithRedirect(provider);
+}
+
+/**
+ * Gets the redirect result after OAuth sign-in completes.
+ * Call this when your app starts up to handle the redirect result.
+ */
+export function getRedirectResult() {
+  return auth.getRedirectResult();
 }
 
 /**
