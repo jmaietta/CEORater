@@ -51,6 +51,21 @@ const toggleFiltersBtn = $("toggleFiltersBtn");
 const mobileFilterControls = $("mobileFilterControls");
 const toggleFiltersIcon = $("toggleFiltersIcon");
 
+// ---------- Small addition: choose redirect on iOS app, and on GitHub Pages; popup elsewhere ----------
+const FORCE_REDIRECT_ON_GITHUB = (location.hostname === 'jmaietta.github.io'); // <-- NEW
+const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const useRedirect = FORCE_REDIRECT_ON_GITHUB || isNative; // <-- NEW
+
+function signInWithProvider(provider) {
+  // persist session locally
+  if (window.firebase?.auth) {
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+  }
+  return useRedirect
+    ? firebase.auth().signInWithRedirect(provider)
+    : firebase.auth().signInWithPopup(provider);
+}
+
 // ---------- State ----------
 let master = [];
 let view = [];
@@ -67,8 +82,10 @@ function handleAuthStateChange(user) {
     loginBtn.classList.add('hidden');
     logoutBtn.classList.remove('hidden');
     userEmail.classList.remove('hidden');
-    // We no longer need the separate watchlistBtn, so we can remove references to it here.
     userEmail.textContent = user.email;
+    // HIDE LOGIN MODAL if signed in (works for redirect flow too)
+    loginModal.classList.add('hidden');
+
     auth.loadUserWatchlist(user.uid).then(watchlist => {
         userWatchlist = watchlist;
         updateWatchlistCount();
@@ -206,6 +223,20 @@ function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTi
 document.addEventListener('DOMContentLoaded', () => {
   auth.initAuth(handleAuthStateChange);
 
+  // Handle redirect result after returning from Google/Microsoft on iOS (and GH Pages when forced)
+  if (window.firebase?.auth) {
+    firebase.auth().getRedirectResult()
+      .then(result => {
+        if (result && result.user) {
+          // UI updates also happen in handleAuthStateChange, but this is safe
+          loginModal.classList.add('hidden');
+        }
+      })
+      .catch(err => {
+        console.error('Redirect result error:', err);
+      });
+  }
+
   fetchData()
     .then(data => {
       master = data;
@@ -312,23 +343,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
   logoutBtn.addEventListener('click', () => auth.signOut());
   
+  // ----- use redirect on iOS (Capacitor) and on GitHub Pages; popup on other web -----
   googleSignIn.addEventListener('click', () => {
-    auth.signInWithGoogle().then(() => {
-      loginModal.classList.add('hidden');
-    }).catch(error => {
-      console.error('Google sign in error:', error);
-      alert('Sign in failed. Please try again.');
-    });
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    signInWithProvider(provider)
+      .then(() => {
+        // popup case finishes here; redirect case finishes in getRedirectResult
+        if (!useRedirect) loginModal.classList.add('hidden');
+      })
+      .catch(error => {
+        console.error('Google sign in error:', error);
+        alert('Sign in failed. Please try again.');
+      });
   });
 
   microsoftSignIn.addEventListener('click', () => {
-    auth.signInWithMicrosoft().then(() => {
-      loginModal.classList.add('hidden');
-    }).catch(error => {
-      console.error('Microsoft sign in error:', error);
-      alert('Sign in failed: ' + error.message);
-    });
+    const provider = new firebase.auth.OAuthProvider('microsoft.com');
+    // provider.setCustomParameters({ tenant: 'common' }); // optional
+    signInWithProvider(provider)
+      .then(() => {
+        if (!useRedirect) loginModal.classList.add('hidden');
+      })
+      .catch(error => {
+        console.error('Microsoft sign in error:', error);
+        alert('Sign in failed: ' + error.message);
+      });
   });
+  // ----- END -----
   
   forgotPasswordLink.addEventListener('click', (e) => {
     e.preventDefault();
