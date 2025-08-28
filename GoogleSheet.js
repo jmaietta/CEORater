@@ -4,8 +4,8 @@
  * Reads your published Google Sheet via GViz JSONP (no CORS, no server).
  * Caches for 60 minutes and de-dupes concurrent requests.
  *
- * IMPORTANT: In Google Sheets, do this once:
- *   File → Share → Publish to web → publish the SPECIFIC TAB you want to expose.
+ * One-time in Google Sheets:
+ *   File → Share → Publish to web → publish the SPECIFIC TAB (gid=0).
  *
  * Your sheet/tab:
  *   https://docs.google.com/spreadsheets/d/17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA/edit?gid=0#gid=0
