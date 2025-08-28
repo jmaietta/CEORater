@@ -1,60 +1,42 @@
-from pathlib import Path
-
-code = r"""/**
+/**
  * GoogleSheet.js — zero-backend data loader for CEORater
  * ------------------------------------------------------
- * • Reads a public Google Sheet (published-to-web) via GViz JSONP (no CORS issues)
- * • Uses localStorage cache for 60 minutes
- * • De-dupes concurrent requests (only one network call at a time)
+ * Reads your published Google Sheet via GViz JSONP (no CORS, no server).
+ * Caches for 60 minutes and de-dupes concurrent requests.
  *
- * IMPORTANT: Publish the specific tab in Google Sheets:
- *   File → Share → Publish to web → pick the tab you want to expose
+ * IMPORTANT: In Google Sheets, do this once:
+ *   File → Share → Publish to web → publish the SPECIFIC TAB you want to expose.
  *
- * Your sheet:
+ * Your sheet/tab:
  *   https://docs.google.com/spreadsheets/d/17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA/edit?gid=0#gid=0
  */
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Config
-// ──────────────────────────────────────────────────────────────────────────────
 
 const SHEET_ID  = '17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA';
 const SHEET_GID = '0'; // confirmed from your URL
 
 // Cache (60 minutes)
 const CACHE_TIME_MS = 60 * 60 * 1000;
-const LS_KEYS = {
-  DATA: 'ceorater:gSheetData',
-  TS:   'ceorater:gSheetTs',
-};
+const LS_KEYS = { DATA: 'ceorater:gSheetData', TS: 'ceorater:gSheetTs' };
 
-// De-duplication for in-flight requests
-let pending = null;
+let pending = null; // in-flight request de-dupe
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Utilities
-// ──────────────────────────────────────────────────────────────────────────────
-
-/** Normalize header strings → safe object keys (e.g., "Avg. Annual TSR" → "avg_annual_tsr") */
+// ─── Utilities ────────────────────────────────────────────────────────────────
 function normalizeHeader(h) {
   return String(h || '')
-    .trim()
-    .toLowerCase()
+    .trim().toLowerCase()
     .replace(/[\s/]+/g, '_')
     .replace(/[^\w]/g, '')
     .replace(/^_+|_+$/g, '');
 }
 
-/** Best-effort numeric parse (keeps 0 if NaN) */
 function toNumber(val) {
-  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
   if (val == null) return 0;
-  const cleaned = String(val).replace(/[^\d.-]/g, '');
-  const n = parseFloat(cleaned);
-  return isNaN(n) ? 0 : n;
+  const n = parseFloat(String(val).replace(/[^\d.-]/g, ''));
+  return Number.isFinite(n) ? n : 0;
 }
 
-/** JSONP loader for Google Visualization API (GViz) to avoid CORS */
+// JSONP loader for Google Visualization API (GViz) to avoid CORS
 function loadGVizJSONP(url) {
   return new Promise((resolve, reject) => {
     const cbName = '__gviz_cb_' + Math.random().toString(36).slice(2);
@@ -70,10 +52,7 @@ function loadGVizJSONP(url) {
   });
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Cache helpers
-// ──────────────────────────────────────────────────────────────────────────────
-
+// ─── Cache helpers ───────────────────────────────────────────────────────────
 function isCacheValid() {
   const ts = parseInt(localStorage.getItem(LS_KEYS.TS) || '0', 10);
   return ts && (Date.now() - ts) < CACHE_TIME_MS;
@@ -88,9 +67,7 @@ function setCached(data) {
   try {
     localStorage.setItem(LS_KEYS.DATA, JSON.stringify(data));
     localStorage.setItem(LS_KEYS.TS, String(Date.now()));
-  } catch (e) {
-    console.warn('Cache write failed:', e);
-  }
+  } catch (e) { console.warn('Cache write failed:', e); }
 }
 export function clearCache() {
   localStorage.removeItem(LS_KEYS.DATA);
@@ -100,33 +77,24 @@ export function getCacheStatus() {
   const rawTs = localStorage.getItem(LS_KEYS.TS);
   const ts = rawTs ? new Date(parseInt(rawTs, 10)) : null;
   const rawData = localStorage.getItem(LS_KEYS.DATA);
-  return {
-    hasData: !!rawData,
-    lastFetch: ts,
-    isValid: isCacheValid(),
-    bytes: rawData ? rawData.length : 0,
-  };
+  return { hasData: !!rawData, lastFetch: ts, isValid: isCacheValid(), bytes: rawData ? rawData.length : 0 };
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Parsing
-// ──────────────────────────────────────────────────────────────────────────────
-
-/** Convert GViz table -> array of objects using the first row as headers. */
+// ─── Parsing ─────────────────────────────────────────────────────────────────
 function parseGVizTableToObjects(resp) {
   const rows = resp?.table?.rows || [];
   const cols = resp?.table?.cols || [];
 
-  // Prefer labeled columns; fallback to first data row
+  // Prefer column labels as headers; fallback to first row
   let headers = cols.map(c => c?.label ?? '').map(normalizeHeader);
   if (!headers.filter(Boolean).length && rows.length) {
     headers = (rows[0].c || []).map(c => normalizeHeader(c?.v));
-    rows.shift(); // drop header row if used for headers
+    rows.shift(); // drop header row if used
   }
 
   const out = [];
   for (const r of rows) {
-    const cells = (r.c || []);
+    const cells = r.c || [];
     const obj = {};
     for (let i = 0; i < headers.length; i++) {
       const key = headers[i] || `col_${i}`;
@@ -138,7 +106,6 @@ function parseGVizTableToObjects(resp) {
   return out;
 }
 
-/** Optional: coerce certain fields to numbers */
 function coerceNumericFields(rows, keys = []) {
   if (!keys.length) return rows;
   return rows.map(row => {
@@ -148,22 +115,17 @@ function coerceNumericFields(rows, keys = []) {
   });
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Fetching
-// ──────────────────────────────────────────────────────────────────────────────
-
-/** Build GViz URL for the sheet/tab. */
+// ─── Fetching ────────────────────────────────────────────────────────────────
 function gvizUrl() {
   return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?gid=${SHEET_GID}`;
 }
 
-/** Network fetch (JSONP) + parsing + caching */
 async function fetchFresh() {
   console.log('[GoogleSheet.js] Fetching fresh data from Google Sheets via GViz JSONP...');
   const resp = await loadGVizJSONP(gvizUrl());
   const rows = parseGVizTableToObjects(resp);
 
-  // Add numeric coercions here if your sheet has numeric columns you rely on
+  // Add numeric keys your UI expects as numbers if needed
   const numericKeys = [
     // 'start_price', 'current_stock_price', 'current_qqq_price',
     // 'tsr_vs_qqq_tsr_alpha', 'avg_annual_tsr_vs_qqq_avg_annual_tsr_alpha',
@@ -176,7 +138,7 @@ async function fetchFresh() {
   return parsed;
 }
 
-/** Public API: get data with cache + de-dup logic. */
+// Public API: cache + de-dupe
 export async function fetchCEOData() {
   if (isCacheValid()) {
     const cached = getCached();
@@ -193,10 +155,10 @@ export async function fetchCEOData() {
   return pending;
 }
 
-// Back-compat: apps that import { fetchData } still work
+// Back-compat: named export `fetchData`
 export async function fetchData() { return fetchCEOData(); }
 
-// Optional: shape a row for your UI (adjust keys to match your header row names)
+// Optional: map a row to your UI shape; tweak keys to match your header names
 export function mapForUI(row, index) {
   return {
     rank: index + 1,
@@ -218,11 +180,4 @@ export function mapForUI(row, index) {
   };
 }
 
-// Default export for convenience
 export default { fetchData, fetchCEOData, mapForUI, getCacheStatus, clearCache };
-"""
-
-out_path = Path('/mnt/data/GoogleSheet.js')
-out_path.write_text(code)
-print(f"Wrote {out_path} ({len(code)} bytes)")
-
