@@ -1,176 +1,93 @@
 /**
- * GoogleSheet.js â€” zero-backend data loader for CEORater
- * ------------------------------------------------------
- * Reads your *published* Google Sheet via GViz JSONP (no CORS, no server).
- * Caches for 60 minutes and de-dupes concurrent requests.
- *
- * One-time in Google Sheets:
- *   File â†’ Share â†’ Publish to web â†’ publish the SPECIFIC TAB (gid=0).
- *   Then this URL must render a JS callback (not a login page):
- *   https://docs.google.com/spreadsheets/d/17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA/gviz/tq?gid=0
+ * GoogleSheet.js — CEORater loader using your published “e/…” Sheet ID (GViz JSONP)
+ * Your published link (HTML): 
+ *   https://docs.google.com/spreadsheets/d/e/2PACX-.../pubhtml?gid=0&single=true
+ * Data endpoint we actually use (JSONP):
+ *   https://docs.google.com/spreadsheets/d/e/2PACX-.../gviz/tq?gid=0
  */
 
-const SHEET_ID  = '17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA';
-const SHEET_GID = '0'; // confirmed from your URL
-const DEBUG = true;
+const PUBLISHED_E_ID = '2PACX-1vS0xkfCRR4BTy5OMQt6kPlTHlqsbhm0oWV6l5S1cqayXt6NQNuU9SKjnGjVs7fEyeorABZIusw9YjnA';
+const SHEET_GID = '0';
 
 // Cache (60 minutes)
 const CACHE_TIME_MS = 60 * 60 * 1000;
 const LS_KEYS = { DATA: 'ceorater:gSheetData', TS: 'ceorater:gSheetTs' };
+let pending = null;
 
-let pending = null; // in-flight request de-dupe
-
-// â”€â”€â”€ Utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function normalizeHeader(h) {
-  return String(h || '')
-    .trim().toLowerCase()
-    .replace(/[\s/]+/g, '_')
-    .replace(/[^\w]/g, '')
-    .replace(/^_+|_+$/g, '');
-}
-
-function toNumber(val) {
-  if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
-  if (val == null) return 0;
-  const n = parseFloat(String(val).replace(/[^\d.-]/g, ''));
-  return Number.isFinite(n) ? n : 0;
-}
-
-// JSONP loader for Google Visualization API (GViz) to avoid CORS
+// ── JSONP loader (avoids CORS) ───────────────────────────────────────────────
 function loadGVizJSONP(url) {
   return new Promise((resolve, reject) => {
-    const cbName = '__gviz_cb_' + Math.random().toString(36).slice(2);
-    const finalUrl = url + `&tqx=out:json;responseHandler=${cbName}&t=${Date.now()}`;
-    const cleanup = () => {
-      try { delete window[cbName]; } catch {}
-      if (script && script.parentNode) script.parentNode.removeChild(script);
-    };
+    const cbName = '__gviz_' + Math.random().toString(36).slice(2);
+    const final = url + `&tqx=out:json;responseHandler=${cbName}&t=${Date.now()}`;
+    const cleanup = () => { try { delete window[cbName]; } catch {}; if (s && s.parentNode) s.remove(); };
     window[cbName] = (resp) => { try { resolve(resp); } finally { cleanup(); } };
-    const script = document.createElement('script');
-    script.onerror = () => {
-      if (DEBUG) {
-        console.error('[GoogleSheet.js] GViz JSONP load failed. This usually means the tab is NOT "Published to the web" or the gid is wrong.');
-        console.error('[GoogleSheet.js] Tried URL:', finalUrl);
-        console.error('[GoogleSheet.js] How to fix: In Google Sheets -> File -> Share -> Publish to web -> choose the specific tab (gid=0) -> Publish. Then open the URL above in a new tab; it should start with google.visualization.Query.setResponse(...)');
-      }
-      cleanup();
-      reject(new Error('GViz JSONP load failed'));
-    };
-    script.src = finalUrl;
-    document.head.appendChild(script);
+    const s = document.createElement('script');
+    s.onerror = () => { cleanup(); reject(new Error('GViz JSONP load failed')); };
+    s.src = final;
+    document.head.appendChild(s);
   });
 }
 
-// â”€â”€â”€ Cache helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Cache helpers ────────────────────────────────────────────────────────────
 function isCacheValid() {
   const ts = parseInt(localStorage.getItem(LS_KEYS.TS) || '0', 10);
   return ts && (Date.now() - ts) < CACHE_TIME_MS;
 }
-function getCached() {
-  try {
-    const raw = localStorage.getItem(LS_KEYS.DATA);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
-}
-function setCached(data) {
-  try {
-    localStorage.setItem(LS_KEYS.DATA, JSON.stringify(data));
-    localStorage.setItem(LS_KEYS.TS, String(Date.now()));
-  } catch (e) { console.warn('Cache write failed:', e); }
-}
-export function clearCache() {
-  localStorage.removeItem(LS_KEYS.DATA);
-  localStorage.removeItem(LS_KEYS.TS);
-}
-export function getCacheStatus() {
-  const rawTs = localStorage.getItem(LS_KEYS.TS);
-  const ts = rawTs ? new Date(parseInt(rawTs, 10)) : null;
-  const rawData = localStorage.getItem(LS_KEYS.DATA);
-  return { hasData: !!rawData, lastFetch: ts, isValid: isCacheValid(), bytes: rawData ? rawData.length : 0 };
-}
+function getCached() { try { const r = localStorage.getItem(LS_KEYS.DATA); return r ? JSON.parse(r) : null; } catch { return null; } }
+function setCached(d) { try { localStorage.setItem(LS_KEYS.DATA, JSON.stringify(d)); localStorage.setItem(LS_KEYS.TS, String(Date.now())); } catch {} }
+export function clearCache(){ localStorage.removeItem(LS_KEYS.DATA); localStorage.removeItem(LS_KEYS.TS); }
+export function getCacheStatus(){ const raw = localStorage.getItem(LS_KEYS.DATA); const ts = localStorage.getItem(LS_KEYS.TS); return { hasData: !!raw, lastFetch: ts?new Date(+ts):null, isValid: isCacheValid(), bytes: raw?raw.length:0 }; }
 
-// â”€â”€â”€ Parsing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function parseGVizTableToObjects(resp) {
+// ── Parsing ──────────────────────────────────────────────────────────────────
+function normalizeHeader(h) {
+  return String(h || '').trim().toLowerCase().replace(/[\s/]+/g, '_').replace(/[^\w]/g, '').replace(/^_+|_+$/g, '');
+}
+function toNumber(v) {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  if (v == null) return 0;
+  const n = parseFloat(String(v).replace(/[^\d.-]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
+function parseGVizTable(resp) {
   const rows = resp?.table?.rows || [];
   const cols = resp?.table?.cols || [];
-
-  // Prefer column labels as headers; fallback to first row
   let headers = cols.map(c => c?.label ?? '').map(normalizeHeader);
   if (!headers.filter(Boolean).length && rows.length) {
     headers = (rows[0].c || []).map(c => normalizeHeader(c?.v));
-    rows.shift(); // drop header row if used
+    rows.shift();
   }
-
-  const out = [];
-  for (const r of rows) {
-    const cells = r.c || [];
-    const obj = {};
-    for (let i = 0; i < headers.length; i++) {
-      const key = headers[i] || `col_${i}`;
-      const cell = cells[i];
-      obj[key] = cell ? cell.v : null;
-    }
-    out.push(obj);
-  }
-  return out;
-}
-
-function coerceNumericFields(rows, keys = []) {
-  if (!keys.length) return rows;
-  return rows.map(row => {
-    const copy = { ...row };
-    for (const k of keys) if (k in copy) copy[k] = toNumber(copy[k]);
-    return copy;
+  return rows.map(r => {
+    const cells = r.c || []; const o = {};
+    for (let i = 0; i < headers.length; i++) o[headers[i] || ('col_'+i)] = cells[i] ? cells[i].v : null;
+    return o;
   });
 }
 
-// â”€â”€â”€ Fetching â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Fetching ─────────────────────────────────────────────────────────────────
 function gvizUrl() {
-  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?gid=${SHEET_GID}`;
+  return `https://docs.google.com/spreadsheets/d/e/${PUBLISHED_E_ID}/gviz/tq?gid=${SHEET_GID}`;
 }
-
 async function fetchFresh() {
-  if (DEBUG) console.log('[GoogleSheet.js] Fetching fresh data from Google Sheets via GViz JSONP...');
+  console.log('[GoogleSheet.js] Fetching fresh data via GViz JSONP (published e/ ID)…');
   const resp = await loadGVizJSONP(gvizUrl());
-  const rows = parseGVizTableToObjects(resp);
-
-  // Add numeric keys your UI expects as numbers if needed
-  const numericKeys = [
-    // 'start_price', 'current_stock_price', 'current_qqq_price',
-    // 'tsr_vs_qqq_tsr_alpha', 'avg_annual_tsr_vs_qqq_avg_annual_tsr_alpha',
-    // 'alphascore'
-  ];
-  const parsed = coerceNumericFields(rows, numericKeys);
-
-  if (!parsed.length) throw new Error('Sheet returned no data (is the tab published to web?)');
-  setCached(parsed);
-  return parsed;
+  const data = parseGVizTable(resp);
+  if (!data.length) throw new Error('Sheet returned no data');
+  setCached(data);
+  return data;
 }
 
-// Public API: cache + de-dupe
 export async function fetchCEOData() {
-  if (isCacheValid()) {
-    const cached = getCached();
-    if (cached) {
-      if (DEBUG) console.log('[GoogleSheet.js] Cache HIT');
-      return cached;
-    }
-  }
-  if (pending) {
-    if (DEBUG) console.log('[GoogleSheet.js] Request already in flight â€” awaiting same promise');
-    return pending;
-  }
+  if (isCacheValid()) { const c = getCached(); if (c) { console.log('[GoogleSheet.js] Cache HIT'); return c; } }
+  if (pending) return pending;
   pending = fetchFresh().finally(() => { pending = null; });
   return pending;
 }
+export async function fetchData(){ return fetchCEOData(); }
 
-// Back-compat: named export `fetchData`
-export async function fetchData() { return fetchCEOData(); }
-
-// Optional: map a row to your UI shape; tweak keys to match your header names
-export function mapForUI(row, index) {
+// Optional mapping for your UI
+export function mapForUI(row, i) {
   return {
-    rank: index + 1,
+    rank: i + 1,
     company: row.company ?? row.company_name ?? '',
     ticker: row.ticker ?? '',
     ceo: row.ceo ?? row.ceo_name ?? '',
@@ -188,5 +105,4 @@ export function mapForUI(row, index) {
     filter: ['all']
   };
 }
-
 export default { fetchData, fetchCEOData, mapForUI, getCacheStatus, clearCache };
