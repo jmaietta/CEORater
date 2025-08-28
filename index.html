@@ -6,11 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
   <title>CEORater</title>
-
-  <link rel="preconnect" href="https://docs.google.com/spreadsheets/d/17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA/edit?gid=0#gid=0" crossorigin>
-  <link rel="dns-prefetch" href="https://docs.google.com/spreadsheets/d/17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA/edit?gid=0#gid=0">
-
-  <!-- Preload favicon -->
+  <!-- removed preconnect to /edit (not needed) -->
+  <!-- removed dns-prefetch to /edit (not needed) -->
+<!-- Preload favicon -->
   <link rel="preload" href="favicon-32x32.png" as="image" type="image/png">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -48,15 +46,8 @@
 
   <!-- Tailwind (compiled) -->
   <link rel="stylesheet" href="./dist/output.css" />
-
-  <script>
-    // Start fetching data immediately, before anything else loads
-    window.dataPromise = fetch('https://docs.google.com/spreadsheets/d/17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA/edit?gid=0#gid=0')
-      .then(r => r.json())
-      .catch(err => console.error('Early fetch failed:', err));
-  </script>
-
-  <!-- Your core styles (includes safe-area hardened rules) -->
+  <!-- removed early fetch of /edit; GoogleSheet.js GViz loader handles data safely -->
+<!-- Your core styles (includes safe-area hardened rules) -->
   <link rel="stylesheet" href="style.css" />
 
   <style>
@@ -246,6 +237,7 @@
       <main class="bg-white rounded-xl shadow-lg p-4 sm:p-6" role="main">
         <div id="lastUpdated" class="text-xs text-gray-500 text-right mb-4 h-4"></div>
         <div id="loading" class="flex justify-center items-center h-64"><div id="loading-spinner"></div></div>
+        <div id="error" class="hidden text-center text-red-500 py-8"></div>
         <div id="error-message" class="hidden text-center text-red-500 py-8">Unable to load market data.</div>
 
         <div>
@@ -369,7 +361,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
 
   <script src="firebase-config.js"></script>
-  <script type="module" src="script.js"></script>
+  <script type="module" src="script.js"></script><!-- Service Worker disabled (no service-worker.js present)
+
 
   <!-- Service Worker -->
   <script>
@@ -387,6 +380,8 @@
       });
     }
   </script>
+-->
+
 </body>
 </html>
 
