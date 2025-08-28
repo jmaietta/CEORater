@@ -1,18 +1,18 @@
 /**
- * GoogleSheet.js — zero-backend data loader for CEORater
+ * GoogleSheet.js â€” zero-backend data loader for CEORater
  * ------------------------------------------------------
- * Reads your published Google Sheet via GViz JSONP (no CORS, no server).
+ * Reads your *published* Google Sheet via GViz JSONP (no CORS, no server).
  * Caches for 60 minutes and de-dupes concurrent requests.
  *
  * One-time in Google Sheets:
- *   File → Share → Publish to web → publish the SPECIFIC TAB (gid=0).
- *
- * Your sheet/tab:
- *   https://docs.google.com/spreadsheets/d/17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA/edit?gid=0#gid=0
+ *   File â†’ Share â†’ Publish to web â†’ publish the SPECIFIC TAB (gid=0).
+ *   Then this URL must render a JS callback (not a login page):
+ *   https://docs.google.com/spreadsheets/d/17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA/gviz/tq?gid=0
  */
 
 const SHEET_ID  = '17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA';
 const SHEET_GID = '0'; // confirmed from your URL
+const DEBUG = true;
 
 // Cache (60 minutes)
 const CACHE_TIME_MS = 60 * 60 * 1000;
@@ -20,7 +20,7 @@ const LS_KEYS = { DATA: 'ceorater:gSheetData', TS: 'ceorater:gSheetTs' };
 
 let pending = null; // in-flight request de-dupe
 
-// ─── Utilities ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function normalizeHeader(h) {
   return String(h || '')
     .trim().toLowerCase()
@@ -40,19 +40,28 @@ function toNumber(val) {
 function loadGVizJSONP(url) {
   return new Promise((resolve, reject) => {
     const cbName = '__gviz_cb_' + Math.random().toString(36).slice(2);
+    const finalUrl = url + `&tqx=out:json;responseHandler=${cbName}&t=${Date.now()}`;
     const cleanup = () => {
       try { delete window[cbName]; } catch {}
       if (script && script.parentNode) script.parentNode.removeChild(script);
     };
     window[cbName] = (resp) => { try { resolve(resp); } finally { cleanup(); } };
     const script = document.createElement('script');
-    script.onerror = () => { cleanup(); reject(new Error('GViz JSONP load failed')); };
-    script.src = url + `&tqx=out:json;responseHandler=${cbName}&t=${Date.now()}`;
+    script.onerror = () => {
+      if (DEBUG) {
+        console.error('[GoogleSheet.js] GViz JSONP load failed. This usually means the tab is NOT "Published to the web" or the gid is wrong.');
+        console.error('[GoogleSheet.js] Tried URL:', finalUrl);
+        console.error('[GoogleSheet.js] How to fix: In Google Sheets -> File -> Share -> Publish to web -> choose the specific tab (gid=0) -> Publish. Then open the URL above in a new tab; it should start with google.visualization.Query.setResponse(...)');
+      }
+      cleanup();
+      reject(new Error('GViz JSONP load failed'));
+    };
+    script.src = finalUrl;
     document.head.appendChild(script);
   });
 }
 
-// ─── Cache helpers ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Cache helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function isCacheValid() {
   const ts = parseInt(localStorage.getItem(LS_KEYS.TS) || '0', 10);
   return ts && (Date.now() - ts) < CACHE_TIME_MS;
@@ -80,7 +89,7 @@ export function getCacheStatus() {
   return { hasData: !!rawData, lastFetch: ts, isValid: isCacheValid(), bytes: rawData ? rawData.length : 0 };
 }
 
-// ─── Parsing ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Parsing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function parseGVizTableToObjects(resp) {
   const rows = resp?.table?.rows || [];
   const cols = resp?.table?.cols || [];
@@ -115,13 +124,13 @@ function coerceNumericFields(rows, keys = []) {
   });
 }
 
-// ─── Fetching ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Fetching â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function gvizUrl() {
   return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?gid=${SHEET_GID}`;
 }
 
 async function fetchFresh() {
-  console.log('[GoogleSheet.js] Fetching fresh data from Google Sheets via GViz JSONP...');
+  if (DEBUG) console.log('[GoogleSheet.js] Fetching fresh data from Google Sheets via GViz JSONP...');
   const resp = await loadGVizJSONP(gvizUrl());
   const rows = parseGVizTableToObjects(resp);
 
@@ -143,12 +152,12 @@ export async function fetchCEOData() {
   if (isCacheValid()) {
     const cached = getCached();
     if (cached) {
-      console.log('[GoogleSheet.js] Cache HIT');
+      if (DEBUG) console.log('[GoogleSheet.js] Cache HIT');
       return cached;
     }
   }
   if (pending) {
-    console.log('[GoogleSheet.js] Request already in flight — awaiting same promise');
+    if (DEBUG) console.log('[GoogleSheet.js] Request already in flight â€” awaiting same promise');
     return pending;
   }
   pending = fetchFresh().finally(() => { pending = null; });
