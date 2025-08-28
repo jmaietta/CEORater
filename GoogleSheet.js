@@ -1,287 +1,281 @@
-// The URL for your secure Cloud Run service.
-const SERVICE_URL = 'https://get-ceos-test-847610982404.us-east4.run.app/api/data';
-
-// Cache configuration
-const CACHE_TIME = 60 * 60 * 1000; // 60 minutes in milliseconds
-const CACHE_KEYS = {
-  DATA: 'ceoData',
-  TIMESTAMP: 'lastUpdate'
-};
-
-// Field indices for better maintainability
-const FIELDS = {
-  COMPANY: 0,
-  TICKER: 1,
-  INDUSTRY: 2,
-  SECTOR: 3,
-  CEO: 5,
-  FOUNDER: 6,
-  COMPENSATION: 7,
-  EQUITY_TRANSACTIONS: 8,
-  MARKET_CAP: 12,
-  TSR_VALUE: 13,
-  TENURE: 14,
-  AVG_ANNUAL_TSR: 15,
-  COMPENSATION_COST: 16,
-  TSR_ALPHA: 18,
-  AVG_ANNUAL_TSR_ALPHA: 19,
-  ALPHA_SCORE: 22,
-  QUARTILE: 24,
-  COMPENSATION_SCORE: 28, 
-  CEO_RATER_SCORE: 29
-};
-
-// Pre-compile regex for performance
-const NUMBER_CLEANUP_REGEX = /[^\d.-]/g;
-
-// Request deduplication (KEY API-LIMITING FEATURE)
-let pendingRequest = null;
-
 /**
- * Helper function to get a string value from a cell.
- * @param {Array} row The data row
- * @param {number} index The column index
- * @returns {string} The string value or empty string
+ * Google.js — zero-backend data loader for CEORater
+ * -------------------------------------------------
+ * • Reads a public Google Sheet (published-to-web) via GViz JSONP (no CORS issues)
+ * • Uses localStorage cache for 60 minutes
+ * • De-dupes concurrent requests (only one network call at a time)
+ * • Parses rows into objects using the sheet’s header row (header names become keys)
+ *
+ * Setup (one-time in Google Sheets):
+ * 1) File → Share → Publish to the web → publish the specific tab you want to read
+ * 2) Confirm the tab’s gid in the sheet URL (…/edit?gid=0#gid=0). Yours is gid=0.
+ *
+ * Your sheet:
+ *   https://docs.google.com/spreadsheets/d/17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA/edit?gid=0#gid=0
  */
-const getString = (row, index) => {
-  const value = row?.[index];
-  return value != null ? String(value) : "";
+
+//
+// ──────────────────────────────────────────────────────────────────────────────
+// Config
+// ──────────────────────────────────────────────────────────────────────────────
+//
+
+const SHEET_ID  = '17k06sKH7b8LETZIpGP7nyCC7fmO912pzJQEx1P538CA';
+const SHEET_GID = '0'; // confirmed from your URL
+
+// Cache (60 minutes)
+const CACHE_TIME_MS = 60 * 60 * 1000;
+const LS_KEYS = {
+  DATA: 'ceorater:gSheetData',
+  TS:   'ceorater:gSheetTs',
 };
 
-/**
- * Helper function to get a numeric value from a cell with optimized parsing.
- * @param {Array} row The data row
- * @param {number} index The column index
- * @returns {number} The numeric value or 0
- */
-const getNumber = (row, index) => {
-  const value = row?.[index];
-  if (value == null) return 0;
-  
-  // Fast path for numbers
-  if (typeof value === 'number') return isNaN(value) ? 0 : value;
-  
-  // Convert to string and clean (40-60% faster than original)
-  const cleaned = String(value).replace(NUMBER_CLEANUP_REGEX, '');
-  const parsed = parseFloat(cleaned);
-  return isNaN(parsed) ? 0 : parsed;
-};
+// De-duplication for in-flight requests
+let pending = null;
 
-// REMOVED: calculateCEORaterScore function - using backend calculation instead
+//
+// ──────────────────────────────────────────────────────────────────────────────
+/** Utilities */
+// ──────────────────────────────────────────────────────────────────────────────
+//
 
-/**
- * Parses the array data from Cloud Run service into structured objects.
- * @param {Array} data The array data from Cloud Run service.
- * @returns {Array<Object>} An array of CEO data objects.
- */
-function parseRows(data) {
-  if (!Array.isArray(data) || data.length === 0) {
-    console.warn('Invalid or empty data received');
-    return [];
-  }
+/** Normalize header strings → safe object keys (e.g., "Avg. Annual TSR" → "avg_annual_tsr") */
+function normalizeHeader(h) {
+  return String(h || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s/]+/g, '_')
+    .replace(/[^\w]/g, '')         // drop non-word chars
+    .replace(/^_+|_+$/g, '');      // trim underscores
+}
 
-  return data.map(row => {
-    if (!Array.isArray(row)) {
-      console.warn('Invalid row data:', row);
-      return null;
-    }
+/** Best-effort numeric parse (keeps 0 if NaN) */
+function toNumber(val) {
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  if (val == null) return 0;
+  const cleaned = String(val).replace(/[^\d.-]/g, '');
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? 0 : n;
+}
 
-    // REMOVED: Local CEORaterScore calculation - using backend value instead
-
-    return {
-      company: getString(row, FIELDS.COMPANY),
-      ticker: getString(row, FIELDS.TICKER),
-      industry: getString(row, FIELDS.INDUSTRY),
-      sector: getString(row, FIELDS.SECTOR),
-      ceo: getString(row, FIELDS.CEO),
-      founder: getString(row, FIELDS.FOUNDER),
-      compensation: getNumber(row, FIELDS.COMPENSATION),
-      equityTransactions: getString(row, FIELDS.EQUITY_TRANSACTIONS),
-      marketCap: getNumber(row, FIELDS.MARKET_CAP),
-      tsrValue: getNumber(row, FIELDS.TSR_VALUE),
-      tenure: getNumber(row, FIELDS.TENURE),
-      avgAnnualTsr: getNumber(row, FIELDS.AVG_ANNUAL_TSR),
-      compensationCost: getNumber(row, FIELDS.COMPENSATION_COST),
-      tsrAlpha: getNumber(row, FIELDS.TSR_ALPHA),
-      avgAnnualTsrAlpha: getNumber(row, FIELDS.AVG_ANNUAL_TSR_ALPHA),
-      alphaScore: getNumber(row, FIELDS.ALPHA_SCORE),
-      quartile: getString(row, FIELDS.QUARTILE),
-      compensationScore: getString(row, FIELDS.COMPENSATION_SCORE),
-      ceoRaterScore: getNumber(row, FIELDS.CEO_RATER_SCORE) // Use backend calculation ONLY
+/** JSONP loader for Google Visualization API (GViz) to avoid CORS */
+function loadGVizJSONP(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = '__gviz_cb_' + Math.random().toString(36).slice(2);
+    const cleanup = () => {
+      try { delete window[cbName]; } catch {}
+      if (script && script.parentNode) script.parentNode.removeChild(script);
     };
-  }).filter(Boolean); // Remove any null entries from invalid rows
+    window[cbName] = (resp) => { try { resolve(resp); } finally { cleanup(); } };
+    const script = document.createElement('script');
+    script.onerror = () => { cleanup(); reject(new Error('GViz JSONP load failed')); };
+    // note: adding `t=${Date.now()}` busts caches during dev
+    script.src = url + `&tqx=out:json;responseHandler=${cbName}&t=${Date.now()}`;
+    document.head.appendChild(script);
+  });
 }
 
-/**
- * Checks if cached data is still valid.
- * @returns {boolean} True if cache is valid
- */
+//
+// ──────────────────────────────────────────────────────────────────────────────
+/** Cache helpers */
+// ──────────────────────────────────────────────────────────────────────────────
+//
+
 function isCacheValid() {
-  const lastFetch = localStorage.getItem(CACHE_KEYS.TIMESTAMP);
-  if (!lastFetch) return false;
-  
-  const cacheAge = Date.now() - parseInt(lastFetch, 10);
-  return cacheAge < CACHE_TIME;
+  const ts = parseInt(localStorage.getItem(LS_KEYS.TS) || '0', 10);
+  return ts && (Date.now() - ts) < CACHE_TIME_MS;
 }
-
-/**
- * Retrieves data from localStorage cache.
- * @returns {Array<Object>|null} Cached data or null if not available
- */
-function getCachedData() {
+function getCached() {
   try {
-    const cachedData = localStorage.getItem(CACHE_KEYS.DATA);
-    return cachedData ? JSON.parse(cachedData) : null;
-  } catch (error) {
-    console.warn('Failed to parse cached data:', error);
-    // Clear corrupted cache
-    localStorage.removeItem(CACHE_KEYS.DATA);
-    localStorage.removeItem(CACHE_KEYS.TIMESTAMP);
-    return null;
-  }
+    const raw = localStorage.getItem(LS_KEYS.DATA);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
 }
-
-/**
- * Saves data to localStorage cache.
- * @param {Array<Object>} data The data to cache
- */
-function setCachedData(data) {
+function setCached(data) {
   try {
-    localStorage.setItem(CACHE_KEYS.DATA, JSON.stringify(data));
-    localStorage.setItem(CACHE_KEYS.TIMESTAMP, Date.now().toString());
-    console.log('Fresh data cached successfully');
-  } catch (error) {
-    console.warn('Failed to cache data:', error);
+    localStorage.setItem(LS_KEYS.DATA, JSON.stringify(data));
+    localStorage.setItem(LS_KEYS.TS, String(Date.now()));
+  } catch (e) {
+    // storage may be full or disabled; ignore but surface to console
+    console.warn('Cache write failed:', e);
   }
 }
-
-/**
- * Fetches fresh data from the API using CORS-safe approach.
- * @returns {Promise<Array<Object>>} A promise that resolves to parsed CEO data
- */
-async function fetchFreshData() {
-  console.log('Fetching fresh data from Cloud Run...');
-  
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-  
-  try {
-    // Use original CORS-safe approach (no headers)
-    const response = await fetch(SERVICE_URL + `?t=${Date.now()}`, {
-      signal: controller.signal
-    });
-    
-    clearTimeout(timeoutId);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    const jsonData = await response.json();
-    const parsedData = parseRows(jsonData);
-    
-    // Validate we got some data
-    if (parsedData.length === 0) {
-      throw new Error('No valid data received from API');
-    }
-    
-    // Cache the fresh data
-    setCachedData(parsedData);
-    
-    return parsedData;
-    
-  } catch (error) {
-    clearTimeout(timeoutId);
-    
-    if (error.name === 'AbortError') {
-      throw new Error('Request timeout - please try again');
-    }
-    
-    throw new Error(`Failed to fetch data: ${error.message}`);
-  }
-}
-
-/**
- * Internal fetch function with all the logic.
- * @returns {Promise<Array<Object>>} A promise that resolves to CEO data
- */
-async function fetchDataInternal() {
-  // Check cache first
-  if (isCacheValid()) {
-    const cachedData = getCachedData();
-    if (cachedData && cachedData.length > 0) {
-      console.log('Using cached data (less than 60 minutes old)');
-      return cachedData;
-    }
-  }
-  
-  try {
-    // Attempt to fetch fresh data
-    return await fetchFreshData();
-    
-  } catch (error) {
-    console.error('Error fetching fresh data:', error);
-    
-    // Fallback to cached data if available (even if stale)
-    const cachedData = getCachedData();
-    if (cachedData && cachedData.length > 0) {
-      console.log('Using cached data as fallback due to fetch error');
-      return cachedData;
-    }
-    
-    // No cached data available, re-throw the error
-    throw error;
-  }
-}
-
-/**
- * Fetches data from the secure Cloud Run service with 60-minute caching and request deduplication.
- * MAIN API-LIMITING FEATURE: Prevents multiple simultaneous requests.
- * @returns {Promise<Array<Object>>} A promise that resolves to an array of CEO data objects.
- */
-export async function fetchData() {
-  // REQUEST DEDUPLICATION - KEY API-LIMITING FEATURE!
-  // If a request is already in flight, return that promise instead of making a new one
-  if (pendingRequest) {
-    console.log('Request already in progress, returning existing promise');
-    return pendingRequest;
-  }
-  
-  // Start new request
-  pendingRequest = fetchDataInternal();
-  
-  try {
-    const result = await pendingRequest;
-    return result;
-  } finally {
-    // Clear pending request regardless of success/failure
-    pendingRequest = null;
-  }
-}
-
-/**
- * Clears the cached data (useful for debugging or forced refresh).
- * @export
- */
 export function clearCache() {
-  localStorage.removeItem(CACHE_KEYS.DATA);
-  localStorage.removeItem(CACHE_KEYS.TIMESTAMP);
-  console.log('Cache cleared');
+  localStorage.removeItem(LS_KEYS.DATA);
+  localStorage.removeItem(LS_KEYS.TS);
 }
 
-/**
- * Gets cache status information.
- * @export
- * @returns {Object} Cache status information
- */
 export function getCacheStatus() {
-  const lastFetch = localStorage.getItem(CACHE_KEYS.TIMESTAMP);
-  const cachedData = localStorage.getItem(CACHE_KEYS.DATA);
-  
+  const rawTs = localStorage.getItem(LS_KEYS.TS);
+  const ts = rawTs ? new Date(parseInt(rawTs, 10)) : null;
+  const rawData = localStorage.getItem(LS_KEYS.DATA);
   return {
-    hasCachedData: !!cachedData,
-    lastFetch: lastFetch ? new Date(parseInt(lastFetch, 10)) : null,
+    hasData: !!rawData,
+    lastFetch: ts,
     isValid: isCacheValid(),
-    dataSize: cachedData ? cachedData.length : 0
+    bytes: rawData ? rawData.length : 0,
   };
 }
+
+//
+// ──────────────────────────────────────────────────────────────────────────────
+/** Parsing */
+// ──────────────────────────────────────────────────────────────────────────────
+//
+
+/**
+ * Convert GViz table -> array of objects using the first row as headers.
+ * - Header normalization handles spaces/punctuation/casing.
+ * - Values retain their natural types; numeric helpers are provided for convenience.
+ */
+function parseGVizTableToObjects(resp) {
+  const rows = resp?.table?.rows || [];
+  const cols = resp?.table?.cols || [];
+
+  // Headers can come from cols[#].label or from the first data row; prefer labels.
+  let headers = cols.map(c => c?.label ?? '').map(normalizeHeader);
+
+  // If there are no labels, attempt to use the first row as headers
+  if (!headers.filter(Boolean).length && rows.length) {
+    headers = (rows[0].c || []).map(c => normalizeHeader(c?.v));
+    rows.shift(); // drop header row from data if we used it
+  }
+
+  // Build objects
+  const out = [];
+  for (const r of rows) {
+    const cells = (r.c || []);
+    const obj = {};
+    for (let i = 0; i < headers.length; i++) {
+      const key = headers[i] || `col_${i}`;
+      const cell = cells[i];
+      obj[key] = cell ? cell.v : null;
+    }
+    out.push(obj);
+  }
+  return out;
+}
+
+/** Convenience: apply numeric parsing to specific keys if present */
+function coerceNumericFields(rows, keys = []) {
+  if (!keys.length) return rows;
+  return rows.map(row => {
+    const copy = { ...row };
+    for (const k of keys) {
+      if (k in copy) copy[k] = toNumber(copy[k]);
+    }
+    return copy;
+  });
+}
+
+//
+// ──────────────────────────────────────────────────────────────────────────────
+/** Fetching */
+// ──────────────────────────────────────────────────────────────────────────────
+//
+
+/** Build GViz URL for the sheet/tab. Add &tq=... if you want SQL-like queries later. */
+function gvizUrl() {
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?gid=${SHEET_GID}`;
+}
+
+/** Network fetch (JSONP) + parsing + caching */
+async function fetchFresh() {
+  console.log('[Google.js] Fetching fresh data from Google Sheets via GViz JSONP...');
+  const resp = await loadGVizJSONP(gvizUrl());
+  const rows = parseGVizTableToObjects(resp);
+
+  // Optional numeric coercions — add keys that should be numbers in your sheet:
+  const numericKeys = [
+    // 'start_price', 'current_stock_price', 'current_qqq_price',
+    // 'tsr_vs_qqq_tsr_alpha', 'avg_annual_tsr_vs_qqq_avg_annual_tsr_alpha',
+    // 'alphascore'
+  ];
+  const parsed = coerceNumericFields(rows, numericKeys);
+
+  if (!parsed.length) throw new Error('Sheet returned no data (is the tab published to web?)');
+  setCached(parsed);
+  return parsed;
+}
+
+/**
+ * Public API: get data with cache + de-dup logic.
+ * - Returns cached data instantly if valid.
+ * - Otherwise, resolves the in-flight fetch or starts a new one.
+ */
+export async function fetchCEOData() {
+  if (isCacheValid()) {
+    const cached = getCached();
+    if (cached) {
+      console.log('[Google.js] Cache HIT');
+      return cached;
+    }
+  }
+
+  if (pending) {
+    console.log('[Google.js] Request already in flight — awaiting same promise');
+    return pending;
+  }
+
+  pending = fetchFresh().finally(() => { pending = null; });
+  return pending;
+}
+
+//
+// ──────────────────────────────────────────────────────────────────────────────
+/** Optional helpers tailored for your UI */
+// ──────────────────────────────────────────────────────────────────────────────
+//
+
+/**
+ * Example: project rows into the exact fields your UI expects.
+ * This assumes your sheet headers include names like: "company", "ticker", "ceo", "start_date", "start_price".
+ * Adjust the mapping below to the header names in your sheet.
+ */
+export function mapForUI(row, index) {
+  return {
+    rank: index + 1,
+    company: row.company ?? row.company_name ?? '',
+    ticker: row.ticker ?? '',
+    ceo: row.ceo ?? row.ceo_name ?? '',
+    industry: row.industry ?? '',
+    sector: row.sector ?? '',
+    isFounder: row.isfounder ?? row.is_founder ?? false,
+    startDate: row.start_date ?? '',
+    startPrice: toNumber(row.start_price),
+    currentPrice: toNumber(row.current_stock_price),
+    currentQQQ: toNumber(row.current_qqq_price),
+    alpha: toNumber(row.tsr_vs_qqq_tsr_alpha),
+    avgAlpha: toNumber(row.avg_annual_tsr_vs_qqq_avg_annual_tsr_alpha),
+    alphaScore: toNumber(row.alphascore),
+    quartile: row.alphascore_quartile ?? row.quartile ?? '',
+    // whatever else your UI wants:
+    filter: ['all']
+  };
+}
+
+//
+// ──────────────────────────────────────────────────────────────────────────────
+/** Usage from index.html (no build step required) */
+// ──────────────────────────────────────────────────────────────────────────────
+//
+// <script type="module">
+//   import { fetchCEOData, mapForUI, getCacheStatus, clearCache } from './Google.js';
+//
+//   async function boot() {
+//     try {
+//       const raw = await fetchCEOData();      // array of row objects (header → value)
+//       const data = raw.map(mapForUI);        // shape it for your UI (adjust mapping inside mapForUI)
+//       console.log('rows:', data.length, getCacheStatus());
+//       // render(data);
+//     } catch (e) {
+//       console.error('Failed to load sheet:', e);
+//     }
+//   }
+//   boot();
+// </script>
+//
+// Notes:
+// • Make sure the sheet tab is "Published to the web" or GViz cannot read it.
+// • To force a refresh in dev: call clearCache() then reload.
+//
