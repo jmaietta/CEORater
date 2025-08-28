@@ -8,21 +8,14 @@
 //  - #filter-sector       (select; auto-populated)
 //  - #btn-export-csv      (button to download current view as CSV)
 //  - #btn-clear-cache     (button to clear local cache)
-//
-// Your sheet ID/gid are already baked into GoogleSheet.js.
 
-// --- Imports ---
 import { fetchData, mapForUI, getCacheStatus, clearCache } from './GoogleSheet.js';
 
 // --- State ---
 let master = [];      // normalized, full dataset
 let current = [];     // filtered + sorted view
 let sortState = { key: 'company', dir: 'asc' };
-let filters = {
-  q: '',
-  founder: 'all',     // 'all' | 'Y' | 'N'
-  sector: 'all'       // 'all' | <sector>
-};
+let filters = { q: '', founder: 'all', sector: 'all' };
 
 // --- DOM helpers ---
 const $  = (sel, root = document) => root.querySelector(sel);
@@ -30,6 +23,12 @@ const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 const show = (el, on = true) => { if (el) el.style.display = on ? '' : 'none'; };
 
 // --- Data normalization (keeps your UI contracts stable) ---
+function num(v) {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  if (v == null) return 0;
+  const n = parseFloat(String(v).replace(/[^\d.-]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
 function yearsSince(dateStr) {
   if (!dateStr) return null;
   const t = new Date(dateStr);
@@ -38,7 +37,6 @@ function yearsSince(dateStr) {
 }
 
 function normalizeRow(row, index) {
-  // Accept either raw sheet row or already-shaped mapForUI row
   const shaped = (typeof mapForUI === 'function') ? mapForUI(row, index) : row;
 
   const ceo      = shaped.ceo      ?? shaped.ceo_name      ?? '';
@@ -61,33 +59,20 @@ function normalizeRow(row, index) {
   const quartile    = shaped.quartile ?? shaped.alphascore_quartile ?? '';
 
   return {
-    // identity
     rank: index + 1,
     ceo, company, ticker, industry, sector, founder,
-
-    // metrics
     startDate,
     startPrice: num(shaped.startPrice ?? shaped.start_price),
     currentPrice: num(shaped.currentPrice ?? shaped.current_stock_price),
     currentQQQ: num(shaped.currentQQQ ?? shaped.current_qqq_price),
     tenure: tenureYears,
-
     alphaScore,
     ceoRaterScore: ceoRater,
     tsrAlpha,
     avgAnnualTsrAlpha: avgAlpha,
     quartile,
-
-    // keep everything else (non-breaking)
     ...shaped
   };
-}
-
-function num(v) {
-  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
-  if (v == null) return 0;
-  const n = parseFloat(String(v).replace(/[^\d.-]/g, ''));
-  return Number.isFinite(n) ? n : 0;
 }
 
 // --- Filtering & Sorting ---
@@ -319,7 +304,6 @@ async function boot() {
     show(loadingEl, false);
   }
 }
-
 document.addEventListener('DOMContentLoaded', boot);
 
 // --- Optional: wire external controls if present in HTML ---
@@ -334,7 +318,6 @@ document.addEventListener('DOMContentLoaded', boot);
   if (founder) founder.addEventListener('change', () => { filters.founder = founder.value; applyFiltersAndSort(); });
 
   if (sector) {
-    // Populate sectors from master once loaded
     document.addEventListener('ceorater:data', (e) => {
       const data = e.detail.data || [];
       const sectors = Array.from(new Set(data.map(r => r.sector).filter(Boolean))).sort();
