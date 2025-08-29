@@ -1,7 +1,7 @@
 /**
  * GoogleSheet.js — FINAL (Apps Script proxy only, no GViz, no API key)
  * Uses your JSONP proxy deployment at:
- * https://script.google.com/macros/s/AKfycbxHn9TwgSRNU6YMQ8R5y1C-IFU7Bne8FuEBkU5Wd5KQsROcqwa6OwMNr1FG.../exec
+ * https://script.google.com/macros/s/AKfycbxHh9TwgSRNU6YMQ8R5y1C-IFU7Bne8FuEBkU5Wd5KQsROcqwa6OwMNr1FG1xexKGFgzg/exec
  * Returns { rows: [...] } via JSONP (no CORS issues).
  */
 
