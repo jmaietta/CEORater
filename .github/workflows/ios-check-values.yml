@@ -7,6 +7,8 @@ on:
         type: boolean
         default: false
         description: "Also package an UNSIGNED .ipa?"
+  push:
+    branches: [ appstore ]   # <-- ensures the workflow shows up on the appstore branch
 
 env:
   APP_NAME: CEORater                 # your app name
@@ -48,6 +50,15 @@ jobs:
       - name: Copy web into app/www
         run: |
           rsync -a --delete "${APP_WEB_DIR}/" app/www/ 2>/dev/null || cp -R "${APP_WEB_DIR}/." app/www/
+
+      - name: Allow network calls (whitelist plugin + config)
+        run: |
+          cd app
+          cordova plugin add cordova-plugin-whitelist
+          # Ensure permissive defaults so Firebase can reach its endpoints
+          if ! grep -q '<access origin=' config.xml; then
+            /usr/bin/sed -i '' -E "s@</widget>@  <access origin=\"*\"/>\n  <allow-navigation href=\"*\"/>\n</widget>@" config.xml
+          fi
 
       - name: Add iOS platform (force iPhone-only)
         run: |
