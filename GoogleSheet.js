@@ -6,7 +6,7 @@
  */
 
 // THIS IS THE CORRECT URL - Your JSONP proxy deployment (not the regular CEORater one)
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxHn9TwgSRNU6YMQ8R5y1C-IFU7Bne8FuEBkU5Wd5KQsROcqwa6OwMNr1FG/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxHh9TwgSRNU6YMQ8R5y1C-IFU7Bne8FuEBkU5Wd5KQsROcqwa6OwMNr1FG1xexKGFgzg/exec';
 
 // Cache (60 minutes)
 const CACHE_TIME_MS = 60 * 60 * 1000;
