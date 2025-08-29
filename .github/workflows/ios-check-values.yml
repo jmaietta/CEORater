@@ -8,7 +8,7 @@ on:
         default: false
         description: "Also package an UNSIGNED .ipa?"
   push:
-    branches: [ appstore ]   # keep so GitHub registers the workflow on this branch
+    branches: [ appstore ]
 
 env:
   APP_NAME: CEORater
@@ -21,15 +21,29 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '20' }
 
-      - name: Install Cordova
-        run: npm i -g cordova@12
+      # Pin a stable Xcode on macOS-14 (runners moved to 16.2)
+      - name: Select Xcode 16.2
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.2'
+
+      - name: Tool versions
+        run: |
+          xcodebuild -version
+          /usr/bin/xcode-select -p
+          node -v
+          npm -v
+
+      - name: Install Cordova CLI
+        run: |
+          npm i -g cordova@12
+          cordova -v
 
       - name: Find web folder (first index.html)
         run: |
-          FOUND=$(git ls-files | grep -E '/?index\.html$' | grep -Ev 'node_modules|Pods' | head -n1 || true)
+          set -e
+          FOUND=$(git ls-files | grep -Ei '/?index\.html$' | grep -Ev 'node_modules|Pods' | head -n1 || true)
           [ -z "$FOUND" ] && { echo "No index.html found in repo."; exit 1; }
           echo "APP_WEB_DIR=$(dirname "$FOUND")" >> $GITHUB_ENV
           echo "Using APP_WEB_DIR=$(dirname "$FOUND")"
@@ -51,7 +65,7 @@ jobs:
         run: |
           rsync -a --delete "${APP_WEB_DIR}/" app/www/ 2>/dev/null || cp -R "${APP_WEB_DIR}/." app/www/
 
-      - name: Allow network calls (whitelist plugin + config)
+      - name: Allow network calls (whitelist)
         run: |
           cd app
           cordova plugin add cordova-plugin-whitelist
@@ -59,30 +73,33 @@ jobs:
             /usr/bin/sed -i '' -E "s@</widget>@  <access origin=\"*\"/>\n  <allow-navigation href=\"*\"/>\n</widget>@" config.xml
           fi
 
-      - name: Add iOS platform (force iPhone-only)
+      - name: Add iOS platform (pin cordova-ios 7.1.1) & force iPhone-only
         run: |
           cd app
-          cordova platform add ios@7
+          cordova platform add ios@7.1.1
+          cordova platform ls
           PBXPROJ="platforms/ios/${APP_NAME}.xcodeproj/project.pbxproj"
           /usr/bin/sed -i '' -E 's/TARGETED_DEVICE_FAMILY = [^;]+;/TARGETED_DEVICE_FAMILY = 1;/' "$PBXPROJ"
 
-      # --- NEW: ensure CocoaPods resolves if present (don't fail if absent) ---
       - name: CocoaPods install (if Podfile exists)
         run: |
           if [ -f app/platforms/ios/Podfile ]; then
             cd app/platforms/ios
-            pod install --repo-update
+            pod --version
+            pod repo update
+            pod install
           else
             echo "No Podfile, skipping pods."
           fi
 
-      # --- Build for SIMULATOR first to generate metadata (never needs signing) ---
+      # -------- SIMULATOR BUILD (no signing) --------
       - name: Build for SIMULATOR (unsigned)
         run: |
+          set -o pipefail
           cd app
-          cordova build ios --emulator --release
+          cordova build ios --emulator --release --verbose | tee ../build-sim.log
 
-      - name: Extract Info.plist and write metadata (from simulator .app)
+      - name: Extract Info.plist & write metadata (from simulator .app)
         run: |
           APPDIR=$(find app/platforms/ios/build/emulator -type d -name "*.app" | head -n1)
           [ -z "$APPDIR" ] && { echo "Simulator .app not found"; exit 1; }
@@ -97,19 +114,19 @@ jobs:
             echo "ITSAppUsesNonExemptEncryption: " $(/usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' "$PLIST" 2>/dev/null || echo "(missing)")
           } | tee metadata.txt
 
-      # Zip everything under platforms/ios so you have a full Xcode project/workspace later
       - name: Zip Xcode iOS folder (open later in Xcode)
         run: |
           cd app/platforms
           zip -yr ../../ios-workspace.zip ios
           cd -
 
-      # --- Only if you asked for an IPA: build for DEVICE (no signing) and package ---
-      - name: Build for DEVICE (unsigned, prepare IPA)
+      # -------- Only if you asked: DEVICE BUILD + IPA (unsigned) --------
+      - name: Build for DEVICE (unsigned)
         if: ${{ inputs.make_ipa }}
         run: |
+          set -o pipefail
           cd app
-          cordova build ios --device --release --no-sign --buildFlag="CODE_SIGNING_ALLOWED=NO"
+          cordova build ios --device --release --no-sign --buildFlag="CODE_SIGNING_ALLOWED=NO" --verbose | tee ../build-device.log
 
       - name: Package UNSIGNED .ipa
         if: ${{ inputs.make_ipa }}
@@ -120,7 +137,9 @@ jobs:
           zip -yr app-unsigned.ipa Payload
           rm -rf Payload
 
-      - name: Upload artifacts
+      # Always upload logs so we can see failures
+      - name: Upload artifacts (always)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ios-output
@@ -129,4 +148,8 @@ jobs:
             Info.plist.xml
             ios-workspace.zip
             app-unsigned.ipa
+            app/build-sim.log
+            app/build-device.log
+            ~/Library/Logs/DiagnosticReports/**/*.crash
+            ~/Library/Logs/**/*.log
           if-no-files-found: ignore
