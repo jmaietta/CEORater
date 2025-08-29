@@ -15,12 +15,11 @@ env:
   BUNDLE_ID: com.ceorater.www
   VERSION_NUMBER: "1.0"
   BUILD_NUMBER: "6"
-  # Explicitly set the source directory for web files
-  WEB_SOURCE_DIR: appstore
 
 jobs:
   build:
     runs-on: macos-14
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,51 +36,37 @@ jobs:
           /usr/bin/xcode-select -p
           node -v
           npm -v
-          echo "===================="
 
       - name: Install Cordova CLI
         run: |
-          # Install the latest stable version of Cordova (v12)
           npm i -g cordova@12
           cordova -v
 
-      - name: Verify web source directory
+      - name: Verify source files
         run: |
-          echo "=== Verifying web source directory ==="
-          echo "Web source directory: ${WEB_SOURCE_DIR}"
-          
-          if [ ! -d "${WEB_SOURCE_DIR}" ]; then
-            echo "ERROR: Directory '${WEB_SOURCE_DIR}' does not exist!"
+          echo "=== Verifying source files ==="
+          if [ ! -f "index.html" ]; then
+            echo "ERROR: No index.html found in repository root"
             ls -la
             exit 1
           fi
-          
-          if [ ! -f "${WEB_SOURCE_DIR}/index.html" ]; then
-            echo "ERROR: No index.html found in '${WEB_SOURCE_DIR}'"
-            echo "Contents of ${WEB_SOURCE_DIR}:"
-            ls -la "${WEB_SOURCE_DIR}/"
-            exit 1
-          fi
-          
-          echo "✓ Found index.html in ${WEB_SOURCE_DIR}"
-          echo "Directory contents:"
-          ls -la "${WEB_SOURCE_DIR}/" | head -20
+          echo "✓ Found index.html"
+          echo "Repository contents:"
+          ls -la
 
       - name: Create Cordova project
         run: |
           echo "=== Creating Cordova project ==="
           cordova create app "$BUNDLE_ID" "$APP_NAME"
-          echo "✓ Cordova project created"
           
-          # Remove the default www content
-          echo "Cleaning default www directory..."
-          rm -rf app/www/*
-          rm -rf app/www/.*  2>/dev/null || true
+          # Remove default www content
+          rm -rf app/www
+          mkdir -p app/www
 
       - name: Configure version and build number
         run: |
-          echo "=== Configuring version and build ==="
-          CONFIG=app/config.xml
+          echo "=== Configuring version ==="
+          CONFIG="app/config.xml"
           
           # Set version
           /usr/bin/sed -i '' -E "s/version=\"[^\"]+\"/version=\"${VERSION_NUMBER}\"/" "$CONFIG"
@@ -93,60 +78,51 @@ jobs:
             /usr/bin/sed -i '' -E "s/(name=\"ios-CFBundleVersion\" value=\")[^\"]+/\1${BUILD_NUMBER}/" "$CONFIG"
           fi
           
-          echo "✓ Version set to ${VERSION_NUMBER}, build ${BUILD_NUMBER}"
+          echo "✓ Version: ${VERSION_NUMBER}, Build: ${BUILD_NUMBER}"
 
       - name: Copy web files to Cordova project
         run: |
           echo "=== Copying web files ==="
-          echo "Source: ${WEB_SOURCE_DIR}"
-          echo "Destination: app/www"
           
-          # Ensure destination is clean
-          rm -rf app/www
-          mkdir -p app/www
+          # Copy all files from repo root to app/www, excluding specific items
+          rsync -av \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='app' \
+            --exclude='node_modules' \
+            --exclude='.DS_Store' \
+            --exclude='*.log' \
+            --exclude='*.md' \
+            --exclude='requirements.txt' \
+            --exclude='server.js' \
+            --exclude='package.json' \
+            --exclude='tailwind.config.js' \
+            ./ app/www/
           
-          # Copy files, excluding problematic directories
-          # Using find and cp to avoid rsync issues and have better control
-          cd "${WEB_SOURCE_DIR}"
-          
-          # Copy all files and directories except hidden ones and specific exclusions
-          find . -type f \
-            ! -path "./.git/*" \
-            ! -path "./node_modules/*" \
-            ! -path "./.github/*" \
-            ! -path "./app/*" \
-            ! -name ".DS_Store" \
-            -exec sh -c 'mkdir -p "../app/www/$(dirname "{}")" && cp "{}" "../app/www/{}"' \;
-          
-          cd ..
-          
-          # Verify the copy worked
+          # Verify critical files were copied
           if [ ! -f "app/www/index.html" ]; then
             echo "ERROR: Failed to copy index.html"
-            echo "Contents of app/www:"
             ls -la app/www/
             exit 1
           fi
           
-          echo "✓ Web files copied successfully"
-          echo "Files in app/www:"
-          ls -la app/www/ | head -10
+          echo "✓ Files copied successfully"
+          echo "app/www contents:"
+          ls -la app/www/ | head -20
 
       - name: Add required Cordova plugins
         run: |
           echo "=== Adding Cordova plugins ==="
           cd app
           
-          # Add whitelist plugin for network access
-          cordova plugin add cordova-plugin-whitelist || echo "Whitelist plugin may not be needed for this iOS version"
+          # Add whitelist plugin for network access (may not be needed for newer versions)
+          cordova plugin add cordova-plugin-whitelist 2>/dev/null || echo "Note: whitelist plugin may not be needed"
           
-          # Add network access permissions to config.xml
+          # Add network permissions
           if ! grep -q '<access origin=' config.xml; then
             /usr/bin/sed -i '' -E "s@</widget>@  <access origin=\"*\"/>\n  <allow-navigation href=\"*\"/>\n</widget>@" config.xml
-            echo "✓ Network permissions added"
           fi
           
-          # List installed plugins
           echo "Installed plugins:"
           cordova plugin ls
 
@@ -155,53 +131,47 @@ jobs:
           echo "=== Adding iOS platform ==="
           cd app
           
-          # Use a more recent, stable version of cordova-ios
+          # Add iOS platform
           cordova platform add ios@7.1.1
           
           echo "Installed platforms:"
           cordova platform ls
           
           # Configure for iPhone-only
-          PBXPROJ="platforms/ios/${APP_NAME}.xcodeproj/project.pbxproj"
-          if [ -f "$PBXPROJ" ]; then
-            /usr/bin/sed -i '' -E 's/TARGETED_DEVICE_FAMILY = [^;]+;/TARGETED_DEVICE_FAMILY = 1;/' "$PBXPROJ"
+          PROJECT_FILE="platforms/ios/${APP_NAME}.xcodeproj/project.pbxproj"
+          if [ -f "$PROJECT_FILE" ]; then
+            /usr/bin/sed -i '' -E 's/TARGETED_DEVICE_FAMILY = [^;]+;/TARGETED_DEVICE_FAMILY = 1;/' "$PROJECT_FILE"
             echo "✓ Configured for iPhone-only"
           else
-            echo "WARNING: project.pbxproj not found at expected location"
+            echo "WARNING: project.pbxproj not found"
             find platforms/ios -name "*.pbxproj" -type f
           fi
 
       - name: Install CocoaPods dependencies
         run: |
           echo "=== Checking for CocoaPods ==="
-          if [ -f app/platforms/ios/Podfile ]; then
+          if [ -f "app/platforms/ios/Podfile" ]; then
             echo "Podfile found, installing pods..."
             cd app/platforms/ios
-            
-            # Ensure CocoaPods is up to date
             pod --version
-            
-            # Clean and install
             pod repo update
             pod install --repo-update
-            
             echo "✓ Pods installed"
           else
             echo "No Podfile found, skipping CocoaPods"
           fi
 
+      # -------- SIMULATOR BUILD --------
       - name: Build for iOS Simulator
         run: |
           echo "=== Building for iOS Simulator ==="
-          set -o pipefail
           cd app
           
-          # Build with verbose output for debugging
-          cordova build ios \
-            --emulator \
-            --release \
-            --verbose \
-            2>&1 | tee ../build-sim.log
+          # Build for simulator
+          cordova build ios --emulator --release --verbose 2>&1 | tee ../build-sim.log || {
+            echo "Build failed, see build-sim.log for details"
+            exit 1
+          }
           
           echo "✓ Simulator build completed"
 
@@ -209,57 +179,58 @@ jobs:
         run: |
           echo "=== Extracting build metadata ==="
           
-          # Find the built app
-          APPDIR=$(find app/platforms/ios/build -type d -name "*.app" | head -n1)
+          # Find the simulator app
+          SIM_APP=$(find app/platforms/ios/build/emulator -type d -name "*.app" 2>/dev/null | head -n1)
           
-          if [ -z "$APPDIR" ]; then
-            echo "WARNING: No .app bundle found"
-            echo "Build directory contents:"
-            find app/platforms/ios -type d -name "build"
-            find app/platforms/ios/build -type d 2>/dev/null || echo "Build directory not found"
+          if [ -z "$SIM_APP" ]; then
+            # Try alternate location
+            SIM_APP=$(find app/platforms/ios/build -type d -name "*.app" 2>/dev/null | head -n1)
+          fi
+          
+          if [ -z "$SIM_APP" ]; then
+            echo "WARNING: Simulator app not found"
+            echo "Searching for build directories:"
+            find app/platforms/ios -type d -name "build" 2>/dev/null
           else
-            echo "Found app at: $APPDIR"
-            PLIST="$APPDIR/Info.plist"
+            echo "Found app: $SIM_APP"
+            PLIST_FILE="$SIM_APP/Info.plist"
             
-            if [ -f "$PLIST" ]; then
-              # Convert to XML for inspection
-              plutil -convert xml1 -o Info.plist.xml "$PLIST"
+            if [ -f "$PLIST_FILE" ]; then
+              # Convert to XML
+              plutil -convert xml1 -o Info.plist.xml "$PLIST_FILE"
               
-              # Extract key values
+              # Extract metadata
               {
                 echo "=== App Metadata ==="
-                echo "CFBundleIdentifier: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST" 2>/dev/null || echo "not found")"
-                echo "CFBundleShortVersionString: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST" 2>/dev/null || echo "not found")"
-                echo "CFBundleVersion: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST" 2>/dev/null || echo "not found")"
-                echo "MinimumOSVersion: $(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$PLIST" 2>/dev/null || echo "not found")"
-                echo "UIDeviceFamily: $(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily' "$PLIST" 2>/dev/null || echo "not found")"
+                echo "CFBundleIdentifier: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST_FILE" 2>/dev/null || echo "not found")"
+                echo "CFBundleShortVersionString: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST_FILE" 2>/dev/null || echo "not found")"
+                echo "CFBundleVersion: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST_FILE" 2>/dev/null || echo "not found")"
+                echo "MinimumOSVersion: $(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$PLIST_FILE" 2>/dev/null || echo "not found")"
+                echo "UIDeviceFamily: $(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily' "$PLIST_FILE" 2>/dev/null || echo "not found")"
                 echo "==================="
               } | tee metadata.txt
-            else
-              echo "WARNING: Info.plist not found"
             fi
           fi
 
       - name: Create Xcode workspace archive
         run: |
           echo "=== Creating Xcode workspace archive ==="
-          if [ -d app/platforms/ios ]; then
+          if [ -d "app/platforms/ios" ]; then
             cd app/platforms
             zip -yr ../../ios-workspace.zip ios \
               -x "*/build/*" \
               -x "*/DerivedData/*" \
-              -x "*/.DS_Store"
+              -x "*/.DS_Store" \
+              -x "*/Pods/*"
             cd ../..
             echo "✓ Workspace archive created"
-          else
-            echo "WARNING: iOS platform directory not found"
           fi
 
-      - name: Build for Device (if requested)
+      # -------- DEVICE BUILD (optional) --------
+      - name: Build for Device
         if: ${{ inputs.make_ipa }}
         run: |
           echo "=== Building for iOS Device ==="
-          set -o pipefail
           cd app
           
           cordova build ios \
@@ -267,30 +238,37 @@ jobs:
             --release \
             --no-sign \
             --buildFlag="CODE_SIGNING_ALLOWED=NO" \
-            --verbose \
-            2>&1 | tee ../build-device.log
+            --verbose 2>&1 | tee ../build-device.log || {
+            echo "Device build failed"
+            exit 1
+          }
           
           echo "✓ Device build completed"
 
-      - name: Package unsigned IPA (if requested)
+      - name: Package unsigned IPA
         if: ${{ inputs.make_ipa }}
         run: |
           echo "=== Packaging unsigned IPA ==="
           
-          APPDIR=$(find app/platforms/ios/build -type d -name "*.app" | grep -v "simulator" | head -n1)
+          # Find device app (not simulator)
+          DEVICE_APP=$(find app/platforms/ios/build/device -type d -name "*.app" 2>/dev/null | head -n1)
           
-          if [ -z "$APPDIR" ]; then
-            echo "ERROR: Device .app bundle not found"
+          if [ -z "$DEVICE_APP" ]; then
+            # Try alternate location
+            DEVICE_APP=$(find app/platforms/ios/build -type d -name "*.app" 2>/dev/null | grep -v emulator | head -n1)
+          fi
+          
+          if [ -z "$DEVICE_APP" ]; then
+            echo "ERROR: Device app not found"
+            find app/platforms/ios/build -type d
             exit 1
           fi
           
-          echo "Found device app at: $APPDIR"
-          
-          # Create IPA structure
-          mkdir -p Payload
-          cp -R "$APPDIR" Payload/
+          echo "Found device app: $DEVICE_APP"
           
           # Create IPA
+          mkdir -p Payload
+          cp -R "$DEVICE_APP" Payload/
           zip -yr app-unsigned.ipa Payload
           rm -rf Payload
           
