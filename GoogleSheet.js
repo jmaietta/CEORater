@@ -1,111 +1,53 @@
 /**
- * GoogleSheet.js - Direct Google Sheets Access via Visualization API
- * NO Apps Script deployment needed!
- * Just make sure your Google Sheet is shared as "Anyone with link can view"
+ * GoogleSheet.js - FINAL VERSION
+ * Uses your EXISTING JSONP deployment
  */
 
-// Your Google Sheet ID (from the URL when you open your sheet)
-// This is YOUR actual sheet ID from the URL you provided earlier
-const SHEET_ID = '1P3RxFgsrUSoKKauH6Et74NwTTzIF2DZCbHmHhBdCe8OAwhEVHMmjZPwj';
-const SHEET_NAME = 'Sheet1';  // Change if your sheet tab has a different name
+// YOUR ACTUAL JSONP DEPLOYMENT URL - DON'T CHANGE THIS
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxHh9TwgSRNU6YMQ8R5y1C-IFU7Bne8FuEBkU5Wd5KQsROcqwa6OwMNr1FG1xexKGFgzg/exec';
 
-// Build the Google Visualization API URL
-const BASE_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?`;
-const QUERY_URL = BASE_URL + `sheet=${SHEET_NAME}&tqx=out:json`;
-
-// Cache settings
-const CACHE_TIME_MS = 60 * 60 * 1000; // 60 minutes
+// Cache settings (60 minutes)
+const CACHE_TIME_MS = 60 * 60 * 1000;
 const LS_KEYS = { DATA: 'ceorater:gSheetData', TS: 'ceorater:gSheetTs' };
 let pending = null;
 
-// Parse Google Visualization response
-function parseGoogleVisualization(text) {
-  // Remove the JavaScript wrapper to get JSON
-  const match = text.match(/google\.visualization\.Query\.setResponse\((.*)\);?$/);
-  if (!match) throw new Error('Invalid response format');
-  
-  const json = JSON.parse(match[1]);
-  if (json.status === 'error') {
-    throw new Error(json.errors?.[0]?.message || 'Sheet query failed');
-  }
-  
-  const table = json.table;
-  const headers = table.cols.map(col => {
-    // Keep original label for mapping
-    return col.label || col.id || '';
-  });
-  
-  // Convert rows to objects
-  return table.rows.map(row => {
-    const obj = {};
-    row.c.forEach((cell, i) => {
-      const header = headers[i];
-      if (header) {
-        // Get the value (v) or formatted value (f)
-        obj[header] = cell ? (cell.v !== null ? cell.v : cell.f) : null;
-      }
-    });
-    return obj;
-  });
+// Convert value to number
+function toNumber(v) {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  if (v == null || v === '') return 0;
+  // Remove $ and commas, handle percentages
+  const str = String(v).replace(/[$,]/g, '').replace(/%$/, '');
+  const n = parseFloat(str);
+  return Number.isFinite(n) ? n : 0;
 }
 
-// Fetch data using fetch API with CORS mode
-async function fetchSheetData() {
-  try {
-    // Try direct fetch first
-    const response = await fetch(QUERY_URL, {
-      mode: 'cors',
-      credentials: 'omit'
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const text = await response.text();
-    return parseGoogleVisualization(text);
-  } catch (error) {
-    console.error('Direct fetch failed, trying JSONP fallback:', error);
-    // Fallback to JSONP if CORS fails
-    return fetchViaJSONP();
-  }
-}
-
-// JSONP fallback method
-function fetchViaJSONP() {
+// JSONP loader
+function loadJSONP(url) {
   return new Promise((resolve, reject) => {
-    const callbackName = 'googleSheetCallback_' + Date.now();
+    const cb = '__jsonp_' + Math.random().toString(36).slice(2);
     const script = document.createElement('script');
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('Request timeout'));
+    }, 10000);
     
-    // Setup callback
-    window[callbackName] = (data) => {
-      try {
-        // Parse the response
-        const text = `google.visualization.Query.setResponse(${JSON.stringify(data)})`;
-        const parsed = parseGoogleVisualization(text);
-        resolve(parsed);
-      } catch (error) {
-        reject(error);
-      } finally {
-        // Cleanup
-        delete window[callbackName];
-        if (script.parentNode) {
-          script.parentNode.removeChild(script);
-        }
-      }
+    const cleanup = () => {
+      clearTimeout(timer);
+      delete window[cb];
+      if (script.parentNode) script.parentNode.removeChild(script);
     };
     
-    // Setup error handler
+    window[cb] = (data) => {
+      cleanup();
+      resolve(data);
+    };
+    
     script.onerror = () => {
-      delete window[callbackName];
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
-      reject(new Error('Failed to load Google Sheets data'));
+      cleanup();
+      reject(new Error('Failed to load data'));
     };
     
-    // Add callback parameter and load script
-    script.src = QUERY_URL + '&callback=' + callbackName;
+    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cb + '&t=' + Date.now();
     document.head.appendChild(script);
   });
 }
@@ -129,12 +71,10 @@ function setCached(data) {
   try {
     localStorage.setItem(LS_KEYS.DATA, JSON.stringify(data));
     localStorage.setItem(LS_KEYS.TS, String(Date.now()));
-  } catch (e) {
-    console.warn('Cache storage failed:', e);
-  }
+  } catch {}
 }
 
-// Public functions
+// Public cache functions
 export function clearCache() {
   localStorage.removeItem(LS_KEYS.DATA);
   localStorage.removeItem(LS_KEYS.TS);
@@ -151,37 +91,43 @@ export function getCacheStatus() {
   };
 }
 
-// Helper to convert values to numbers
-function toNumber(v) {
-  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
-  if (v == null) return 0;
-  const n = parseFloat(String(v).replace(/[^\d.-]/g, ''));
-  return Number.isFinite(n) ? n : 0;
+// Parse response from Apps Script
+function parseAppsScriptResponse(resp) {
+  // Handle different response formats
+  if (Array.isArray(resp)) return resp;
+  if (resp && Array.isArray(resp.rows)) return resp.rows;
+  if (resp && resp.error) throw new Error(resp.error);
+  return [];
+}
+
+// Fetch fresh data
+async function fetchFresh() {
+  const response = await loadJSONP(APPS_SCRIPT_URL);
+  const data = parseAppsScriptResponse(response);
+  
+  if (!data || data.length === 0) {
+    throw new Error('No data returned from sheet');
+  }
+  
+  setCached(data);
+  return data;
 }
 
 // Main fetch function
 export async function fetchCEOData() {
-  // Check cache first
+  // Use cache if valid
   if (isCacheValid()) {
     const cached = getCached();
     if (cached) return cached;
   }
   
-  // Return pending request if one exists
+  // Return existing request if pending
   if (pending) return pending;
   
   // Start new request
-  pending = fetchSheetData()
-    .then(data => {
-      if (!data || !data.length) {
-        throw new Error('No data returned from sheet');
-      }
-      setCached(data);
-      return data;
-    })
-    .finally(() => {
-      pending = null;
-    });
+  pending = fetchFresh().finally(() => {
+    pending = null;
+  });
   
   return pending;
 }
@@ -191,39 +137,49 @@ export async function fetchData() {
   return fetchCEOData();
 }
 
-// Map row data to UI format - matches YOUR exact CSV columns
+// Map data to UI format - BASED ON YOUR EXACT CSV COLUMNS
 export function mapForUI(row, i) {
-  // Helper to get value with multiple possible keys
-  const getValue = (keys) => {
+  // Helper to get value by multiple possible field names
+  const getValue = (...keys) => {
     for (const key of keys) {
-      if (row[key] !== undefined && row[key] !== null) return row[key];
+      if (row[key] !== undefined && row[key] !== null && row[key] !== '') {
+        return row[key];
+      }
     }
     return '';
   };
   
-  // Helper to check if founder
+  // Helper to check if founder (handles Y/N values)
   const isFounder = () => {
-    const val = getValue(['Founder (Y/N)', 'founder_y_n', 'founder_yn', 'founder']);
-    return typeof val === 'string' && val.toUpperCase() === 'Y';
+    const val = getValue('Founder (Y/N)', 'founder_y_n', 'founder_yn', 'founder', 'isfounder');
+    if (typeof val === 'boolean') return val;
+    if (typeof val === 'string') return val.toUpperCase() === 'Y';
+    return false;
   };
   
-  // Map using YOUR exact column names from the CSV
+  // Map using YOUR CSV column names
+  // Column names from your CSV:
+  // Company Name, Ticker, CEO, Industry, Sector, Founder (Y/N), 
+  // CEO Start Date, Start Date Stock Price, Stock Price,
+  // TSR vs. QQQ (Alpha), Avg. Annual TSR vs. QQQ (Alpha), 
+  // AlphaScore, AlphaScore Quartile
+  
   return {
     rank: i + 1,
-    company: getValue(['Company Name', 'company_name', 'company']),
-    ticker: getValue(['Ticker', 'ticker']),
-    ceo: getValue(['CEO', 'ceo']),
-    industry: getValue(['Industry', 'industry']),
-    sector: getValue(['Sector', 'sector']),
+    company: getValue('Company Name', 'company_name', 'company'),
+    ticker: getValue('Ticker', 'ticker'),
+    ceo: getValue('CEO', 'ceo'),
+    industry: getValue('Industry', 'industry'),
+    sector: getValue('Sector', 'sector'),
     isFounder: isFounder(),
-    startDate: getValue(['CEO Start Date', 'ceo_start_date']),
-    startPrice: toNumber(getValue(['Start Date Stock Price', 'start_date_stock_price'])),
-    currentPrice: toNumber(getValue(['Stock Price', 'stock_price'])),
-    currentQQQ: 0, // Not in your CSV data
-    alpha: toNumber(getValue(['TSR vs. QQQ (Alpha)', 'tsr_vs_qqq_alpha', 'tsr_vs._qqq_alpha'])),
-    avgAlpha: toNumber(getValue(['Avg. Annual TSR vs. QQQ (Alpha)', 'avg_annual_tsr_vs_qqq_alpha', 'avg._annual_tsr_vs._qqq_alpha'])),
-    alphaScore: toNumber(getValue(['AlphaScore', 'alphascore', 'alpha_score'])),
-    quartile: getValue(['AlphaScore Quartile', 'alphascore_quartile']),
+    startDate: getValue('CEO Start Date', 'ceo_start_date', 'start_date'),
+    startPrice: toNumber(getValue('Start Date Stock Price', 'start_date_stock_price', 'start_price')),
+    currentPrice: toNumber(getValue('Stock Price', 'stock_price', 'current_price')),
+    currentQQQ: 0, // Not in your data
+    alpha: toNumber(getValue('TSR vs. QQQ (Alpha)', 'tsr_vs_qqq_alpha', 'TSR vs. QQQ Alpha', 'alpha')),
+    avgAlpha: toNumber(getValue('Avg. Annual TSR vs. QQQ (Alpha)', 'avg_annual_tsr_vs_qqq_alpha', 'Avg. Annual TSR vs. QQQ Alpha', 'avg_alpha')),
+    alphaScore: toNumber(getValue('AlphaScore', 'alphascore', 'alpha_score')),
+    quartile: getValue('AlphaScore Quartile', 'alphascore_quartile', 'quartile'),
     filter: ['all']
   };
 }
