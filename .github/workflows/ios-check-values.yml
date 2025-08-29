@@ -15,6 +15,7 @@ env:
   BUNDLE_ID: com.ceorater.www
   VERSION_NUMBER: "1.0"
   BUILD_NUMBER: "6"
+  APP_WEB_DIR: appstore 
 
 jobs:
   build:
