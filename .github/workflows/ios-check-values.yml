@@ -41,8 +41,8 @@ jobs:
 
       - name: Install Cordova CLI
         run: |
-          # Install a more recent, stable version of Cordova
-          npm i -g cordova@13
+          # Install the latest stable version of Cordova (v12)
+          npm i -g cordova@12
           cordova -v
 
       - name: Verify web source directory
