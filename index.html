@@ -377,6 +377,24 @@
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
 
   <script defer src="firebase-config.js"></script>
+  <!-- Firebase init (compat) -->
+  <script>
+    (function() {
+      try {
+        if (!window.firebase) { console.error('Firebase not loaded'); return; }
+        if (!window.firebaseConfig) { console.error('firebaseConfig missing'); return; }
+        if (firebase.apps && firebase.apps.length) return; // already initialized
+        firebase.initializeApp(window.firebaseConfig);
+        // Expose for your app code
+        window.auth = firebase.auth();
+        window.db   = firebase.firestore();
+        console.log('Firebase initialized');
+      } catch (e) {
+        console.error('Firebase init error:', e);
+      }
+    })();
+  </script>
+
   <script type="module" src="script.js"></script>
 
   <!-- Service Worker -->
