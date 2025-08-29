@@ -1,0 +1,101 @@
+name: iOS — One-File Build & Check (Cordova, no signing)
+
+on:
+  workflow_dispatch:
+    inputs:
+      make_ipa:
+        type: boolean
+        default: false
+        description: "Also package an UNSIGNED .ipa?"
+
+env:
+  APP_NAME: CEORater                 # your app name
+  BUNDLE_ID: com.ceorater.www        # your bundle id
+  VERSION_NUMBER: "1.0"              # marketing version
+  BUILD_NUMBER: "6"                  # build number
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      - name: Install Cordova
+        run: npm i -g cordova@12
+
+      - name: Find web folder (first index.html)
+        run: |
+          FOUND=$(git ls-files | grep -E '/?index\.html$' | grep -Ev 'node_modules|Pods' | head -n1 || true)
+          [ -z "$FOUND" ] && { echo "No index.html found in repo."; exit 1; }
+          echo "APP_WEB_DIR=$(dirname "$FOUND")" >> $GITHUB_ENV
+          echo "Using APP_WEB_DIR=$(dirname "$FOUND")"
+
+      - name: Create Cordova project
+        run: cordova create app "$BUNDLE_ID" "$APP_NAME"
+
+      - name: Set version/build (1.0 / 6)
+        run: |
+          CONFIG=app/config.xml
+          /usr/bin/sed -i '' -E "s/version=\"[^\"]+\"/version=\"${VERSION_NUMBER}\"/" "$CONFIG"
+          if ! grep -q 'ios-CFBundleVersion' "$CONFIG"; then
+            /usr/bin/sed -i '' -E "s@</widget>@  <preference name=\"ios-CFBundleVersion\" value=\"${BUILD_NUMBER}\"/>\n</widget>@" "$CONFIG"
+          else
+            /usr/bin/sed -i '' -E "s/(name=\"ios-CFBundleVersion\" value=\")[^\"]+/\1${BUILD_NUMBER}/" "$CONFIG"
+          fi
+
+      - name: Copy web into app/www
+        run: |
+          rsync -a --delete "${APP_WEB_DIR}/" app/www/ 2>/dev/null || cp -R "${APP_WEB_DIR}/." app/www/
+
+      - name: Add iOS platform (force iPhone-only)
+        run: |
+          cd app
+          cordova platform add ios@7
+          PBXPROJ="platforms/ios/${APP_NAME}.xcodeproj/project.pbxproj"
+          /usr/bin/sed -i '' -E 's/TARGETED_DEVICE_FAMILY = [^;]+;/TARGETED_DEVICE_FAMILY = 1;/' "$PBXPROJ"
+
+      - name: Build (unsigned, for device)
+        run: |
+          cd app
+          cordova build ios --device --release --buildFlag="CODE_SIGNING_ALLOWED=NO"
+
+      - name: Extract Info.plist and write metadata
+        run: |
+          APPDIR=$(find app/platforms/ios/build/device -type d -name "*.app" | head -n1)
+          PLIST="$APPDIR/Info.plist"
+          plutil -convert xml1 -o Info.plist.xml "$PLIST"
+          {
+            echo "CFBundleIdentifier: " $(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")
+            echo "CFBundleShortVersionString: " $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST" 2>/dev/null || echo "(none)")
+            echo "CFBundleVersion: " $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST" 2>/dev/null || echo "(none)")
+            echo "MinimumOSVersion: " $(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$PLIST" 2>/dev/null || echo "(none)")
+            echo "UIDeviceFamily: " $(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily' "$PLIST" 2>/dev/null || echo "(missing)")
+            echo "ITSAppUsesNonExemptEncryption: " $(/usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' "$PLIST" 2>/dev/null || echo "(missing)")
+          } | tee metadata.txt
+
+      - name: Zip Xcode workspace/project (open later in Xcode)
+        run: |
+          cd app/platforms/ios
+          zip -yr ../../../ios-workspace.zip "${APP_NAME}.xcworkspace" "Pods" "${APP_NAME}.xcodeproj" || true
+          cd -
+
+      - name: Package UNSIGNED .ipa
+        if: ${{ inputs.make_ipa }}
+        run: |
+          APPDIR=$(find app/platforms/ios/build/device -type d -name "*.app" | head -n1)
+          mkdir -p Payload && cp -R "$APPDIR" Payload/
+          zip -yr app-unsigned.ipa Payload
+          rm -rf Payload
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-output
+          path: |
+            metadata.txt
+            Info.plist.xml
+            ios-workspace.zip
+            app-unsigned.ipa
+          if-no-files-found: ignore
