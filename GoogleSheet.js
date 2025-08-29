@@ -5,7 +5,7 @@
  * Returns { rows: [...] } via JSONP (no CORS issues).
  */
 
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxXOvneX4NP4NQNvn-iUUFO_uDvoIjzOepxMRy11plZROCqensM7SHX8wI1sOgrnHp5AA/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/u/1/s/AKfycbxXOvneX4NP4NQNvn-iUUFO_uDvoIjzOepxMRy11plZROCqensM7SHX8wI1sOgrnHp5AA/exec';
 
 // Cache (60 minutes)
 const CACHE_TIME_MS = 60 * 60 * 1000;
