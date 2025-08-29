@@ -8,13 +8,13 @@ on:
         default: false
         description: "Also package an UNSIGNED .ipa?"
   push:
-    branches: [ appstore ]   # <-- ensures the workflow shows up on the appstore branch
+    branches: [ appstore ]   # keep so GitHub registers the workflow on this branch
 
 env:
-  APP_NAME: CEORater                 # your app name
-  BUNDLE_ID: com.ceorater.www        # your bundle id
-  VERSION_NUMBER: "1.0"              # marketing version
-  BUILD_NUMBER: "6"                  # build number
+  APP_NAME: CEORater
+  BUNDLE_ID: com.ceorater.www
+  VERSION_NUMBER: "1.0"
+  BUILD_NUMBER: "6"
 
 jobs:
   build:
@@ -55,7 +55,6 @@ jobs:
         run: |
           cd app
           cordova plugin add cordova-plugin-whitelist
-          # Ensure permissive defaults so Firebase can reach its endpoints
           if ! grep -q '<access origin=' config.xml; then
             /usr/bin/sed -i '' -E "s@</widget>@  <access origin=\"*\"/>\n  <allow-navigation href=\"*\"/>\n</widget>@" config.xml
           fi
@@ -67,14 +66,26 @@ jobs:
           PBXPROJ="platforms/ios/${APP_NAME}.xcodeproj/project.pbxproj"
           /usr/bin/sed -i '' -E 's/TARGETED_DEVICE_FAMILY = [^;]+;/TARGETED_DEVICE_FAMILY = 1;/' "$PBXPROJ"
 
-      - name: Build (unsigned, for device)
+      # --- NEW: ensure CocoaPods resolves if present (don't fail if absent) ---
+      - name: CocoaPods install (if Podfile exists)
+        run: |
+          if [ -f app/platforms/ios/Podfile ]; then
+            cd app/platforms/ios
+            pod install --repo-update
+          else
+            echo "No Podfile, skipping pods."
+          fi
+
+      # --- Build for SIMULATOR first to generate metadata (never needs signing) ---
+      - name: Build for SIMULATOR (unsigned)
         run: |
           cd app
-          cordova build ios --device --release --buildFlag="CODE_SIGNING_ALLOWED=NO"
+          cordova build ios --emulator --release
 
-      - name: Extract Info.plist and write metadata
+      - name: Extract Info.plist and write metadata (from simulator .app)
         run: |
-          APPDIR=$(find app/platforms/ios/build/device -type d -name "*.app" | head -n1)
+          APPDIR=$(find app/platforms/ios/build/emulator -type d -name "*.app" | head -n1)
+          [ -z "$APPDIR" ] && { echo "Simulator .app not found"; exit 1; }
           PLIST="$APPDIR/Info.plist"
           plutil -convert xml1 -o Info.plist.xml "$PLIST"
           {
@@ -86,16 +97,25 @@ jobs:
             echo "ITSAppUsesNonExemptEncryption: " $(/usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' "$PLIST" 2>/dev/null || echo "(missing)")
           } | tee metadata.txt
 
-      - name: Zip Xcode workspace/project (open later in Xcode)
+      # Zip everything under platforms/ios so you have a full Xcode project/workspace later
+      - name: Zip Xcode iOS folder (open later in Xcode)
         run: |
-          cd app/platforms/ios
-          zip -yr ../../../ios-workspace.zip "${APP_NAME}.xcworkspace" "Pods" "${APP_NAME}.xcodeproj" || true
+          cd app/platforms
+          zip -yr ../../ios-workspace.zip ios
           cd -
+
+      # --- Only if you asked for an IPA: build for DEVICE (no signing) and package ---
+      - name: Build for DEVICE (unsigned, prepare IPA)
+        if: ${{ inputs.make_ipa }}
+        run: |
+          cd app
+          cordova build ios --device --release --no-sign --buildFlag="CODE_SIGNING_ALLOWED=NO"
 
       - name: Package UNSIGNED .ipa
         if: ${{ inputs.make_ipa }}
         run: |
           APPDIR=$(find app/platforms/ios/build/device -type d -name "*.app" | head -n1)
+          [ -z "$APPDIR" ] && { echo "Device .app not found"; exit 1; }
           mkdir -p Payload && cp -R "$APPDIR" Payload/
           zip -yr app-unsigned.ipa Payload
           rm -rf Payload
