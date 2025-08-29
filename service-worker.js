@@ -1,83 +1,88 @@
-// service-worker.js
+// service-worker.js — CEORater (GitHub Pages friendly, resilient)
+const CACHE_NAME = 'ceorater-cache-v5';
 
-// Define a name for the cache
-const CACHE_NAME = 'ceorater-cache-v4'; // Incremented cache version
-
-// List only the essential local files that make up the app shell
-const urlsToCacheOnInstall = [
-  '/',
+// List ONLY files that truly exist in your repo.
+// (No '/' entry — that breaks for project pages; index.html is enough.)
+const CORE = [
   'index.html',
   'style.css',
   'script.js',
-  'ui.js',
-  'utils.js',
-  'GoogleSheet.js',
-  'firebase-config.js',
-  'apple-touch-icon.png',
+  'GoogleSheet.js',     // or GoogleSheet.proxy.js if you renamed it
+  'manifest.json',
   'favicon-32x32.png',
   'favicon-16x16.png',
+  'apple-touch-icon.png',
   'android-chrome-192x192.png',
-  'android-chrome-512x512.png',
-  'manifest.json'
+  'android-chrome-512x512.png'
 ];
 
-// --- EVENT LISTENERS ---
-
-// 1. Install Event: Caches the core app shell and forces activation.
+// Install: cache core files, but don’t fail if one is missing.
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache and caching app shell');
-        return cache.addAll(urlsToCacheOnInstall);
-      })
-      .then(() => {
-        // Force the waiting service worker to become the active service worker.
-        return self.skipWaiting();
-      })
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    for (const url of CORE) {
+      try {
+        const resp = await fetch(new Request(url, { cache: 'no-cache' }));
+        if (resp.ok) await cache.put(url, resp.clone());
+      } catch (e) {
+        // Don’t abort install for missing assets
+        console.warn('[SW] Skip caching', url, e);
+      }
+    }
+    await self.skipWaiting();
+  })());
 });
 
-// 2. Fetch Event: Implements a "Network falling back to cache" strategy.
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    // Try to fetch from the network first
-    fetch(event.request)
-      .then(networkResponse => {
-        // Only cache successful GET requests.
-        if (event.request.method === 'GET') {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME)
-            .then(cache => {
-              cache.put(event.request, responseToCache);
-            });
-        }
-        return networkResponse;
-      })
-      .catch(() => {
-        // If the network fetch fails (e.g., offline), try to get it from the cache.
-        return caches.match(event.request);
-      })
-  );
-});
-
-// 3. Activate Event: Cleans up old caches and takes control.
+// Activate: drop old caches & take control
 self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          // If the cache name is not in our whitelist, delete it
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            console.log('Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => {
-      // Tell the active service worker to take control of the page immediately.
-      return self.clients.claim();
-    })
-  );
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => (k === CACHE_NAME ? null : caches.delete(k))));
+    await self.clients.claim();
+  })());
+});
+
+// Fetch: same-origin only.
+// - Navigations (HTML): network-first, fallback to cache
+// - Static assets in CORE: cache-first
+self.addEventListener('fetch', event => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  if (url.origin !== location.origin) return; // ignore cross-origin
+
+  // Navigations
+  if (request.mode === 'navigate') {
+    event.respondWith((async () => {
+      try {
+        const resp = await fetch(request);
+        // Cache what the user actually navigated to (works for / and /CEORater/)
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(request, resp.clone());
+        return resp;
+      } catch {
+        // Try to serve the exact request, else fallback to the cached index.html
+        return (await caches.match(request)) ||
+               (await caches.match('index.html')) ||
+               new Response('Offline', { status: 503, statusText: 'Offline' });
+      }
+    })());
+    return;
+  }
+
+  // Static assets
+  if (CORE.some(p => request.url.endsWith(p))) {
+    event.respondWith((async () => {
+      const cached = await caches.match(request);
+      if (cached) return cached;
+      try {
+        const resp = await fetch(request);
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(request, resp.clone());
+        return resp;
+      } catch {
+        return new Response('', { status: 504 });
+      }
+    })());
+  }
 });
