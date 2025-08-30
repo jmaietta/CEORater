@@ -232,6 +232,36 @@ jobs:
           fi
           
           echo "✓ Simulator build completed"
+          
+          # Fix the build number AFTER the build
+          echo "=== Fixing build number in built app ==="
+          SIM_APP=$(find platforms/ios/build/emulator -name "*.app" -type d 2>/dev/null | head -n1)
+          if [ -z "$SIM_APP" ]; then
+            SIM_APP=$(find platforms/ios/build -name "*.app" -type d 2>/dev/null | head -n1)
+          fi
+          
+          if [ -n "$SIM_APP" ]; then
+            BUILT_PLIST="$SIM_APP/Info.plist"
+            if [ -f "$BUILT_PLIST" ]; then
+              echo "Found built Info.plist at: $BUILT_PLIST"
+              
+              # Update CFBundleVersion to the correct build number
+              /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD_NUMBER}" "$BUILT_PLIST"
+              
+              # Add crypto exemption
+              /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$BUILT_PLIST" 2>/dev/null || \
+              /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$BUILT_PLIST"
+              
+              # Verify the changes
+              echo "=== Updated values in built app ==="
+              echo "CFBundleVersion: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$BUILT_PLIST")"
+              echo "ITSAppUsesNonExemptEncryption: $(/usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' "$BUILT_PLIST" 2>/dev/null || echo "not set")"
+            fi
+          else
+            echo "WARNING: Could not find built .app to fix build number"
+          fi
+          
+          cd ..
 
       - name: Extract build metadata
         run: |
@@ -302,6 +332,25 @@ jobs:
           }
           
           echo "✓ Device build completed"
+          
+          # Fix the build number in device build too
+          echo "=== Fixing build number in device build ==="
+          DEVICE_APP=$(find platforms/ios/build/device -name "*.app" -type d 2>/dev/null | head -n1)
+          if [ -z "$DEVICE_APP" ]; then
+            DEVICE_APP=$(find platforms/ios/build -name "*.app" -type d 2>/dev/null | grep -v emulator | head -n1)
+          fi
+          
+          if [ -n "$DEVICE_APP" ]; then
+            BUILT_PLIST="$DEVICE_APP/Info.plist"
+            if [ -f "$BUILT_PLIST" ]; then
+              /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD_NUMBER}" "$BUILT_PLIST"
+              /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$BUILT_PLIST" 2>/dev/null || \
+              /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$BUILT_PLIST"
+              echo "✓ Device build number fixed"
+            fi
+          fi
+          
+          cd ..
 
       - name: Package unsigned IPA
         if: ${{ inputs.make_ipa }}
