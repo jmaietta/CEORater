@@ -71,14 +71,23 @@ jobs:
           # Set version
           /usr/bin/sed -i '' -E "s/version=\"[^\"]+\"/version=\"${VERSION_NUMBER}\"/" "$CONFIG"
           
-          # Set iOS build number
+          # Set iOS build number preference
           if ! grep -q 'ios-CFBundleVersion' "$CONFIG"; then
             /usr/bin/sed -i '' -E "s@</widget>@  <preference name=\"ios-CFBundleVersion\" value=\"${BUILD_NUMBER}\"/>\n</widget>@" "$CONFIG"
           else
             /usr/bin/sed -i '' -E "s/(name=\"ios-CFBundleVersion\" value=\")[^\"]+/\1${BUILD_NUMBER}/" "$CONFIG"
           fi
           
+          # Also set android-versionCode for consistency
+          if ! grep -q 'android-versionCode' "$CONFIG"; then
+            /usr/bin/sed -i '' -E "s@</widget>@  <preference name=\"android-versionCode\" value=\"${BUILD_NUMBER}\"/>\n</widget>@" "$CONFIG"
+          fi
+          
           echo "✓ Version: ${VERSION_NUMBER}, Build: ${BUILD_NUMBER}"
+          
+          # Display the config for verification
+          echo "=== Config.xml preferences ==="
+          grep -E "version=|CFBundleVersion|versionCode" "$CONFIG"
 
       - name: Copy web files to Cordova project
         run: |
@@ -180,18 +189,30 @@ jobs:
             echo "✓ CocoaPods files removed"
           fi
           
-          # Add crypto exemption to Info.plist
+          # Set build number directly in Info.plist
           PLIST_FILE="${APP_NAME}/${APP_NAME}-Info.plist"
           if [ -f "$PLIST_FILE" ]; then
+            echo "Setting build number in Info.plist..."
+            
+            # Set CFBundleVersion (build number)
+            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD_NUMBER}" "$PLIST_FILE"
+            
+            # Verify it was set
+            echo "CFBundleVersion set to: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST_FILE")"
+            
             # Add ITSAppUsesNonExemptEncryption = NO
             /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST_FILE" 2>/dev/null || \
             /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$PLIST_FILE"
             echo "✓ Crypto exemption added"
             
-            # Verify the setting
+            # Verify all settings
+            echo "=== Final Info.plist values ==="
+            echo "CFBundleShortVersionString: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST_FILE")"
+            echo "CFBundleVersion: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST_FILE")"
             echo "ITSAppUsesNonExemptEncryption: $(/usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' "$PLIST_FILE")"
           else
-            echo "WARNING: Info.plist not found at expected location"
+            echo "ERROR: Info.plist not found at expected location"
+            find . -name "*Info.plist" -type f
           fi
           
           cd ../../..
