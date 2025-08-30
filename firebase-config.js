@@ -1,5 +1,5 @@
 // firebase-config.js
-export const firebaseConfig = {
+window.firebaseConfig = {
   apiKey: "AIzaSyDxHijS3cGbVq-mHFc5SfdgyqnbKUJarYQ",
   authDomain: "ceorater-dacef.firebaseapp.com",
   projectId: "ceorater-dacef",
