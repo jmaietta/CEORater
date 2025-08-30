@@ -13,13 +13,13 @@ on:
 env:
   APP_NAME: CEORater
   BUNDLE_ID: com.ceorater.www
-  VERSION_NUMBER: "1.0"
-  BUILD_NUMBER: "6"
+  VERSION_NUMBER: "1.0"   # marketing version
+  BUILD_NUMBER: "6"       # CFBundleVersion / android-versionCode
 
 jobs:
   build:
     runs-on: macos-14
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -34,8 +34,8 @@ jobs:
           echo "=== Tool Versions ==="
           xcodebuild -version
           /usr/bin/xcode-select -p
-          node -v
-          npm -v
+          node -v || true
+          npm -v || true
 
       - name: Install Cordova CLI
         run: |
@@ -51,49 +51,61 @@ jobs:
             exit 1
           fi
           echo "✓ Found index.html"
-          echo "Repository contents:"
           ls -la
 
       - name: Create Cordova project
         run: |
           echo "=== Creating Cordova project ==="
           cordova create app "$BUNDLE_ID" "$APP_NAME"
-          
-          # Remove default www content
-          rm -rf app/www
-          mkdir -p app/www
+          rm -rf app/www && mkdir -p app/www
 
-      - name: Configure version and build number
+      - name: Generate minimal config.xml (authoritative for version/build)
         run: |
-          echo "=== Configuring version ==="
-          CONFIG="app/config.xml"
-          
-          # Set version
-          /usr/bin/sed -i '' -E "s/version=\"[^\"]+\"/version=\"${VERSION_NUMBER}\"/" "$CONFIG"
-          
-          # Set iOS build number preference
-          if ! grep -q 'ios-CFBundleVersion' "$CONFIG"; then
-            /usr/bin/sed -i '' -E "s@</widget>@  <preference name=\"ios-CFBundleVersion\" value=\"${BUILD_NUMBER}\"/>\n</widget>@" "$CONFIG"
-          else
-            /usr/bin/sed -i '' -E "s/(name=\"ios-CFBundleVersion\" value=\")[^\"]+/\1${BUILD_NUMBER}/" "$CONFIG"
-          fi
-          
-          # Also set android-versionCode for consistency
-          if ! grep -q 'android-versionCode' "$CONFIG"; then
-            /usr/bin/sed -i '' -E "s@</widget>@  <preference name=\"android-versionCode\" value=\"${BUILD_NUMBER}\"/>\n</widget>@" "$CONFIG"
-          fi
-          
-          echo "✓ Version: ${VERSION_NUMBER}, Build: ${BUILD_NUMBER}"
-          
-          # Display the config for verification
-          echo "=== Config.xml preferences ==="
-          grep -E "version=|CFBundleVersion|versionCode" "$CONFIG"
+          echo "=== Writing app/config.xml ==="
+          cat > app/config.xml <<EOF
+          <?xml version='1.0' encoding='utf-8'?>
+          <widget id="${BUNDLE_ID}"
+                  version="${VERSION_NUMBER}"
+                  ios-CFBundleVersion="${BUILD_NUMBER}"
+                  android-versionCode="${BUILD_NUMBER}"
+                  xmlns="http://www.w3.org/ns/widgets"
+                  xmlns:cdv="http://cordova.apache.org/ns/1.0">
+            <name>${APP_NAME}</name>
+            <description>${APP_NAME} mobile application</description>
+            <author email="support@ceorater.com" href="https://www.ceorater.com">CEORater</author>
+
+            <!-- iPhone-only, portrait (tweak if you need landscape) -->
+            <preference name="target-device" value="handset"/>
+            <preference name="Orientation" value="portrait"/>
+
+            <!-- Optional: set a modern minimum iOS version if desired -->
+            <preference name="deployment-target" value="13.0"/>
+
+            <!-- Ensure crypto exemption lands in Info.plist -->
+            <edit-config file="*-Info.plist" mode="merge" target="ITSAppUsesNonExemptEncryption">
+              <false/>
+            </edit-config>
+
+            <!-- Broad network allowance (tighten for production if needed) -->
+            <access origin="*"/>
+            <allow-navigation href="*"/>
+
+            <!-- Splash prefs (harmless if you supply your own assets elsewhere) -->
+            <preference name="AutoHideSplashScreen" value="true"/>
+            <preference name="SplashScreenDelay" value="3000"/>
+            <preference name="FadeSplashScreen" value="true"/>
+            <preference name="FadeSplashScreenDuration" value="500"/>
+            <preference name="ShowSplashScreenSpinner" value="false"/>
+            <preference name="SplashMaintainAspectRatio" value="true"/>
+          </widget>
+          EOF
+
+          echo "— widget line —"
+          grep -E '<widget ' app/config.xml
 
       - name: Copy web files to Cordova project
         run: |
           echo "=== Copying web files ==="
-          
-          # Copy all files from repo root to app/www, excluding specific items
           rsync -av \
             --exclude='.git' \
             --exclude='.github' \
@@ -107,200 +119,80 @@ jobs:
             --exclude='package.json' \
             --exclude='tailwind.config.js' \
             ./ app/www/
-          
-          # Verify critical files were copied
+
           if [ ! -f "app/www/index.html" ]; then
             echo "ERROR: Failed to copy index.html"
             ls -la app/www/
             exit 1
           fi
-          
-          echo "✓ Files copied successfully"
-          echo "app/www contents:"
+
+          echo "✓ Files copied"
           ls -la app/www/ | head -20
 
-      - name: Configure splash screen and launch images
+      - name: Configure plugins and permissions
         run: |
-          echo "=== Configuring splash screen and permissions ==="
+          echo "=== Configuring plugins ==="
           cd app
-          
-          # Add whitelist plugin for network access
-          cordova plugin add cordova-plugin-whitelist 2>/dev/null || echo "Note: whitelist plugin may not be needed"
-          
-          # Install splash screen plugin if not present
-          cordova plugin add cordova-plugin-splashscreen || echo "Splash plugin may already be installed"
-          
-          CONFIG="config.xml"
-          
-          # Add network permissions
-          if ! grep -q '<access origin=' "$CONFIG"; then
-            /usr/bin/sed -i '' -E "s@</widget>@  <access origin=\"*\"/>\n  <allow-navigation href=\"*\"/>\n</widget>@" "$CONFIG"
-          fi
-          
-          # Add splash screen preferences
-          if ! grep -q 'SplashScreen' "$CONFIG"; then
-            /usr/bin/sed -i '' -E "s@</widget>@  <!-- Splash Screen Settings -->\n  <preference name=\"AutoHideSplashScreen\" value=\"true\"/>\n  <preference name=\"SplashScreenDelay\" value=\"3000\"/>\n  <preference name=\"FadeSplashScreen\" value=\"true\"/>\n  <preference name=\"FadeSplashScreenDuration\" value=\"500\"/>\n  <preference name=\"ShowSplashScreenSpinner\" value=\"false\"/>\n  <preference name=\"SplashMaintainAspectRatio\" value=\"true\"/>\n</widget>@" "$CONFIG"
-            echo "✓ Splash screen preferences added"
-          fi
-          
-          echo "Installed plugins:"
-          cordova plugin ls
-          
+          cordova plugin add cordova-plugin-whitelist 2>/dev/null || true
+          cordova plugin add cordova-plugin-splashscreen 2>/dev/null || true
           cd ..
 
-      - name: Add iOS platform
+      - name: Add iOS platform (and set iPhone-only)
         run: |
           echo "=== Adding iOS platform ==="
           cd app
-          
-          # Add iOS platform
           cordova platform add ios@7.1.1
-          
-          echo "Installed platforms:"
           cordova platform ls
-          
-          # Remove Podfile to avoid CocoaPods complications
+
+          # Optional: remove pods to keep things simple
           if [ -f "platforms/ios/Podfile" ]; then
-            echo "Removing Podfile to skip CocoaPods..."
-            rm -f platforms/ios/Podfile
+            rm -f platforms/ios/Podfile platforms/ios/Podfile.lock
+            rm -rf platforms/ios/Pods/
           fi
-          
-          # Configure for iPhone-only
+
+          # Force iPhone-only at Xcode project level as a backstop
           PROJECT_FILE="platforms/ios/${APP_NAME}.xcodeproj/project.pbxproj"
           if [ -f "$PROJECT_FILE" ]; then
             /usr/bin/sed -i '' -E 's/TARGETED_DEVICE_FAMILY = [^;]+;/TARGETED_DEVICE_FAMILY = 1;/' "$PROJECT_FILE"
-            echo "✓ Configured for iPhone-only"
-          else
-            echo "WARNING: project.pbxproj not found"
-            find platforms/ios -name "*.pbxproj" -type f
+            echo "✓ TARGETED_DEVICE_FAMILY set to iPhone (1)"
           fi
-
-      - name: Remove CocoaPods and configure build settings
-        run: |
-          echo "=== Configuring iOS build settings ==="
-          cd app/platforms/ios
-          
-          # Remove CocoaPods files to avoid build complications
-          if [ -f "Podfile" ]; then
-            echo "Removing CocoaPods files..."
-            rm -f Podfile
-            rm -f Podfile.lock
-            rm -rf Pods/
-            echo "✓ CocoaPods files removed"
-          fi
-          
-          # Set build number directly in Info.plist
-          PLIST_FILE="${APP_NAME}/${APP_NAME}-Info.plist"
-          if [ -f "$PLIST_FILE" ]; then
-            echo "Setting build number in Info.plist..."
-            
-            # Set CFBundleVersion (build number)
-            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD_NUMBER}" "$PLIST_FILE"
-            
-            # Verify it was set
-            echo "CFBundleVersion set to: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST_FILE")"
-            
-            # Add ITSAppUsesNonExemptEncryption = NO
-            /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST_FILE" 2>/dev/null || \
-            /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$PLIST_FILE"
-            echo "✓ Crypto exemption added"
-            
-            # Verify all settings
-            echo "=== Final Info.plist values ==="
-            echo "CFBundleShortVersionString: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST_FILE")"
-            echo "CFBundleVersion: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST_FILE")"
-            echo "ITSAppUsesNonExemptEncryption: $(/usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' "$PLIST_FILE")"
-          else
-            echo "ERROR: Info.plist not found at expected location"
-            find . -name "*Info.plist" -type f
-          fi
-          
-          cd ../../..
 
       # -------- SIMULATOR BUILD --------
       - name: Build for iOS Simulator
         run: |
           echo "=== Building for iOS Simulator ==="
           cd app
-          
-          # Build using project file (not workspace since we removed CocoaPods)
+          # Cordova stamps Info.plist from config.xml — no post-build plist hacks needed
           cordova build ios --emulator --release --verbose 2>&1 | tee ../build-sim.log
-          
-          if [ $? -ne 0 ]; then
-            echo "Build failed - check build-sim.log for details"
-            exit 1
-          fi
-          
-          echo "✓ Simulator build completed"
-          
-          # Fix the build number AFTER the build
-          echo "=== Fixing build number in built app ==="
-          SIM_APP=$(find platforms/ios/build/emulator -name "*.app" -type d 2>/dev/null | head -n1)
-          if [ -z "$SIM_APP" ]; then
-            SIM_APP=$(find platforms/ios/build -name "*.app" -type d 2>/dev/null | head -n1)
-          fi
-          
-          if [ -n "$SIM_APP" ]; then
-            BUILT_PLIST="$SIM_APP/Info.plist"
-            if [ -f "$BUILT_PLIST" ]; then
-              echo "Found built Info.plist at: $BUILT_PLIST"
-              
-              # Update CFBundleVersion to the correct build number
-              /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD_NUMBER}" "$BUILT_PLIST"
-              
-              # Add crypto exemption
-              /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$BUILT_PLIST" 2>/dev/null || \
-              /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$BUILT_PLIST"
-              
-              # Verify the changes
-              echo "=== Updated values in built app ==="
-              echo "CFBundleVersion: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$BUILT_PLIST")"
-              echo "ITSAppUsesNonExemptEncryption: $(/usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' "$BUILT_PLIST" 2>/dev/null || echo "not set")"
-            fi
-          else
-            echo "WARNING: Could not find built .app to fix build number"
-          fi
-          
-          cd ..
 
       - name: Extract build metadata
         run: |
           echo "=== Extracting build metadata ==="
-          
-          # Find the simulator app
-          SIM_APP=$(find app/platforms/ios/build/emulator -type d -name "*.app" 2>/dev/null | head -n1)
-          
+          SIM_APP=$(find app/platforms/ios/build -type d -name "*.app" ! -path "*/Debug-iphonesimulator/*" 2>/dev/null | head -n1)
           if [ -z "$SIM_APP" ]; then
-            # Try alternate location
             SIM_APP=$(find app/platforms/ios/build -type d -name "*.app" 2>/dev/null | head -n1)
           fi
-          
-          if [ -z "$SIM_APP" ]; then
-            echo "WARNING: Simulator app not found"
-            echo "Searching for build directories:"
-            find app/platforms/ios -type d -name "build" 2>/dev/null
-          else
+
+          if [ -n "$SIM_APP" ]; then
             echo "Found app: $SIM_APP"
             PLIST_FILE="$SIM_APP/Info.plist"
-            
-            if [ -f "$PLIST_FILE" ]; then
-              # Convert to XML
-              plutil -convert xml1 -o Info.plist.xml "$PLIST_FILE"
-              
-              # Extract metadata
-              {
-                echo "=== App Metadata ==="
-                echo "CFBundleIdentifier: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST_FILE" 2>/dev/null || echo "not found")"
-                echo "CFBundleShortVersionString: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST_FILE" 2>/dev/null || echo "not found")"
-                echo "CFBundleVersion: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST_FILE" 2>/dev/null || echo "not found")"
-                echo "MinimumOSVersion: $(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$PLIST_FILE" 2>/dev/null || echo "not found")"
-                echo "UIDeviceFamily: $(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily' "$PLIST_FILE" 2>/dev/null || echo "not found")"
-                echo "==================="
-              } | tee metadata.txt
-            fi
+            plutil -convert xml1 -o Info.plist.xml "$PLIST_FILE"
+            {
+              echo "=== App Metadata ==="
+              echo "CFBundleIdentifier: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST_FILE" 2>/dev/null || echo "not found")"
+              echo "CFBundleShortVersionString: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST_FILE" 2>/dev/null || echo "not found")"
+              echo "CFBundleVersion: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST_FILE" 2>/dev/null || echo "not found")"
+              echo "ITSAppUsesNonExemptEncryption: $(/usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' "$PLIST_FILE" 2>/dev/null || echo "not set")"
+              echo "MinimumOSVersion: $(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$PLIST_FILE" 2>/dev/null || echo "not found")"
+              echo "UIDeviceFamily: $(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily' "$PLIST_FILE" 2>/dev/null || echo "not found")"
+              echo "==================="
+            } | tee metadata.txt
+          else
+            echo "WARNING: Simulator app not found"
+            find app/platforms/ios -type d -name "build"
           fi
 
-      - name: Create Xcode workspace archive
+      - name: Create Xcode workspace archive (no DerivedData)
         run: |
           echo "=== Creating Xcode workspace archive ==="
           if [ -d "app/platforms/ios" ]; then
@@ -315,70 +207,33 @@ jobs:
           fi
 
       # -------- DEVICE BUILD (optional) --------
-      - name: Build for Device
+      - name: Build for Device (unsigned)
         if: ${{ inputs.make_ipa }}
         run: |
-          echo "=== Building for iOS Device ==="
+          echo "=== Building for iOS Device (unsigned) ==="
           cd app
-          
           cordova build ios \
             --device \
             --release \
             --no-sign \
             --buildFlag="CODE_SIGNING_ALLOWED=NO" \
-            --verbose 2>&1 | tee ../build-device.log || {
-            echo "Device build failed"
-            exit 1
-          }
-          
-          echo "✓ Device build completed"
-          
-          # Fix the build number in device build too
-          echo "=== Fixing build number in device build ==="
-          DEVICE_APP=$(find platforms/ios/build/device -name "*.app" -type d 2>/dev/null | head -n1)
-          if [ -z "$DEVICE_APP" ]; then
-            DEVICE_APP=$(find platforms/ios/build -name "*.app" -type d 2>/dev/null | grep -v emulator | head -n1)
-          fi
-          
-          if [ -n "$DEVICE_APP" ]; then
-            BUILT_PLIST="$DEVICE_APP/Info.plist"
-            if [ -f "$BUILT_PLIST" ]; then
-              /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD_NUMBER}" "$BUILT_PLIST"
-              /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$BUILT_PLIST" 2>/dev/null || \
-              /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$BUILT_PLIST"
-              echo "✓ Device build number fixed"
-            fi
-          fi
-          
-          cd ..
+            --verbose 2>&1 | tee ../build-device.log
 
       - name: Package unsigned IPA
         if: ${{ inputs.make_ipa }}
         run: |
           echo "=== Packaging unsigned IPA ==="
-          
-          # Find device app (not simulator)
-          DEVICE_APP=$(find app/platforms/ios/build/device -type d -name "*.app" 2>/dev/null | head -n1)
-          
-          if [ -z "$DEVICE_APP" ]; then
-            # Try alternate location
-            DEVICE_APP=$(find app/platforms/ios/build -type d -name "*.app" 2>/dev/null | grep -v emulator | head -n1)
-          fi
-          
+          DEVICE_APP=$(find app/platforms/ios/build -type d -name "*.app" 2>/dev/null | grep -vi emulator | head -n1)
           if [ -z "$DEVICE_APP" ]; then
             echo "ERROR: Device app not found"
             find app/platforms/ios/build -type d
             exit 1
           fi
-          
           echo "Found device app: $DEVICE_APP"
-          
-          # Create IPA
           mkdir -p Payload
           cp -R "$DEVICE_APP" Payload/
           zip -yr app-unsigned.ipa Payload
           rm -rf Payload
-          
           echo "✓ Unsigned IPA created"
 
       - name: Upload build artifacts
