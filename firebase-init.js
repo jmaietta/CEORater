@@ -1,12 +1,16 @@
-// firebase-init.js
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth';
-import 'firebase/compat/firestore';
-import { firebaseConfig } from './firebase-config.js';
+// firebase-init.js (ES module)
+// Assumes Firebase compat scripts have been included via CDN in index.html
+// and window.firebaseConfig is set by firebase-config.js.
 
-// Initialize the Firebase app with your configuration.
-firebase.initializeApp(firebaseConfig);
+if (!window.firebase) {
+  throw new Error('Firebase CDN scripts not loaded before firebase-init.js');
+}
+if (!window.firebaseConfig) {
+  throw new Error('window.firebaseConfig is missing — load firebase-config.js first');
+}
 
-// Initialize Firebase services and export them for other modules to use.
-export const auth = firebase.auth();
-export const db = firebase.firestore();
+const app = window.firebase.initializeApp(window.firebaseConfig);
+const auth = window.firebase.auth();
+const db   = window.firebase.firestore();
+
+export { app, auth, db };
