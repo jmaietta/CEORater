@@ -1,27 +1,30 @@
-// auth.js
+// auth.js (Capacitor-aware)
+// Uses native Firebase Auth flows on iOS, web popups elsewhere.
+
 // Import the initialized Firebase services.
 import { auth, db } from './firebase-init.js';
 
-/**
- * Initializes the authentication state listener.
- * @param {Function} onAuthStateChangedCallback - The function to call when the auth state changes.
- */
+/* global firebase */
+
+const isIOSNative =
+  typeof window !== 'undefined' &&
+  window.Capacitor &&
+  typeof window.Capacitor.getPlatform === 'function' &&
+  window.Capacitor.getPlatform() === 'ios';
+
+const FA = window.Capacitor?.Plugins?.FirebaseAuthentication;
+
+// ---------- Auth state ----------
 export function initAuth(onAuthStateChangedCallback) {
   auth.onAuthStateChanged(onAuthStateChangedCallback);
 }
 
-/**
- * Loads the user's watchlist from Firestore.
- * @param {string} uid - The user's unique ID.
- * @returns {Promise<Set<string>>} A promise that resolves to a set of watchlist tickers.
- */
+// ---------- Watchlist helpers ----------
 export async function loadUserWatchlist(uid) {
   if (!uid) return new Set();
   try {
     const doc = await db.collection('watchlists').doc(uid).get();
-    if (doc.exists) {
-      return new Set(doc.data().tickers || []);
-    }
+    if (doc.exists) return new Set(doc.data().tickers || []);
     return new Set();
   } catch (error) {
     console.error('Error loading watchlist:', error);
@@ -29,79 +32,91 @@ export async function loadUserWatchlist(uid) {
   }
 }
 
-/**
- * Saves the user's watchlist to Firestore.
- * @param {string} uid - The user's unique ID.
- * @param {Set<string>} watchlist - A set of tickers to save.
- */
 export async function saveUserWatchlist(uid, watchlist) {
   if (!uid) return;
   try {
     await db.collection('watchlists').doc(uid).set({
       tickers: Array.from(watchlist),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
   } catch (error) {
     console.error('Error saving watchlist:', error);
   }
 }
 
-/**
- * Signs the user in with Google.
- * Uses redirect for mobile compatibility.
- */
-export function signInWithGoogle() {
-  const provider = new firebase.auth.GoogleAuthProvider();
-  return auth.signInWithRedirect(provider);
+// ---------- Sign-in: Google ----------
+export async function signInWithGoogle() {
+  try {
+    if (isIOSNative && FA?.signInWithGoogle) {
+      // Native Google sign-in (returns tokens)
+      const res = await FA.signInWithGoogle();
+      const idToken =
+        res?.idToken ||
+        res?.credential?.idToken ||
+        res?.authentication?.idToken;
+
+      if (!idToken) throw new Error('No idToken from native Google sign-in');
+
+      const cred = firebase.auth.GoogleAuthProvider.credential(idToken);
+      return auth.signInWithCredential(cred);
+    }
+
+    // Web fallback
+    const provider = new firebase.auth.GoogleAuthProvider();
+    return auth.signInWithPopup(provider);
+  } catch (e) {
+    console.error('Google sign in error:', e);
+    throw e;
+  }
 }
 
-/**
- * Signs the user in with Microsoft.
- * Uses redirect for mobile compatibility.
- */
-export function signInWithMicrosoft() {
-  const provider = new firebase.auth.OAuthProvider('microsoft.com');
-  provider.setCustomParameters({ prompt: 'select_account' });
-  return auth.signInWithRedirect(provider);
+// ---------- Sign-in: Microsoft ----------
+export async function signInWithMicrosoft() {
+  try {
+    if (isIOSNative && FA?.signInWithMicrosoft) {
+      // Native Microsoft sign-in (use OIDC tokens)
+      const res = await FA.signInWithMicrosoft({ scopes: ['openid','profile','email'] });
+      const provider = new firebase.auth.OAuthProvider('microsoft.com');
+
+      const idToken = res?.idToken || res?.credential?.idToken;
+      const accessToken = res?.accessToken || res?.credential?.accessToken;
+
+      // Either/both tokens are accepted by Firebase Microsoft provider
+      const cred = provider.credential({ idToken, accessToken });
+      return auth.signInWithCredential(cred);
+    }
+
+    // Web fallback
+    const provider = new firebase.auth.OAuthProvider('microsoft.com');
+    provider.setCustomParameters({ prompt: 'select_account' });
+    return auth.signInWithPopup(provider);
+  } catch (e) {
+    console.error('Microsoft sign in error:', e);
+    throw e;
+  }
 }
 
-/**
- * Gets the redirect result after OAuth sign-in completes.
- * Call this when your app starts up to handle the redirect result.
- */
-export function getRedirectResult() {
-  return auth.getRedirectResult();
-}
-
-/**
- * Signs the user in with email and password.
- * @param {string} email - The user's email.
- * @param {string} password - The user's password.
- */
+// ---------- Email/Password ----------
 export function signInWithEmail(email, password) {
-    return auth.signInWithEmailAndPassword(email, password);
+  return auth.signInWithEmailAndPassword(email, password);
 }
 
-/**
- * Creates a new user with email and password.
- * @param {string} email - The user's email.
- * @param {string} password - The user's password.
- */
 export function signUpWithEmail(email, password) {
-    return auth.createUserWithEmailAndPassword(email, password);
+  return auth.createUserWithEmailAndPassword(email, password);
 }
 
-/**
- * Sends a password reset email.
- * @param {string} email - The user's email address.
- */
 export function sendPasswordReset(email) {
-    return auth.sendPasswordResetEmail(email);
+  return auth.sendPasswordResetEmail(email);
 }
 
-/**
- * Signs the current user out.
- */
-export function signOut() {
-  return auth.signOut();
+// ---------- Sign-out ----------
+export async function signOut() {
+  try {
+    if (isIOSNative && FA?.signOut) {
+      // keep native/session state in sync
+      await FA.signOut();
+    }
+  } finally {
+    return auth.signOut();
+  }
 }
