@@ -204,19 +204,13 @@ function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTi
 
 // ---------- Event Listeners ----------
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize auth immediately
   auth.initAuth(handleAuthStateChange);
-
-  fetchData()
-    .then(data => {
-      master = data;
-      ui.refreshFilters(master);
-      ui.updateStatCards(master);
-      applyFilters();
-      lastUpdated.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
-    })
-    .catch(() => errorMessage.classList.remove('hidden'))
-    .finally(() => (loading.style.display = 'none'));
   
+  // Show UI structure immediately (app responsive within seconds)
+  loading.style.display = 'block'; // Show loading spinner
+  
+  // Set up ALL event listeners IMMEDIATELY - app is now interactive
   searchInput.addEventListener('input', debounce(applyFilters, 300));
   industryFilter.addEventListener('change', applyFilters);
   sectorFilter.addEventListener('change', applyFilters);
@@ -237,7 +231,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   allCeosTab.addEventListener('click', switchToAllView);
   watchlistTab.addEventListener('click', switchToWatchlistView);
-  // The event listener for watchlistBtn is removed
 
   loginBtn.addEventListener('click', () => loginModal.classList.remove('hidden'));
   closeLoginModalBtn.addEventListener('click', () => loginModal.classList.add('hidden'));
@@ -441,4 +434,16 @@ document.addEventListener('DOMContentLoaded', () => {
   passwordInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') signInEmail.click();
   });
+
+  // NOW load data asynchronously in the background (non-blocking)
+  fetchData()
+    .then(data => {
+      master = data;
+      ui.refreshFilters(master);
+      ui.updateStatCards(master);
+      applyFilters();
+      lastUpdated.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+    })
+    .catch(() => errorMessage.classList.remove('hidden'))
+    .finally(() => loading.style.display = 'none');
 });
