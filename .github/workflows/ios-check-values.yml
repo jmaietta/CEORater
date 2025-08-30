@@ -110,21 +110,34 @@ jobs:
           echo "app/www contents:"
           ls -la app/www/ | head -20
 
-      - name: Add required Cordova plugins
+      - name: Configure splash screen and launch images
         run: |
-          echo "=== Adding Cordova plugins ==="
+          echo "=== Configuring splash screen and permissions ==="
           cd app
           
-          # Add whitelist plugin for network access (may not be needed for newer versions)
+          # Add whitelist plugin for network access
           cordova plugin add cordova-plugin-whitelist 2>/dev/null || echo "Note: whitelist plugin may not be needed"
           
+          # Install splash screen plugin if not present
+          cordova plugin add cordova-plugin-splashscreen || echo "Splash plugin may already be installed"
+          
+          CONFIG="config.xml"
+          
           # Add network permissions
-          if ! grep -q '<access origin=' config.xml; then
-            /usr/bin/sed -i '' -E "s@</widget>@  <access origin=\"*\"/>\n  <allow-navigation href=\"*\"/>\n</widget>@" config.xml
+          if ! grep -q '<access origin=' "$CONFIG"; then
+            /usr/bin/sed -i '' -E "s@</widget>@  <access origin=\"*\"/>\n  <allow-navigation href=\"*\"/>\n</widget>@" "$CONFIG"
+          fi
+          
+          # Add splash screen preferences
+          if ! grep -q 'SplashScreen' "$CONFIG"; then
+            /usr/bin/sed -i '' -E "s@</widget>@  <!-- Splash Screen Settings -->\n  <preference name=\"AutoHideSplashScreen\" value=\"true\"/>\n  <preference name=\"SplashScreenDelay\" value=\"3000\"/>\n  <preference name=\"FadeSplashScreen\" value=\"true\"/>\n  <preference name=\"FadeSplashScreenDuration\" value=\"500\"/>\n  <preference name=\"ShowSplashScreenSpinner\" value=\"false\"/>\n  <preference name=\"SplashMaintainAspectRatio\" value=\"true\"/>\n</widget>@" "$CONFIG"
+            echo "✓ Splash screen preferences added"
           fi
           
           echo "Installed plugins:"
           cordova plugin ls
+          
+          cd ..
 
       - name: Add iOS platform
         run: |
@@ -137,6 +150,12 @@ jobs:
           echo "Installed platforms:"
           cordova platform ls
           
+          # Remove Podfile to avoid CocoaPods complications
+          if [ -f "platforms/ios/Podfile" ]; then
+            echo "Removing Podfile to skip CocoaPods..."
+            rm -f platforms/ios/Podfile
+          fi
+          
           # Configure for iPhone-only
           PROJECT_FILE="platforms/ios/${APP_NAME}.xcodeproj/project.pbxproj"
           if [ -f "$PROJECT_FILE" ]; then
@@ -147,19 +166,35 @@ jobs:
             find platforms/ios -name "*.pbxproj" -type f
           fi
 
-      - name: Install CocoaPods dependencies
+      - name: Remove CocoaPods and configure build settings
         run: |
-          echo "=== Checking for CocoaPods ==="
-          if [ -f "app/platforms/ios/Podfile" ]; then
-            echo "Podfile found, installing pods..."
-            cd app/platforms/ios
-            pod --version
-            pod repo update
-            pod install --repo-update
-            echo "✓ Pods installed"
-          else
-            echo "No Podfile found, skipping CocoaPods"
+          echo "=== Configuring iOS build settings ==="
+          cd app/platforms/ios
+          
+          # Remove CocoaPods files to avoid build complications
+          if [ -f "Podfile" ]; then
+            echo "Removing CocoaPods files..."
+            rm -f Podfile
+            rm -f Podfile.lock
+            rm -rf Pods/
+            echo "✓ CocoaPods files removed"
           fi
+          
+          # Add crypto exemption to Info.plist
+          PLIST_FILE="${APP_NAME}/${APP_NAME}-Info.plist"
+          if [ -f "$PLIST_FILE" ]; then
+            # Add ITSAppUsesNonExemptEncryption = NO
+            /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST_FILE" 2>/dev/null || \
+            /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$PLIST_FILE"
+            echo "✓ Crypto exemption added"
+            
+            # Verify the setting
+            echo "ITSAppUsesNonExemptEncryption: $(/usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' "$PLIST_FILE")"
+          else
+            echo "WARNING: Info.plist not found at expected location"
+          fi
+          
+          cd ../../..
 
       # -------- SIMULATOR BUILD --------
       - name: Build for iOS Simulator
@@ -167,11 +202,13 @@ jobs:
           echo "=== Building for iOS Simulator ==="
           cd app
           
-          # Build for simulator
-          cordova build ios --emulator --release --verbose 2>&1 | tee ../build-sim.log || {
-            echo "Build failed, see build-sim.log for details"
+          # Build using project file (not workspace since we removed CocoaPods)
+          cordova build ios --emulator --release --verbose 2>&1 | tee ../build-sim.log
+          
+          if [ $? -ne 0 ]; then
+            echo "Build failed - check build-sim.log for details"
             exit 1
-          }
+          fi
           
           echo "✓ Simulator build completed"
 
