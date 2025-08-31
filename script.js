@@ -405,7 +405,6 @@ if (typeof auth.handleRedirectResult === 'function') {
     alert('Sign in failed. Please try again.');
   }
 });
-  });
 
   microsoftSignIn.addEventListener('click', () => {
   try {
@@ -449,8 +448,8 @@ if (typeof auth.handleRedirectResult === 'function') {
           alert('Failed to send password reset email. Please try again.');
         }
       });
-  });
   
+  });
   signInEmail.addEventListener('click', () => {
     const email = emailInput.value;
     const password = passwordInput.value;
@@ -462,8 +461,8 @@ if (typeof auth.handleRedirectResult === 'function') {
       console.error('Email sign in error:', error);
       alert('Sign in failed: ' + error.message);
     });
-  });
 
+  });
   signUpEmail.addEventListener('click', () => {
     const email = emailInput.value;
     const password = passwordInput.value;
@@ -475,7 +474,6 @@ if (typeof auth.handleRedirectResult === 'function') {
       console.error('Email sign up error:', error);
       alert('Sign up failed: ' + error.message);
     });
-  });
 
   // Enhanced CSV export with CEORaterScore
   $("downloadExcelButton").addEventListener('click', () => {
@@ -554,4 +552,3 @@ if (typeof auth.handleRedirectResult === 'function') {
     .catch(() => errorMessage.classList.remove('hidden'))
     .finally(() => loading.style.display = 'none');
 });
-
