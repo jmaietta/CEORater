@@ -251,6 +251,7 @@ function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTi
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize auth immediately
   auth.initAuth(handleAuthStateChange);
+  auth.completeRedirectLogin?.().catch(() => {}); 
   
   // Show UI structure immediately (app responsive within seconds)
   showSpinner(); // Show loading spinner
@@ -520,3 +521,4 @@ document.addEventListener('DOMContentLoaded', () => {
     .catch(() => errorMessage.classList.remove('hidden'))
     .finally(() => loading.style.display = 'none');
 });
+
