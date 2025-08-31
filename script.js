@@ -1,3 +1,4 @@
+
 import { fetchData } from './GoogleSheet.js';
 import * as ui from './ui.js';
 import * as auth from './auth.js';
@@ -250,12 +251,6 @@ function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTi
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize auth immediately
   auth.initAuth(handleAuthStateChange);
-// Handle redirect results on return (if helper exists)
-if (typeof auth.handleRedirectResult === 'function') {
-  auth.handleRedirectResult()
-    .then(user => { if (user) loginModal?.classList.add('hidden'); })
-    .catch(err => console.warn('Redirect result handling error:', err));
-}
   
   // Show UI structure immediately (app responsive within seconds)
   showSpinner(); // Show loading spinner
@@ -384,50 +379,22 @@ if (typeof auth.handleRedirectResult === 'function') {
   logoutBtn.addEventListener('click', () => auth.signOut());
   
   googleSignIn.addEventListener('click', () => {
-  try {
-    if (typeof auth.signInWithRedirectProvider === 'function') {
-      auth.signInWithRedirectProvider('google');
-      return;
-    }
-    if (typeof auth.signInWithGoogleRedirect === 'function') {
-      auth.signInWithGoogleRedirect();
-      return;
-    }
-    // Fallback to existing popup/native flow
-    Promise.resolve(auth.signInWithGoogle())
-      .then(() => loginModal?.classList.add('hidden'))
-      .catch((error) => {
-        console.error('Google sign in error:', error);
-        alert('Sign in failed. Please try again.');
-      });
-  } catch (error) {
-    console.error('Google sign in error:', error);
-    alert('Sign in failed. Please try again.');
-  }
-});
+    auth.signInWithGoogle().then(() => {
+      loginModal.classList.add('hidden');
+    }).catch(error => {
+      console.error('Google sign in error:', error);
+      alert('Sign in failed. Please try again.');
+    });
+  });
 
   microsoftSignIn.addEventListener('click', () => {
-  try {
-    if (typeof auth.signInWithRedirectProvider === 'function') {
-      auth.signInWithRedirectProvider('microsoft');
-      return;
-    }
-    if (typeof auth.signInWithMicrosoftRedirect === 'function') {
-      auth.signInWithMicrosoftRedirect();
-      return;
-    }
-    // Fallback to existing popup/native flow
-    Promise.resolve(auth.signInWithMicrosoft())
-      .then(() => loginModal?.classList.add('hidden'))
-      .catch((error) => {
-        console.error('Microsoft sign in error:', error);
-        alert('Sign in failed: ' + error.message);
-      });
-  } catch (error) {
-    console.error('Microsoft sign in error:', error);
-    alert('Sign in failed: ' + error.message);
-  }
-});
+    auth.signInWithMicrosoft().then(() => {
+      loginModal.classList.add('hidden');
+    }).catch(error => {
+      console.error('Microsoft sign in error:', error);
+      alert('Sign in failed: ' + error.message);
+    });
+  });
   
   forgotPasswordLink.addEventListener('click', (e) => {
     e.preventDefault();
@@ -448,8 +415,8 @@ if (typeof auth.handleRedirectResult === 'function') {
           alert('Failed to send password reset email. Please try again.');
         }
       });
-  
   });
+  
   signInEmail.addEventListener('click', () => {
     const email = emailInput.value;
     const password = passwordInput.value;
@@ -461,8 +428,8 @@ if (typeof auth.handleRedirectResult === 'function') {
       console.error('Email sign in error:', error);
       alert('Sign in failed: ' + error.message);
     });
-
   });
+
   signUpEmail.addEventListener('click', () => {
     const email = emailInput.value;
     const password = passwordInput.value;
@@ -474,6 +441,7 @@ if (typeof auth.handleRedirectResult === 'function') {
       console.error('Email sign up error:', error);
       alert('Sign up failed: ' + error.message);
     });
+  });
 
   // Enhanced CSV export with CEORaterScore
   $("downloadExcelButton").addEventListener('click', () => {
