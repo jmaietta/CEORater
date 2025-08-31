@@ -429,7 +429,6 @@ if (typeof auth.handleRedirectResult === 'function') {
     alert('Sign in failed: ' + error.message);
   }
 });
-  });
   
   forgotPasswordLink.addEventListener('click', (e) => {
     e.preventDefault();
@@ -555,3 +554,4 @@ if (typeof auth.handleRedirectResult === 'function') {
     .catch(() => errorMessage.classList.remove('hidden'))
     .finally(() => loading.style.display = 'none');
 });
+
