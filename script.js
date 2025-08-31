@@ -250,6 +250,12 @@ function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTi
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize auth immediately
   auth.initAuth(handleAuthStateChange);
+// Handle redirect results on return (if helper exists)
+if (typeof auth.handleRedirectResult === 'function') {
+  auth.handleRedirectResult()
+    .then(user => { if (user) loginModal?.classList.add('hidden'); })
+    .catch(err => console.warn('Redirect result handling error:', err));
+}
   
   // Show UI structure immediately (app responsive within seconds)
   showSpinner(); // Show loading spinner
@@ -378,21 +384,51 @@ document.addEventListener('DOMContentLoaded', () => {
   logoutBtn.addEventListener('click', () => auth.signOut());
   
   googleSignIn.addEventListener('click', () => {
-    auth.signInWithGoogle().then(() => {
-      loginModal.classList.add('hidden');
-    }).catch(error => {
-      console.error('Google sign in error:', error);
-      alert('Sign in failed. Please try again.');
-    });
+  try {
+    if (typeof auth.signInWithRedirectProvider === 'function') {
+      auth.signInWithRedirectProvider('google');
+      return;
+    }
+    if (typeof auth.signInWithGoogleRedirect === 'function') {
+      auth.signInWithGoogleRedirect();
+      return;
+    }
+    // Fallback to existing popup/native flow
+    Promise.resolve(auth.signInWithGoogle())
+      .then(() => loginModal?.classList.add('hidden'))
+      .catch((error) => {
+        console.error('Google sign in error:', error);
+        alert('Sign in failed. Please try again.');
+      });
+  } catch (error) {
+    console.error('Google sign in error:', error);
+    alert('Sign in failed. Please try again.');
+  }
+});
   });
 
   microsoftSignIn.addEventListener('click', () => {
-    auth.signInWithMicrosoft().then(() => {
-      loginModal.classList.add('hidden');
-    }).catch(error => {
-      console.error('Microsoft sign in error:', error);
-      alert('Sign in failed: ' + error.message);
-    });
+  try {
+    if (typeof auth.signInWithRedirectProvider === 'function') {
+      auth.signInWithRedirectProvider('microsoft');
+      return;
+    }
+    if (typeof auth.signInWithMicrosoftRedirect === 'function') {
+      auth.signInWithMicrosoftRedirect();
+      return;
+    }
+    // Fallback to existing popup/native flow
+    Promise.resolve(auth.signInWithMicrosoft())
+      .then(() => loginModal?.classList.add('hidden'))
+      .catch((error) => {
+        console.error('Microsoft sign in error:', error);
+        alert('Sign in failed: ' + error.message);
+      });
+  } catch (error) {
+    console.error('Microsoft sign in error:', error);
+    alert('Sign in failed: ' + error.message);
+  }
+});
   });
   
   forgotPasswordLink.addEventListener('click', (e) => {
