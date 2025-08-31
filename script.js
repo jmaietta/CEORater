@@ -1,4 +1,4 @@
-import { fetchData } from './GoogleSheet.js';
+import { fetchData, getCachedData, isCacheValid, getCacheStatus } from './GoogleSheet.js';
 import * as ui from './ui.js';
 import * as auth from './auth.js';
 
@@ -202,13 +202,36 @@ function sortAndRender() {
 
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms) } }
 
+// Cache helper functions (import from GoogleSheet.js)
+import { getCachedData, isCacheValid, getCacheStatus } from './GoogleSheet.js';
+
 // ---------- Event Listeners ----------
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize auth immediately
   auth.initAuth(handleAuthStateChange);
   
-  // Show UI structure immediately (app responsive within seconds)
-  loading.style.display = 'block'; // Show loading spinner
+  // Check for cached data and show immediately if available
+  const cachedData = getCachedData();
+  const cacheStatus = getCacheStatus();
+  
+  if (cachedData && cachedData.length > 0) {
+    // Show cached data immediately - INSTANT LAUNCH!
+    master = cachedData;
+    ui.refreshFilters(master);
+    ui.updateStatCards(master);
+    applyFilters();
+    loading.style.display = 'none'; // Hide loading immediately
+    
+    // Show cache timestamp
+    if (cacheStatus.lastFetch) {
+      lastUpdated.textContent = 'Last updated: ' + cacheStatus.lastFetch.toLocaleTimeString();
+    }
+    
+    console.log('Showing cached data immediately for instant launch');
+  } else {
+    // No cache available, show loading spinner
+    loading.style.display = 'block';
+  }
   
   // Set up ALL event listeners IMMEDIATELY - app is now interactive
   searchInput.addEventListener('input', debounce(applyFilters, 300));
@@ -435,15 +458,30 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') signInEmail.click();
   });
 
-  // NOW load data asynchronously in the background (non-blocking)
+  // NOW load fresh data in background (always, even if cache was shown)
   fetchData()
     .then(data => {
-      master = data;
-      ui.refreshFilters(master);
-      ui.updateStatCards(master);
-      applyFilters();
+      // Only update UI if data actually changed from what's currently displayed
+      if (JSON.stringify(data) !== JSON.stringify(master)) {
+        master = data;
+        ui.refreshFilters(master);
+        ui.updateStatCards(master);
+        applyFilters();
+        console.log('Updated UI with fresh data from server');
+      } else {
+        console.log('Fresh data identical to cached data, no UI update needed');
+      }
       lastUpdated.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
     })
-    .catch(() => errorMessage.classList.remove('hidden'))
-    .finally(() => loading.style.display = 'none');
+    .catch((error) => {
+      console.error('Background fetch failed:', error);
+      // Only show error if we don't have cached data already displayed
+      if (!cachedData || cachedData.length === 0) {
+        errorMessage.classList.remove('hidden');
+      }
+    })
+    .finally(() => {
+      // Always hide loading spinner (whether fresh fetch succeeded or failed)
+      loading.style.display = 'none';
+    });
 });
