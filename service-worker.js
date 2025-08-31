@@ -9,7 +9,7 @@ const CACHE_NAME = 'ceorater-cache-v5';
 const APP_SHELL = [
   './',
   'index.html',
-  'output.css',
+  'dist/output.css',
   'script.js',
   'auth.js',
   'firebase-config.js',
