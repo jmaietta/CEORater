@@ -1,4 +1,4 @@
-import { fetchData, getCachedData, isCacheValid, getCacheStatus } from './GoogleSheet.js';
+import { fetchData } from './GoogleSheet.js';
 import * as ui from './ui.js';
 import * as auth from './auth.js';
 
@@ -54,7 +54,7 @@ const toggleFiltersIcon = $("toggleFiltersIcon");
 // ---------- State ----------
 let master = [];
 let view = [];
-let currentSort = { key: 'ceoRaterScore', dir: 'desc' };
+let currentSort = { key: 'ceoRaterScore', dir: 'desc' }; // Changed default to CEORaterScore
 let currentUser = null;
 let userWatchlist = new Set();
 let comparisonSet = new Set(); 
@@ -67,6 +67,7 @@ function handleAuthStateChange(user) {
     loginBtn.classList.add('hidden');
     logoutBtn.classList.remove('hidden');
     userEmail.classList.remove('hidden');
+    // We no longer need the separate watchlistBtn, so we can remove references to it here.
     userEmail.textContent = user.email;
     auth.loadUserWatchlist(user.uid).then(watchlist => {
         userWatchlist = watchlist;
@@ -120,6 +121,7 @@ async function toggleWatchlist(ticker) {
 }
 
 function updateWatchlistCount() {
+    // Also show/hide the badge if the count is > 0
     if (watchlistCount) {
         if (userWatchlist.size > 0) {
             watchlistCount.textContent = userWatchlist.size;
@@ -179,6 +181,7 @@ function sortAndRender() {
     let A = a[currentSort.key];
     let B = b[currentSort.key];
     
+    // Special handling for CEORaterScore - treat null values as 0 for sorting
     if (currentSort.key === 'ceoRaterScore') {
       A = A ?? 0;
       B = B ?? 0;
@@ -199,7 +202,15 @@ function sortAndRender() {
 
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms) } }
 
-function setupEventListeners() {
+// ---------- Event Listeners ----------
+document.addEventListener('DOMContentLoaded', () => {
+  // Initialize auth immediately
+  auth.initAuth(handleAuthStateChange);
+  
+  // Show UI structure immediately (app responsive within seconds)
+  loading.style.display = 'block'; // Show loading spinner
+  
+  // Set up ALL event listeners IMMEDIATELY - app is now interactive
   searchInput.addEventListener('input', debounce(applyFilters, 300));
   industryFilter.addEventListener('change', applyFilters);
   sectorFilter.addEventListener('change', applyFilters);
@@ -210,6 +221,7 @@ function setupEventListeners() {
     sortAndRender();
   });
 
+  // Mobile filter toggle listener
   toggleFiltersBtn.addEventListener('click', () => {
     const isHidden = mobileFilterControls.classList.toggle('hidden');
     toggleFiltersIcon.classList.toggle('rotate-180');
@@ -253,7 +265,9 @@ function setupEventListeners() {
       }
   });
 
+  // Listener for the entire comparison tray (handles "x" and "Clear All")
   comparisonTray.addEventListener('click', e => {
+    // Handle "Clear All" button click
     if (e.target.id === 'clearCompareBtn') {
         comparisonSet.clear();
         sortAndRender();
@@ -261,6 +275,7 @@ function setupEventListeners() {
         return;
     }
 
+    // Handle individual remove ("x") button clicks
     const removeBtn = e.target.closest('.remove-from-tray-btn');
     if (removeBtn) {
         const ticker = removeBtn.dataset.ticker;
@@ -355,12 +370,14 @@ function setupEventListeners() {
     });
   });
 
+  // Enhanced CSV export with CEORaterScore
   $("downloadExcelButton").addEventListener('click', () => {
     if (view.length === 0) {
       alert('No data to export');
       return;
     }
     
+    // Updated headers to include CEORaterScore
     const headers = ['CEO', 'Company', 'Ticker', 'CEORaterScore', 'AlphaScore', 'CompScore', 'Market Cap ($B)', 'AlphaScore Quartile', 'TSR Alpha', 'Avg Annual TSR Alpha', 'Industry', 'Sector', 'TSR During Tenure', 'Avg Annual TSR', 'Compensation ($MM)', 'Comp Cost / 1% Avg TSR ($MM)', 'Tenure (yrs)', 'Founder'];
     
     const csvContent = [
@@ -369,7 +386,7 @@ function setupEventListeners() {
         `"${c.ceo}"`,
         `"${c.company}"`,
         c.ticker,
-        c.ceoRaterScore ? Math.round(c.ceoRaterScore) : 'N/A',
+        c.ceoRaterScore ? Math.round(c.ceoRaterScore) : 'N/A', // NEW: CEORaterScore
         Math.round(c.alphaScore),
         c.compensationScore || 'N/A',
         (c.marketCap / 1e9).toFixed(2),
@@ -417,61 +434,16 @@ function setupEventListeners() {
   passwordInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') signInEmail.click();
   });
-}
 
-// ---------- App Initialization ----------
-document.addEventListener('DOMContentLoaded', () => {
-  // Initialize auth
-  auth.initAuth(handleAuthStateChange);
-  
-  // Try to load cached data immediately for instant launch
-  try {
-    const cachedData = getCachedData();
-    const cacheStatus = getCacheStatus();
-    
-    if (cachedData && cachedData.length > 0) {
-      // INSTANT LAUNCH - show cached data immediately
-      master = cachedData;
+  // NOW load data asynchronously in the background (non-blocking)
+  fetchData()
+    .then(data => {
+      master = data;
       ui.refreshFilters(master);
       ui.updateStatCards(master);
       applyFilters();
-      loading.style.display = 'none';
-      
-      if (cacheStatus.lastFetch) {
-        lastUpdated.textContent = 'Last updated: ' + cacheStatus.lastFetch.toLocaleTimeString();
-      }
-      
-      console.log('Instant launch with cached data');
-    } else {
-      loading.style.display = 'block';
-    }
-  } catch (error) {
-    console.error('Cache access error:', error);
-    loading.style.display = 'block';
-  }
-  
-  // Set up all event listeners immediately
-  setupEventListeners();
-  
-  // Always fetch fresh data in background
-  fetchData()
-    .then(data => {
-      if (JSON.stringify(data) !== JSON.stringify(master)) {
-        master = data;
-        ui.refreshFilters(master);
-        ui.updateStatCards(master);
-        applyFilters();
-        console.log('Updated with fresh data');
-      }
       lastUpdated.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
     })
-    .catch((error) => {
-      console.error('Background fetch failed:', error);
-      if (master.length === 0) {
-        errorMessage.classList.remove('hidden');
-      }
-    })
-    .finally(() => {
-      loading.style.display = 'none';
-    });
+    .catch(() => errorMessage.classList.remove('hidden'))
+    .finally(() => loading.style.display = 'none');
 });
