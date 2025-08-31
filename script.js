@@ -54,7 +54,7 @@ const toggleFiltersIcon = $("toggleFiltersIcon");
 // ---------- State ----------
 let master = [];
 let view = [];
-let currentSort = { key: 'ceoRaterScore', dir: 'desc' }; // Changed default to CEORaterScore
+let currentSort = { key: 'ceoRaterScore', dir: 'desc' };
 let currentUser = null;
 let userWatchlist = new Set();
 let comparisonSet = new Set(); 
@@ -67,7 +67,6 @@ function handleAuthStateChange(user) {
     loginBtn.classList.add('hidden');
     logoutBtn.classList.remove('hidden');
     userEmail.classList.remove('hidden');
-    // We no longer need the separate watchlistBtn, so we can remove references to it here.
     userEmail.textContent = user.email;
     auth.loadUserWatchlist(user.uid).then(watchlist => {
         userWatchlist = watchlist;
@@ -121,7 +120,6 @@ async function toggleWatchlist(ticker) {
 }
 
 function updateWatchlistCount() {
-    // Also show/hide the badge if the count is > 0
     if (watchlistCount) {
         if (userWatchlist.size > 0) {
             watchlistCount.textContent = userWatchlist.size;
@@ -181,7 +179,6 @@ function sortAndRender() {
     let A = a[currentSort.key];
     let B = b[currentSort.key];
     
-    // Special handling for CEORaterScore - treat null values as 0 for sorting
     if (currentSort.key === 'ceoRaterScore') {
       A = A ?? 0;
       B = B ?? 0;
@@ -202,38 +199,7 @@ function sortAndRender() {
 
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms) } }
 
-// Cache helper functions (import from GoogleSheet.js)
-import { getCachedData, isCacheValid, getCacheStatus } from './GoogleSheet.js';
-
-// ---------- Event Listeners ----------
-document.addEventListener('DOMContentLoaded', () => {
-  // Initialize auth immediately
-  auth.initAuth(handleAuthStateChange);
-  
-  // Check for cached data and show immediately if available
-  const cachedData = getCachedData();
-  const cacheStatus = getCacheStatus();
-  
-  if (cachedData && cachedData.length > 0) {
-    // Show cached data immediately - INSTANT LAUNCH!
-    master = cachedData;
-    ui.refreshFilters(master);
-    ui.updateStatCards(master);
-    applyFilters();
-    loading.style.display = 'none'; // Hide loading immediately
-    
-    // Show cache timestamp
-    if (cacheStatus.lastFetch) {
-      lastUpdated.textContent = 'Last updated: ' + cacheStatus.lastFetch.toLocaleTimeString();
-    }
-    
-    console.log('Showing cached data immediately for instant launch');
-  } else {
-    // No cache available, show loading spinner
-    loading.style.display = 'block';
-  }
-  
-  // Set up ALL event listeners IMMEDIATELY - app is now interactive
+function setupEventListeners() {
   searchInput.addEventListener('input', debounce(applyFilters, 300));
   industryFilter.addEventListener('change', applyFilters);
   sectorFilter.addEventListener('change', applyFilters);
@@ -244,7 +210,6 @@ document.addEventListener('DOMContentLoaded', () => {
     sortAndRender();
   });
 
-  // Mobile filter toggle listener
   toggleFiltersBtn.addEventListener('click', () => {
     const isHidden = mobileFilterControls.classList.toggle('hidden');
     toggleFiltersIcon.classList.toggle('rotate-180');
@@ -288,9 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
   });
 
-  // Listener for the entire comparison tray (handles "x" and "Clear All")
   comparisonTray.addEventListener('click', e => {
-    // Handle "Clear All" button click
     if (e.target.id === 'clearCompareBtn') {
         comparisonSet.clear();
         sortAndRender();
@@ -298,7 +261,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // Handle individual remove ("x") button clicks
     const removeBtn = e.target.closest('.remove-from-tray-btn');
     if (removeBtn) {
         const ticker = removeBtn.dataset.ticker;
@@ -393,14 +355,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Enhanced CSV export with CEORaterScore
   $("downloadExcelButton").addEventListener('click', () => {
     if (view.length === 0) {
       alert('No data to export');
       return;
     }
     
-    // Updated headers to include CEORaterScore
     const headers = ['CEO', 'Company', 'Ticker', 'CEORaterScore', 'AlphaScore', 'CompScore', 'Market Cap ($B)', 'AlphaScore Quartile', 'TSR Alpha', 'Avg Annual TSR Alpha', 'Industry', 'Sector', 'TSR During Tenure', 'Avg Annual TSR', 'Compensation ($MM)', 'Comp Cost / 1% Avg TSR ($MM)', 'Tenure (yrs)', 'Founder'];
     
     const csvContent = [
@@ -409,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `"${c.ceo}"`,
         `"${c.company}"`,
         c.ticker,
-        c.ceoRaterScore ? Math.round(c.ceoRaterScore) : 'N/A', // NEW: CEORaterScore
+        c.ceoRaterScore ? Math.round(c.ceoRaterScore) : 'N/A',
         Math.round(c.alphaScore),
         c.compensationScore || 'N/A',
         (c.marketCap / 1e9).toFixed(2),
@@ -457,31 +417,61 @@ document.addEventListener('DOMContentLoaded', () => {
   passwordInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') signInEmail.click();
   });
+}
 
-  // NOW load fresh data in background (always, even if cache was shown)
+// ---------- App Initialization ----------
+document.addEventListener('DOMContentLoaded', () => {
+  // Initialize auth
+  auth.initAuth(handleAuthStateChange);
+  
+  // Try to load cached data immediately for instant launch
+  try {
+    const cachedData = getCachedData();
+    const cacheStatus = getCacheStatus();
+    
+    if (cachedData && cachedData.length > 0) {
+      // INSTANT LAUNCH - show cached data immediately
+      master = cachedData;
+      ui.refreshFilters(master);
+      ui.updateStatCards(master);
+      applyFilters();
+      loading.style.display = 'none';
+      
+      if (cacheStatus.lastFetch) {
+        lastUpdated.textContent = 'Last updated: ' + cacheStatus.lastFetch.toLocaleTimeString();
+      }
+      
+      console.log('Instant launch with cached data');
+    } else {
+      loading.style.display = 'block';
+    }
+  } catch (error) {
+    console.error('Cache access error:', error);
+    loading.style.display = 'block';
+  }
+  
+  // Set up all event listeners immediately
+  setupEventListeners();
+  
+  // Always fetch fresh data in background
   fetchData()
     .then(data => {
-      // Only update UI if data actually changed from what's currently displayed
       if (JSON.stringify(data) !== JSON.stringify(master)) {
         master = data;
         ui.refreshFilters(master);
         ui.updateStatCards(master);
         applyFilters();
-        console.log('Updated UI with fresh data from server');
-      } else {
-        console.log('Fresh data identical to cached data, no UI update needed');
+        console.log('Updated with fresh data');
       }
       lastUpdated.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
     })
     .catch((error) => {
       console.error('Background fetch failed:', error);
-      // Only show error if we don't have cached data already displayed
-      if (!cachedData || cachedData.length === 0) {
+      if (master.length === 0) {
         errorMessage.classList.remove('hidden');
       }
     })
     .finally(() => {
-      // Always hide loading spinner (whether fresh fetch succeeded or failed)
       loading.style.display = 'none';
     });
 });
