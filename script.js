@@ -15,6 +15,49 @@ const noResults = $("noResults");
 const loading = $("loading");
 const errorMessage = $("error-message");
 
+
+// --- Spinner helpers (bulletproof) ---
+function hideSpinner() {
+  try {
+    const el = document.getElementById('loading');
+    if (el) el.style.display = 'none';
+  } catch (_) {}
+}
+function showSpinner() {
+  try {
+    const el = document.getElementById('loading');
+    if (el) el.style.display = 'block';
+  } catch (_) {}
+}
+
+// --- Cached bundle reader for instant offline boot ---
+function getCachedBundle() {
+  try {
+    const raw = localStorage.getItem('ceoData');
+    const tsRaw = localStorage.getItem('lastUpdate');
+    const data = raw ? JSON.parse(raw) : null;
+    const ts = tsRaw ? parseInt(tsRaw, 10) : null;
+    return (Array.isArray(data) && data.length) ? { data, ts } : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+// Format "Last updated" label similar to earlier logic
+function formatRelative(ts) {
+  if (!ts) return '';
+  const diff = Math.max(0, Date.now() - ts);
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins === 1) return '1 minute ago';
+  if (mins < 60) return `${mins} minutes ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs === 1) return '1 hour ago';
+  if (hrs < 24) return `${hrs} hours ago`;
+  const days = Math.floor(hrs / 24);
+  return days === 1 ? 'yesterday' : `${days} days ago`;
+}
+
 // Auth elements
 const loginBtn = $("loginBtn");
 const logoutBtn = $("logoutBtn");
@@ -198,6 +241,7 @@ function sortAndRender() {
   }
   
   ui.renderCards(view, userWatchlist, comparisonSet, currentView);
+  hideSpinner(); // ensure spinner disappears after first render
 }
 
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms) } }
@@ -206,17 +250,22 @@ function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTi
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize auth immediately
   auth.initAuth(handleAuthStateChange);
-// Optional: handle redirect results if auth.js exposes it
-if (typeof auth.handleRedirectResult === 'function') {
-  auth.handleRedirectResult().then((user) => {
-    if (user) {
-      loginModal?.classList.add('hidden');
-    }
-  }).catch((err) => console.warn('Redirect result handling error:', err));
-}
   
   // Show UI structure immediately (app responsive within seconds)
-  loading.style.display = 'block'; // Show loading spinner
+  showSpinner(); // Show loading spinner
+  // Instant offline-first hydrate from local cache (if present)
+  try {
+    const bundle = getCachedBundle();
+    if (bundle) {
+      master = bundle.data;
+      ui.refreshFilters(master);
+      ui.updateStatCards(master);
+      applyFilters();
+      if (lastUpdated) lastUpdated.textContent = 'Last updated: ' + formatRelative(bundle.ts);
+      hideSpinner(); // hide immediately upon cached render
+    }
+  } catch (_) {}
+
   
   // Set up ALL event listeners IMMEDIATELY - app is now interactive
   searchInput.addEventListener('input', debounce(applyFilters, 300));
@@ -228,6 +277,21 @@ if (typeof auth.handleRedirectResult === 'function') {
     currentSort = { key: k, dir: d };
     sortAndRender();
   });
+
+  // Safety net: hide spinner when first cards appear
+  (function ensureSpinnerStops() {
+    const grid = document.getElementById('ceoCardView');
+    if (!grid) return;
+    if (grid.children.length > 0) { hideSpinner(); return; }
+    const obs = new MutationObserver(() => {
+      if (grid.children.length > 0) {
+        hideSpinner();
+        obs.disconnect();
+      }
+    });
+    obs.observe(grid, { childList: true });
+  })();
+
 
   // Mobile filter toggle listener
   toggleFiltersBtn.addEventListener('click', () => {
@@ -314,51 +378,21 @@ if (typeof auth.handleRedirectResult === 'function') {
   logoutBtn.addEventListener('click', () => auth.signOut());
   
   googleSignIn.addEventListener('click', () => {
-  try {
-    if (typeof auth.signInWithRedirectProvider === 'function') {
-      auth.signInWithRedirectProvider('google');
-      return;
-    }
-    if (typeof auth.signInWithGoogleRedirect === 'function') {
-      auth.signInWithGoogleRedirect();
-      return;
-    }
-    // Fallback to popup flow if redirect helpers aren't available
-    Promise.resolve(auth.signInWithGoogle())
-      .then(() => loginModal?.classList.add('hidden'))
-      .catch((error) => {
-        console.error('Google sign in error:', error);
-        alert('Sign in failed. Please try again.');
-      });
-  } catch (error) {
-    console.error('Google sign in error:', error);
-    alert('Sign in failed. Please try again.');
-  }
-});
+    auth.signInWithGoogle().then(() => {
+      loginModal.classList.add('hidden');
+    }).catch(error => {
+      console.error('Google sign in error:', error);
+      alert('Sign in failed. Please try again.');
+    });
   });
 
   microsoftSignIn.addEventListener('click', () => {
-  try {
-    if (typeof auth.signInWithRedirectProvider === 'function') {
-      auth.signInWithRedirectProvider('microsoft');
-      return;
-    }
-    if (typeof auth.signInWithMicrosoftRedirect === 'function') {
-      auth.signInWithMicrosoftRedirect();
-      return;
-    }
-    // Fallback to popup flow if redirect helpers aren't available
-    Promise.resolve(auth.signInWithMicrosoft())
-      .then(() => loginModal?.classList.add('hidden'))
-      .catch((error) => {
-        console.error('Microsoft sign in error:', error);
-        alert('Sign in failed: ' + error.message);
-      });
-  } catch (error) {
-    console.error('Microsoft sign in error:', error);
-    alert('Sign in failed: ' + error.message);
-  }
-});
+    auth.signInWithMicrosoft().then(() => {
+      loginModal.classList.add('hidden');
+    }).catch(error => {
+      console.error('Microsoft sign in error:', error);
+      alert('Sign in failed: ' + error.message);
+    });
   });
   
   forgotPasswordLink.addEventListener('click', (e) => {
