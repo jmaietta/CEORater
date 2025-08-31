@@ -1,109 +1,52 @@
-// script.js — offline-first + stale-while-revalidate boot path
-// Uses instant cache hydration, background refresh, tab-resume refresh,
-// deduped rendering, and light DOM work to keep the UI snappy.
-
 import { fetchData } from './GoogleSheet.js';
 import * as ui from './ui.js';
 import * as auth from './auth.js';
 
-// ---------- DOM Helpers ----------
-const $ = (id) => document.getElementById(id);
-
-// Inputs / controls
+// ---------- DOM Elements (for event listeners) ----------
+const $ = id => document.getElementById(id);
 const searchInput = $("searchInput");
 const industryFilter = $("industryFilter");
-const sectorFilter   = $("sectorFilter");
-const founderFilter  = $("founderFilter");
-const sortControl    = $("sortControl");
+const sectorFilter = $("sectorFilter");
+const founderFilter = $("founderFilter");
+const sortControl = $("sortControl");
+const lastUpdated = $("lastUpdated");
+const ceoCardView = $("ceoCardView");
+const noResults = $("noResults");
+const loading = $("loading");
+const errorMessage = $("error-message");
 
-// Core UI nodes
-const lastUpdated    = $("lastUpdated");
-const ceoCardView    = $("ceoCardView");
-const noResults      = $("noResults");
-const loading        = $("loading");
-const errorMessage   = $("error-message");
-const watchlistEmpty = $("watchlistEmpty");
 
-// Auth & user UI
-const loginBtn              = $("loginBtn");
-const logoutBtn             = $("logoutBtn");
-const userEmail             = $("userEmail");
-const watchlistCount        = $("watchlistCount");
-const loginModal            = $("loginModal");
-const closeLoginModalBtn    = $("closeLoginModalBtn");
-const googleSignIn          = $("googleSignIn");
-const microsoftSignIn       = $("microsoftSignIn");
-const signInEmail           = $("signInEmail");
-const signUpEmail           = $("signUpEmail");
-const emailInput            = $("emailInput");
-const passwordInput         = $("passwordInput");
-const forgotPasswordLink    = $("forgotPasswordLink");
-
-// Views & modals
-const allCeosTab        = $("allCeosTab");
-const watchlistTab      = $("watchlistTab");
-const ceoDetailModal    = $("ceoDetailModal");
-const closeDetailModal  = $("closeDetailModal");
-const comparisonTray    = $("comparisonTray");
-const compareNowBtn     = $("compareNowBtn");
-const comparisonModal   = $("comparisonModal");
-const closeComparisonModalBtn = $("closeComparisonModalBtn");
-const toggleFiltersBtn      = $("toggleFiltersBtn");
-const mobileFilterControls  = $("mobileFilterControls");
-const toggleFiltersIcon     = $("toggleFiltersIcon");
-
-// ---------- App State ----------
-let master = [];
-let view   = [];
-let currentSort = { key: 'ceoRaterScore', dir: 'desc' }; // default sort
-let currentUser = null;
-let userWatchlist = new Set();
-let comparisonSet = new Set();
-let currentView   = 'all';
-
-// Fast lookup for details (ticker|ceoName → object)
-const byKey = new Map();
-
-// Render/version guards to avoid duplicate heavy work
-let dataSignature = null;
-let renderScheduled = false;
-
-// Cache keys used by GoogleSheet.js (read-only here for instant boot)
-const CACHE_KEYS = { DATA: 'ceoData', TIMESTAMP: 'lastUpdate' };
-const STALE_UI_HINT_MS = 5 * 60 * 1000;  // if older than 5 min, we’ll try a refresh on tab focus
-const RESUME_REVALIDATE_MS = 15 * 60 * 1000; // refresh on resume if older than 15 min
-
-// ---------- Utils ----------
-const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
-const now = () => Date.now();
-
-function signatureFor(data) {
-  // Cheap but stable “is it the same?” fingerprint without hashing large payloads:
-  // combine length + a few stable fields.
-  if (!Array.isArray(data)) return null;
-  const len = data.length;
-  const head = len ? data[0]?.ticker ?? "" : "";
-  const mid  = len ? data[Math.floor(len/2)]?.ticker ?? "" : "";
-  const tail = len ? data[len-1]?.ticker ?? "" : "";
-  return `${len}|${head}|${mid}|${tail}`;
+// --- Spinner helpers (bulletproof) ---
+function hideSpinner() {
+  try {
+    const el = document.getElementById('loading');
+    if (el) el.style.display = 'none';
+  } catch (_) {}
+}
+function showSpinner() {
+  try {
+    const el = document.getElementById('loading');
+    if (el) el.style.display = 'block';
+  } catch (_) {}
 }
 
+// --- Cached bundle reader for instant offline boot ---
 function getCachedBundle() {
   try {
-    const raw = localStorage.getItem(CACHE_KEYS.DATA);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    const tsRaw = localStorage.getItem(CACHE_KEYS.TIMESTAMP);
+    const raw = localStorage.getItem('ceoData');
+    const tsRaw = localStorage.getItem('lastUpdate');
+    const data = raw ? JSON.parse(raw) : null;
     const ts = tsRaw ? parseInt(tsRaw, 10) : null;
-    return { data: Array.isArray(parsed) ? parsed : [], ts };
-  } catch {
+    return (Array.isArray(data) && data.length) ? { data, ts } : null;
+  } catch (_) {
     return null;
   }
 }
 
+// Format "Last updated" label similar to earlier logic
 function formatRelative(ts) {
   if (!ts) return '';
-  const diff = Math.max(0, now() - ts);
+  const diff = Math.max(0, Date.now() - ts);
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'just now';
   if (mins === 1) return '1 minute ago';
@@ -115,146 +58,79 @@ function formatRelative(ts) {
   return days === 1 ? 'yesterday' : `${days} days ago`;
 }
 
-function setLastUpdated(ts) {
-  if (!lastUpdated) return;
-  lastUpdated.textContent = ts ? `Last updated: ${formatRelative(ts)}` : '';
-}
+// Auth elements
+const loginBtn = $("loginBtn");
+const logoutBtn = $("logoutBtn");
+const userEmail = $("userEmail");
+const watchlistCount = $("watchlistCount");
+const loginModal = $("loginModal");
+const closeLoginModalBtn = $("closeLoginModalBtn");
+const googleSignIn = $("googleSignIn");
+const microsoftSignIn = $("microsoftSignIn");
+const signInEmail = $("signInEmail");
+const signUpEmail = $("signUpEmail");
+const emailInput = $("emailInput");
+const passwordInput = $("passwordInput");
+const forgotPasswordLink = $("forgotPasswordLink");
 
-function hideLoading() {
-  if (loading) loading.style.display = 'none';
-}
+// View toggle
+const allCeosTab = $("allCeosTab");
+const watchlistTab = $("watchlistTab");
 
-function showNoResultsIfNeeded() {
-  const nothing = view.length === 0 && currentView !== 'watchlist';
-  noResults?.classList.toggle('hidden', !nothing);
+// CEO Detail Modal Elements
+const ceoDetailModal = $("ceoDetailModal");
+const closeDetailModal = $("closeDetailModal");
 
-  // Watchlist-specific empty state
-  const isWatchlistEmpty = currentView === 'watchlist' && view.length === 0;
-  watchlistEmpty?.classList.toggle('hidden', !isWatchlistEmpty);
-}
+// Comparison Tray Elements
+const compareNowBtn = $("compareNowBtn");
+const comparisonTray = $("comparisonTray");
 
-function indexMaster(data) {
-  byKey.clear();
-  for (const c of data) {
-    // Ensure key uniqueness when multiple CEOs share ticker historically
-    byKey.set(`${c.ticker}|${c.ceo}`, c);
-  }
-}
+// Comparison Modal Elements
+const comparisonModal = $("comparisonModal");
+const closeComparisonModalBtn = $("closeComparisonModalBtn");
 
-// ---------- Auth ----------
+// Mobile Filter Toggle Elements
+const toggleFiltersBtn = $("toggleFiltersBtn");
+const mobileFilterControls = $("mobileFilterControls");
+const toggleFiltersIcon = $("toggleFiltersIcon");
+
+// ---------- State ----------
+let master = [];
+let view = [];
+let currentSort = { key: 'ceoRaterScore', dir: 'desc' }; // Changed default to CEORaterScore
+let currentUser = null;
+let userWatchlist = new Set();
+let comparisonSet = new Set(); 
+let currentView = 'all'; 
+
+// ---------- App Logic ----------
 function handleAuthStateChange(user) {
   currentUser = user;
   if (user) {
-    loginBtn?.classList.add('hidden');
-    logoutBtn?.classList.remove('hidden');
-    userEmail?.classList.remove('hidden');
+    loginBtn.classList.add('hidden');
+    logoutBtn.classList.remove('hidden');
+    userEmail.classList.remove('hidden');
+    // We no longer need the separate watchlistBtn, so we can remove references to it here.
     userEmail.textContent = user.email;
-
-    auth.loadUserWatchlist(user.uid).then((watchlist) => {
-      userWatchlist = watchlist;
-      updateWatchlistCount();
-      refreshView();
+    auth.loadUserWatchlist(user.uid).then(watchlist => {
+        userWatchlist = watchlist;
+        updateWatchlistCount();
+        refreshView();
     });
   } else {
-    loginBtn?.classList.remove('hidden');
-    logoutBtn?.classList.add('hidden');
-    userEmail?.classList.add('hidden');
+    loginBtn.classList.remove('hidden');
+    logoutBtn.classList.add('hidden');
+    userEmail.classList.add('hidden');
     userWatchlist.clear();
     comparisonSet.clear();
     ui.updateComparisonTray(comparisonSet);
     updateWatchlistCount();
-    if (currentView === 'watchlist') switchToAllView();
+    if (currentView === 'watchlist') {
+      switchToAllView();
+    }
   }
 }
 
-function updateWatchlistCount() {
-  if (!watchlistCount) return;
-  if (userWatchlist.size > 0) {
-    watchlistCount.textContent = userWatchlist.size;
-    watchlistCount.classList.remove('hidden');
-  } else {
-    watchlistCount.classList.add('hidden');
-  }
-}
-
-// ---------- View / Filters / Sort ----------
-function applyFilters() {
-  const term     = (searchInput?.value || '').trim().toLowerCase();
-  const ind      = industryFilter?.value || '';
-  const sec      = sectorFilter?.value || '';
-  const founder  = founderFilter?.value || '';
-
-  let filtered = master.filter((c) => {
-    const matchTerm = (c.ceo + c.company + c.ticker).toLowerCase().includes(term);
-    const matchInd  = !ind || c.industry === ind;
-    const matchSec  = !sec || c.sector === sec;
-    const matchFndr = !founder || c.founder === founder;
-    return matchTerm && matchInd && matchSec && matchFndr;
-  });
-
-  if (currentView === 'watchlist') {
-    filtered = filtered.filter((c) => userWatchlist.has(c.ticker));
-  }
-
-  view = filtered;
-  scheduleRender();
-}
-
-function sortInPlace(data) {
-  const key = currentSort.key;
-  const dir = currentSort.dir;
-  data.sort((a, b) => {
-    let A = a[key], B = b[key];
-    if (key === 'ceoRaterScore') { A = A ?? 0; B = B ?? 0; }
-    const cmp = (typeof A === 'number' && typeof B === 'number')
-      ? (A - B)
-      : String(A).localeCompare(String(B));
-    return dir === 'asc' ? cmp : -cmp;
-  });
-}
-
-function scheduleRender() {
-  if (renderScheduled) return;
-  renderScheduled = true;
-
-  // Render during idle if possible; otherwise next frame.
-  const doRender = () => {
-    renderScheduled = false;
-    sortInPlace(view);
-    showNoResultsIfNeeded();
-    ui.renderCards(view, userWatchlist, comparisonSet, currentView);
-  };
-
-  if ('requestIdleCallback' in window) {
-    requestIdleCallback(doRender, { timeout: 120 });
-  } else {
-    requestAnimationFrame(doRender);
-  }
-}
-
-function switchToAllView() {
-  currentView = 'all';
-  allCeosTab?.classList.add('active');
-  watchlistTab?.classList.remove('active');
-  applyFilters();
-}
-
-function switchToWatchlistView() {
-  if (!currentUser) {
-    loginModal?.classList.remove('hidden');
-    return;
-  }
-  currentView = 'watchlist';
-  watchlistTab?.classList.add('active');
-  allCeosTab?.classList.remove('active');
-  applyFilters();
-}
-
-function refreshView() {
-  applyFilters();
-}
-
-// ---------- Compare / Watchlist ----------
 function toggleCompare(ticker) {
   if (comparisonSet.has(ticker)) {
     comparisonSet.delete(ticker);
@@ -265,209 +141,324 @@ function toggleCompare(ticker) {
     }
     comparisonSet.add(ticker);
   }
-  scheduleRender();
+  
+  sortAndRender();
   ui.updateComparisonTray(comparisonSet);
 }
 
 async function toggleWatchlist(ticker) {
   if (!currentUser) {
-    loginModal?.classList.remove('hidden');
+    loginModal.classList.remove('hidden');
     return;
   }
-  if (userWatchlist.has(ticker)) userWatchlist.delete(ticker);
-  else userWatchlist.add(ticker);
-
+  
+  if (userWatchlist.has(ticker)) {
+    userWatchlist.delete(ticker);
+  } else {
+    userWatchlist.add(ticker);
+  }
+  
   await auth.saveUserWatchlist(currentUser.uid, userWatchlist);
   updateWatchlistCount();
   refreshView();
 }
 
-// ---------- Data Boot (Offline-first) ----------
-function hydrateFromCacheIfAvailable() {
-  const bundle = getCachedBundle();
-  if (!bundle || !Array.isArray(bundle.data) || bundle.data.length === 0) return false;
-
-  master = bundle.data;
-  dataSignature = signatureFor(master);
-  indexMaster(master);
-
-  // Prime filters/stats quickly, but defer heavier work
-  ui.refreshFilters(master);
-  ui.updateStatCards(master);
-  applyFilters();
-  setLastUpdated(bundle.ts);
-  hideLoading();
-  return true;
+function updateWatchlistCount() {
+    // Also show/hide the badge if the count is > 0
+    if (watchlistCount) {
+        if (userWatchlist.size > 0) {
+            watchlistCount.textContent = userWatchlist.size;
+            watchlistCount.classList.remove('hidden');
+        } else {
+            watchlistCount.classList.add('hidden');
+        }
+    }
 }
 
-async function revalidateInBackground(reason = 'soft') {
+function switchToAllView() {
+  currentView = 'all';
+  allCeosTab.classList.add('active');
+  watchlistTab.classList.remove('active');
+  applyFilters();
+}
+
+function switchToWatchlistView() {
+  if (!currentUser) {
+    loginModal.classList.remove('hidden');
+    return;
+  }
+  currentView = 'watchlist';
+  watchlistTab.classList.add('active');
+  allCeosTab.classList.remove('active');
+  applyFilters();
+}
+
+function refreshView() {
+  applyFilters();
+}
+
+function applyFilters() {
+  const term = searchInput.value.trim().toLowerCase();
+  const ind = industryFilter.value;
+  const sec = sectorFilter.value;
+  const founder = founderFilter.value;
+  
+  let filteredData = master.filter(c => {
+    const matchTerm = (c.ceo + c.company + c.ticker).toLowerCase().includes(term);
+    const matchInd = !ind || c.industry === ind;
+    const matchSec = !sec || c.sector === sec;
+    const matchFounder = !founder || c.founder === founder;
+    return matchTerm && matchInd && matchSec && matchFounder;
+  });
+
+  if (currentView === 'watchlist') {
+    filteredData = filteredData.filter(c => userWatchlist.has(c.ticker));
+  }
+
+  view = filteredData;
+  sortAndRender();
+}
+
+function sortAndRender() {
+  view.sort((a, b) => {
+    let A = a[currentSort.key];
+    let B = b[currentSort.key];
+    
+    // Special handling for CEORaterScore - treat null values as 0 for sorting
+    if (currentSort.key === 'ceoRaterScore') {
+      A = A ?? 0;
+      B = B ?? 0;
+    }
+    
+    let cmp = (typeof A === 'number' && typeof B === 'number') ? A - B : String(A).localeCompare(String(B));
+    return currentSort.dir === 'asc' ? cmp : -cmp;
+  });
+  
+  if (view.length === 0 && currentView !== 'watchlist') {
+    noResults.classList.remove('hidden');
+  } else {
+    noResults.classList.add('hidden');
+  }
+  
+  ui.renderCards(view, userWatchlist, comparisonSet, currentView);
+  hideSpinner(); // ensure spinner disappears after first render
+}
+
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms) } }
+
+// ---------- Event Listeners ----------
+document.addEventListener('DOMContentLoaded', () => {
+  // Initialize auth immediately
+  auth.initAuth(handleAuthStateChange);
+  
+  // Show UI structure immediately (app responsive within seconds)
+  showSpinner(); // Show loading spinner
+  // Instant offline-first hydrate from local cache (if present)
   try {
-    const fresh = await fetchData(); // uses its own 60-min TTL + dedup logic
-    const nextSig = signatureFor(fresh);
-    if (nextSig && nextSig !== dataSignature) {
-      master = fresh;
-      dataSignature = nextSig;
-      indexMaster(master);
-      // Keep UI smooth: update stats/filters during idle
-      const doHeavyUI = () => {
-        ui.refreshFilters(master);
-        ui.updateStatCards(master);
-        applyFilters();
-        // Try to reflect the new cache timestamp if present
-        const bundle = getCachedBundle();
-        setLastUpdated(bundle?.ts || Date.now());
-      };
-      if ('requestIdleCallback' in window) requestIdleCallback(doHeavyUI, { timeout: 250 });
-      else setTimeout(doHeavyUI, 0);
-    } else if (reason === 'hard') {
-      // First load with no cache: still need to show data
-      master = fresh;
-      dataSignature = nextSig;
-      indexMaster(master);
+    const bundle = getCachedBundle();
+    if (bundle) {
+      master = bundle.data;
       ui.refreshFilters(master);
       ui.updateStatCards(master);
       applyFilters();
-      const bundle = getCachedBundle();
-      setLastUpdated(bundle?.ts || Date.now());
-      hideLoading();
+      if (lastUpdated) lastUpdated.textContent = 'Last updated: ' + formatRelative(bundle.ts);
+      hideSpinner(); // hide immediately upon cached render
     }
-  } catch (e) {
-    // If we didn’t hydrate earlier and this was a hard path, surface error
-    if (reason === 'hard') {
-      errorMessage?.classList.remove('hidden');
-      hideLoading();
-    }
-    // Otherwise keep quiet; we already have UI from cache
-    // console.warn('Background refresh failed:', e);
-  }
-}
+  } catch (_) {}
 
-// ---------- Event Wiring ----------
-function wireEvents() {
-  // Filters / search
-  searchInput?.addEventListener('input', debounce(applyFilters, 300), { passive: true });
-  industryFilter?.addEventListener('change', applyFilters);
-  sectorFilter?.addEventListener('change', applyFilters);
-  founderFilter?.addEventListener('change', applyFilters);
-  sortControl?.addEventListener('change', (e) => {
-    const [k, d] = (e.target.value || 'ceoRaterScore-desc').split('-');
+  
+  // Set up ALL event listeners IMMEDIATELY - app is now interactive
+  searchInput.addEventListener('input', debounce(applyFilters, 300));
+  industryFilter.addEventListener('change', applyFilters);
+  sectorFilter.addEventListener('change', applyFilters);
+  founderFilter.addEventListener('change', applyFilters);
+  sortControl.addEventListener('change', e => {
+    const [k, d] = e.target.value.split('-');
     currentSort = { key: k, dir: d };
-    scheduleRender();
+    sortAndRender();
   });
 
-  // Mobile filter accordion
-  toggleFiltersBtn?.addEventListener('click', () => {
+  // Safety net: hide spinner when first cards appear
+  (function ensureSpinnerStops() {
+    const grid = document.getElementById('ceoCardView');
+    if (!grid) return;
+    if (grid.children.length > 0) { hideSpinner(); return; }
+    const obs = new MutationObserver(() => {
+      if (grid.children.length > 0) {
+        hideSpinner();
+        obs.disconnect();
+      }
+    });
+    obs.observe(grid, { childList: true });
+  })();
+
+
+  // Mobile filter toggle listener
+  toggleFiltersBtn.addEventListener('click', () => {
     const isHidden = mobileFilterControls.classList.toggle('hidden');
     toggleFiltersIcon.classList.toggle('rotate-180');
     const buttonText = toggleFiltersBtn.querySelector('span');
-    if (buttonText) buttonText.textContent = isHidden ? 'Show Filters & Options' : 'Hide Filters & Options';
+    buttonText.textContent = isHidden ? 'Show Filters & Options' : 'Hide Filters & Options';
   });
 
-  // Tabs
-  allCeosTab?.addEventListener('click', switchToAllView);
-  watchlistTab?.addEventListener('click', switchToWatchlistView);
+  allCeosTab.addEventListener('click', switchToAllView);
+  watchlistTab.addEventListener('click', switchToWatchlistView);
 
-  // Auth modal
-  loginBtn?.addEventListener('click', () => loginModal?.classList.remove('hidden'));
-  closeLoginModalBtn?.addEventListener('click', () => loginModal?.classList.add('hidden'));
-  loginModal?.addEventListener('click', (e) => { if (e.target === loginModal) loginModal.classList.add('hidden'); });
+  loginBtn.addEventListener('click', () => loginModal.classList.remove('hidden'));
+  closeLoginModalBtn.addEventListener('click', () => loginModal.classList.add('hidden'));
+  loginModal.addEventListener('click', e => {
+    if (e.target === loginModal) loginModal.classList.add('hidden');
+  });
 
-  // Card area (event delegation)
-  ceoCardView?.addEventListener('click', (e) => {
-    const star = e.target.closest?.('.watchlist-star');
-    if (star) { e.stopPropagation(); toggleWatchlist(star.dataset.ticker); return; }
-
-    const compareBtn = e.target.closest?.('.compare-btn');
-    if (compareBtn) { e.stopPropagation(); toggleCompare(compareBtn.dataset.ticker); return; }
-
-    const card = e.target.closest?.('.ceo-card');
-    if (card) {
-      const ticker = card.dataset.ticker;
-      const ceoName = card.dataset.ceoName;
-      const key = `${ticker}|${ceoName}`;
-      const ceoData = byKey.get(key);
-      if (ceoData) {
-        ui.renderDetailModal(ceoData);
-        ceoDetailModal?.classList.remove('hidden');
+  ceoCardView.addEventListener('click', (e) => {
+      const star = e.target.closest('.watchlist-star');
+      if (star) {
+          e.stopPropagation();
+          toggleWatchlist(star.dataset.ticker);
+          return; 
       }
+
+      const compareBtn = e.target.closest('.compare-btn');
+      if (compareBtn) {
+          e.stopPropagation();
+          toggleCompare(compareBtn.dataset.ticker);
+          return;
+      }
+
+      const card = e.target.closest('.ceo-card');
+      if (card) {
+          const ticker = card.dataset.ticker;
+          const ceoName = card.dataset.ceoName;
+          const ceoData = master.find(c => c.ticker === ticker && c.ceo === ceoName);
+          if (ceoData) {
+              ui.renderDetailModal(ceoData);
+              ceoDetailModal.classList.remove('hidden');
+          }
+      }
+  });
+
+  // Listener for the entire comparison tray (handles "x" and "Clear All")
+  comparisonTray.addEventListener('click', e => {
+    // Handle "Clear All" button click
+    if (e.target.id === 'clearCompareBtn') {
+        comparisonSet.clear();
+        sortAndRender();
+        ui.updateComparisonTray(comparisonSet);
+        return;
+    }
+
+    // Handle individual remove ("x") button clicks
+    const removeBtn = e.target.closest('.remove-from-tray-btn');
+    if (removeBtn) {
+        const ticker = removeBtn.dataset.ticker;
+        if (ticker) {
+            toggleCompare(ticker);
+        }
     }
   });
 
-  // Compare tray (clear all / remove)
-  comparisonTray?.addEventListener('click', (e) => {
-    if (e.target.id === 'clearCompareBtn') {
-      comparisonSet.clear();
-      scheduleRender();
-      ui.updateComparisonTray(comparisonSet);
+  closeDetailModal.addEventListener('click', () => ceoDetailModal.classList.add('hidden'));
+  ceoDetailModal.addEventListener('click', e => {
+      if (e.target === ceoDetailModal) {
+          ceoDetailModal.classList.add('hidden');
+      }
+  });
+  
+  compareNowBtn.addEventListener('click', () => {
+      ui.renderComparisonModal(master, comparisonSet);
+      comparisonModal.classList.remove('hidden');
+  });
+  closeComparisonModalBtn.addEventListener('click', () => comparisonModal.classList.add('hidden'));
+  comparisonModal.addEventListener('click', e => {
+    if (e.target === comparisonModal) {
+      comparisonModal.classList.add('hidden');
+    }
+  });
+
+  logoutBtn.addEventListener('click', () => auth.signOut());
+  
+  googleSignIn.addEventListener('click', () => {
+    auth.signInWithGoogle().then(() => {
+      loginModal.classList.add('hidden');
+    }).catch(error => {
+      console.error('Google sign in error:', error);
+      alert('Sign in failed. Please try again.');
+    });
+  });
+
+  microsoftSignIn.addEventListener('click', () => {
+    auth.signInWithMicrosoft().then(() => {
+      loginModal.classList.add('hidden');
+    }).catch(error => {
+      console.error('Microsoft sign in error:', error);
+      alert('Sign in failed: ' + error.message);
+    });
+  });
+  
+  forgotPasswordLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    const email = emailInput.value;
+    if (!email) {
+      alert('Please enter your email address to reset your password.');
       return;
     }
-    const removeBtn = e.target.closest?.('.remove-from-tray-btn');
-    if (removeBtn) {
-      const ticker = removeBtn.dataset.ticker;
-      if (ticker) toggleCompare(ticker);
-    }
-  });
-
-  closeDetailModal?.addEventListener('click', () => ceoDetailModal?.classList.add('hidden'));
-  ceoDetailModal?.addEventListener('click', (e) => { if (e.target === ceoDetailModal) ceoDetailModal.classList.add('hidden'); });
-
-  compareNowBtn?.addEventListener('click', () => {
-    ui.renderComparisonModal(master, comparisonSet);
-    comparisonModal?.classList.remove('hidden');
-  });
-  closeComparisonModalBtn?.addEventListener('click', () => comparisonModal?.classList.add('hidden'));
-  comparisonModal?.addEventListener('click', (e) => { if (e.target === comparisonModal) comparisonModal.classList.add('hidden'); });
-
-  // Auth flows
-  logoutBtn?.addEventListener('click', () => auth.signOut());
-  googleSignIn?.addEventListener('click', () => {
-    auth.signInWithGoogle()
-      .then(() => loginModal?.classList.add('hidden'))
-      .catch((err) => { console.error('Google sign in error:', err); alert('Sign in failed. Please try again.'); });
-  });
-  microsoftSignIn?.addEventListener('click', () => {
-    auth.signInWithMicrosoft()
-      .then(() => loginModal?.classList.add('hidden'))
-      .catch((err) => { console.error('Microsoft sign in error:', err); alert('Sign in failed: ' + err.message); });
-  });
-  forgotPasswordLink?.addEventListener('click', (e) => {
-    e.preventDefault();
-    const email = emailInput?.value;
-    if (!email) { alert('Please enter your email address to reset your password.'); return; }
     auth.sendPasswordReset(email)
-      .then(() => alert('Password reset email sent! Please check your inbox.'))
+      .then(() => {
+        alert('Password reset email sent! Please check your inbox.');
+      })
       .catch((error) => {
         console.error('Password reset error:', error);
-        if (error.code === 'auth/user-not-found') alert('No account found with that email address.');
-        else alert('Failed to send password reset email. Please try again.');
+        if (error.code === 'auth/user-not-found') {
+          alert('No account found with that email address.');
+        } else {
+          alert('Failed to send password reset email. Please try again.');
+        }
       });
   });
-  signInEmail?.addEventListener('click', () => {
-    const email = emailInput?.value, password = passwordInput?.value;
+  
+  signInEmail.addEventListener('click', () => {
+    const email = emailInput.value;
+    const password = passwordInput.value;
     if (!email || !password) return;
-    auth.signInWithEmail(email, password)
-      .then(() => loginModal?.classList.add('hidden'))
-      .catch((error) => { console.error('Email sign in error:', error); alert('Sign in failed: ' + error.message); });
-  });
-  signUpEmail?.addEventListener('click', () => {
-    const email = emailInput?.value, password = passwordInput?.value;
-    if (!email || !password) return;
-    auth.signUpWithEmail(email, password)
-      .then(() => loginModal?.classList.add('hidden'))
-      .catch((error) => { console.error('Email sign up error:', error); alert('Sign up failed: ' + error.message); });
+    
+    auth.signInWithEmail(email, password).then(() => {
+      loginModal.classList.add('hidden');
+    }).catch(error => {
+      console.error('Email sign in error:', error);
+      alert('Sign in failed: ' + error.message);
+    });
   });
 
-  // CSV export
-  $("downloadExcelButton")?.addEventListener('click', () => {
-    if (view.length === 0) { alert('No data to export'); return; }
-    const headers = ['CEO','Company','Ticker','CEORaterScore','AlphaScore','CompScore','Market Cap ($B)','AlphaScore Quartile','TSR Alpha','Avg Annual TSR Alpha','Industry','Sector','TSR During Tenure','Avg Annual TSR','Compensation ($MM)','Comp Cost / 1% Avg TSR ($MM)','Tenure (yrs)','Founder'];
-    const csv = [
+  signUpEmail.addEventListener('click', () => {
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    if (!email || !password) return;
+    
+    auth.signUpWithEmail(email, password).then(() => {
+      loginModal.classList.add('hidden');
+    }).catch(error => {
+      console.error('Email sign up error:', error);
+      alert('Sign up failed: ' + error.message);
+    });
+  });
+
+  // Enhanced CSV export with CEORaterScore
+  $("downloadExcelButton").addEventListener('click', () => {
+    if (view.length === 0) {
+      alert('No data to export');
+      return;
+    }
+    
+    // Updated headers to include CEORaterScore
+    const headers = ['CEO', 'Company', 'Ticker', 'CEORaterScore', 'AlphaScore', 'CompScore', 'Market Cap ($B)', 'AlphaScore Quartile', 'TSR Alpha', 'Avg Annual TSR Alpha', 'Industry', 'Sector', 'TSR During Tenure', 'Avg Annual TSR', 'Compensation ($MM)', 'Comp Cost / 1% Avg TSR ($MM)', 'Tenure (yrs)', 'Founder'];
+    
+    const csvContent = [
       headers.join(','),
       ...view.map(c => [
         `"${c.ceo}"`,
         `"${c.company}"`,
         c.ticker,
-        c.ceoRaterScore ? Math.round(c.ceoRaterScore) : 'N/A',
+        c.ceoRaterScore ? Math.round(c.ceoRaterScore) : 'N/A', // NEW: CEORaterScore
         Math.round(c.alphaScore),
         c.compensationScore || 'N/A',
         (c.marketCap / 1e9).toFixed(2),
@@ -484,64 +475,47 @@ function wireEvents() {
         c.founder === 'Y' ? 'Yes' : 'No'
       ].join(','))
     ].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url  = URL.createObjectURL(blob);
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `ceorater-${currentView}-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   });
 
-  // Global keys for closing modals
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
-    if (!loginModal?.classList.contains('hidden')) loginModal.classList.add('hidden');
-    if (!ceoDetailModal?.classList.contains('hidden')) ceoDetailModal.classList.add('hidden');
-    if (!comparisonModal?.classList.contains('hidden')) comparisonModal.classList.add('hidden');
-  });
-  emailInput?.addEventListener('keypress', (e) => { if (e.key === 'Enter') signInEmail?.click(); });
-  passwordInput?.addEventListener('keypress', (e) => { if (e.key === 'Enter') signInEmail?.click(); });
-
-  // Connectivity- & session-aware background refresh
-  window.addEventListener('online', () => revalidateInBackground('resume'));
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      const bundle = getCachedBundle();
-      const tooOld = bundle?.ts ? (now() - bundle.ts) > RESUME_REVALIDATE_MS : true;
-      if (tooOld) revalidateInBackground('resume');
-      else if ((now() - (bundle?.ts || 0)) > STALE_UI_HINT_MS) setLastUpdated(bundle.ts); // nudge the label
+    if (e.key === 'Escape' && !loginModal.classList.contains('hidden')) {
+      loginModal.classList.add('hidden');
+    }
+    if (e.key === 'Escape' && !ceoDetailModal.classList.contains('hidden')) {
+        ceoDetailModal.classList.add('hidden');
+    }
+    if (e.key === 'Escape' && !comparisonModal.classList.contains('hidden')) {
+        comparisonModal.classList.add('hidden');
     }
   });
 
-  // Keep multiple tabs in sync with cache updates
-  window.addEventListener('storage', (evt) => {
-    if (evt.key !== CACHE_KEYS.DATA && evt.key !== CACHE_KEYS.TIMESTAMP) return;
-    const bundle = getCachedBundle();
-    if (!bundle || !bundle.data?.length) return;
-    const nextSig = signatureFor(bundle.data);
-    if (nextSig && nextSig !== dataSignature) {
-      master = bundle.data;
-      dataSignature = nextSig;
-      indexMaster(master);
+  emailInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') signInEmail.click();
+  });
+  
+  passwordInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') signInEmail.click();
+  });
+
+  // NOW load data asynchronously in the background (non-blocking)
+  fetchData()
+    .then(data => {
+      master = data;
       ui.refreshFilters(master);
       ui.updateStatCards(master);
       applyFilters();
-      setLastUpdated(bundle.ts);
-    }
-  }, { passive: true });
-}
-
-// ---------- App Init ----------
-document.addEventListener('DOMContentLoaded', () => {
-  auth.initAuth(handleAuthStateChange); // immediately start auth
-  if (loading) loading.style.display = 'block'; // spinner visible during boot
-  wireEvents();
-
-  // 1) Instant cache hydration if available (works offline)
-  const hadCache = hydrateFromCacheIfAvailable();
-
-  // 2) Background revalidate (network or cache) — quietly updates UI if changed
-  //    If we had no cache, this acts as a "hard" load and will render when done.
-  revalidateInBackground(hadCache ? 'soft' : 'hard');
+      lastUpdated.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+    })
+    .catch(() => errorMessage.classList.remove('hidden'))
+    .finally(() => loading.style.display = 'none');
 });
