@@ -1,3 +1,35 @@
+// Detect Capacitor iOS (native app) vs web/PWA
+const isIOSNative =
+  !!(window.Capacitor &&
+     typeof window.Capacitor.getPlatform === 'function' &&
+     window.Capacitor.getPlatform() === 'ios');
+
+// If we're inside the iOS app: hide Google/Microsoft buttons
+if (isIOSNative) {
+  const hide = id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  };
+  hide('googleSignIn');
+  hide('microsoftSignIn');
+
+  const nullify = id => {
+    const el = document.getElementById(id);
+    if (el) el.onclick = (e) => { e.preventDefault(); return false; };
+  };
+  nullify('googleSignIn');
+  nullify('microsoftSignIn');
+}
+
+// =========================
+// your existing script.js content starts here
+// (rest of your original logic untouched, for auth, UI, etc.)
+// =========================
+
+// Example placeholder for existing Firebase init (you already have this in firebase-config.js)
+// firebase.initializeApp(firebaseConfig);
+
+// ... existing auth code continues ...
 
 import { fetchData } from './GoogleSheet.js';
 import * as ui from './ui.js';
