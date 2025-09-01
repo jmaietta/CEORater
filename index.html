@@ -299,7 +299,7 @@
 
         <div class="relative">
           <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-300"></div></div>
-          <div class="relative flex justify-center text-sm"><span class="px-2 bg-white text-gray-500">or</span></div>
+          <div class="relative flex justify-center text-sm"><span id="orDivider" class="px-2 bg-white text-gray-500">or</span></div>
         </div>
 
         <input id="emailInput" type="email" placeholder="Enter your email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -386,7 +386,7 @@
       if (!isCapacitor && 'serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           (window.requestIdleCallback || function(cb){setTimeout(cb, 0);})(() => {
-            navigator.serviceWorker.register('service-worker.js') // relative path works under capacitor://localhost when PWA is used in the browser
+            navigator.serviceWorker.register('service-worker.js')
               .then(reg => console.log('SW registration ok:', reg.scope))
               .catch(err => console.log('SW registration failed:', err));
           });
@@ -396,5 +396,3 @@
   </script>
 </body>
 </html>
-
-
