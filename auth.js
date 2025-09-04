@@ -1,139 +1,77 @@
-// auth.js — Capacitor-aware + iOS web redirect-safe
+// auth.js — compat SDK, iOS-safe redirects, provider discovery, and delete-account helpers
 
 import { auth, db } from './firebase-init.js';
 /* global firebase */
 
+// ---- Platform detection (for choosing redirect vs popup) ----
 const isCapacitor = typeof window !== 'undefined' && !!window.Capacitor;
 const platform = isCapacitor && typeof window.Capacitor.getPlatform === 'function'
   ? window.Capacitor.getPlatform()
   : null;
 
-const isIOSNative = platform === 'ios';          // Running inside the native iOS app
-const isWeb = !isIOSNative;                      // Any browser/webview
-const isLikelyIOSWeb =
-  isWeb &&
-  /iPad|iPhone|iPod/.test(navigator.userAgent) &&
-  !window.MSStream;
+const isIOSNative = platform === 'ios'; // inside Capacitor iOS app
+const isLikelyIOSWeb = /iPad|iPhone|iPod/.test(navigator.userAgent || '') && !window.MSStream;
 
-const FA = window.Capacitor?.Plugins?.FirebaseAuthentication;
+// In iOS webviews/Safari, redirect is far more reliable than popup.
+const preferRedirect = isIOSNative || isLikelyIOSWeb;
 
-// ---------- Persistence & language ----------
-try {
-  // Make auth texts (emails, etc.) match device language
-  auth.useDeviceLanguage?.();
+// ---- Provider helpers ----
+const googleProvider = new firebase.auth.GoogleAuthProvider();
+const msProvider = new firebase.auth.OAuthProvider('microsoft.com');
+// request basic profile/email scopes (add more if you need)
+msProvider.setCustomParameters({ prompt: 'select_account' });
 
-  // Persistence fallback logic: iOS webviews can be tricky with IndexedDB, so be explicit
-  // If compat SDK is used, these maps exist; otherwise ignore gracefully.
-  const p = firebase?.auth?.Auth?.Persistence || firebase?.auth?.AuthPersistence || firebase?.auth?.Auth?.Persistence;
-  if (p && auth.setPersistence) {
-    // Try local; fall back to session if needed
-    auth.setPersistence(p.LOCAL).catch(() => auth.setPersistence(p.SESSION)).catch(() => {});
-  }
-} catch (_) {}
-
-// ---------- Auth state ----------
-export function initAuth(onAuthStateChangedCallback) {
-  auth.onAuthStateChanged(onAuthStateChangedCallback);
-}
-
-// Call this once on boot (for redirect flows on web/iOS webview)
-export async function completeRedirectLogin() {
+// --- Handle getRedirectResult at startup (no-op if none) ---
+export async function handleAuthRedirectResult() {
   try {
-    if (!auth.getRedirectResult) return null; // compat-safe
+    if (typeof auth.getRedirectResult !== 'function') return null;
     const res = await auth.getRedirectResult();
     return res?.user || null;
-  } catch (e) {
-    // Some browsers throw if there was no pending redirect; ignore quietly
+  } catch (_e) {
+    // Ignore "no redirect pending" errors
     return null;
   }
 }
 
-// ---------- Watchlist helpers ----------
-export async function loadUserWatchlist(uid) {
-  if (!uid) return new Set();
-  try {
-    const doc = await db.collection('watchlists').doc(uid).get();
-    if (doc.exists) return new Set(doc.data().tickers || []);
-    return new Set();
-  } catch (error) {
-    console.error('Error loading watchlist:', error);
-    return new Set();
-  }
+// ---- Provider discovery so users don't fall into wrong flow ----
+export async function fetchProviderForEmail(email) {
+  const methods = await auth.fetchSignInMethodsForEmail(email);
+  const set = new Set((methods || []).map(m => m.toLowerCase()));
+  if (set.has('password')) return 'password';
+  if (set.has('google.com')) return 'google';
+  if (set.has('microsoft.com')) return 'microsoft';
+  return null; // none (new user)
 }
 
-export async function saveUserWatchlist(uid, watchlist) {
-  if (!uid) return;
-  try {
-    await db.collection('watchlists').doc(uid).set({
-      tickers: Array.from(watchlist),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    });
-  } catch (error) {
-    console.error('Error saving watchlist:', error);
-  }
-}
-
-// ---------- Sign-in: Google ----------
+// ---- Sign-in flows ----
 export async function signInWithGoogle() {
-  try {
-    if (isIOSNative && FA?.signInWithGoogle) {
-      // Native Google sign-in
-      const res = await FA.signInWithGoogle();
-      const idToken =
-        res?.idToken || res?.credential?.idToken || res?.authentication?.idToken;
-      if (!idToken) throw new Error('No idToken from native Google sign-in');
-      const cred = firebase.auth.GoogleAuthProvider.credential(idToken);
-      return auth.signInWithCredential(cred);
-    }
-
-    // Web / iOS webview fallback
-    const provider = new firebase.auth.GoogleAuthProvider();
-    if (isLikelyIOSWeb) {
-      await auth.signInWithRedirect(provider); // redirect beats pop-up on iOS web
-      return null;
-    }
-    return auth.signInWithPopup(provider);
-  } catch (e) {
-    console.error('Google sign in error:', e);
-    throw e;
-  }
+  if (preferRedirect) return auth.signInWithRedirect(googleProvider);
+  return auth.signInWithPopup(googleProvider);
 }
 
-// ---------- Sign-in: Microsoft ----------
 export async function signInWithMicrosoft() {
-  try {
-    if (isIOSNative && FA?.signInWithMicrosoft) {
-      const res = await FA.signInWithMicrosoft({ scopes: ['openid','profile','email'] });
-      const provider = new firebase.auth.OAuthProvider('microsoft.com');
-      const idToken = res?.idToken || res?.credential?.idToken;
-      const accessToken = res?.accessToken || res?.credential?.accessToken;
-      const cred = provider.credential({ idToken, accessToken });
-      return auth.signInWithCredential(cred);
-    }
-
-    // Web / iOS webview fallback
-    const provider = new firebase.auth.OAuthProvider('microsoft.com');
-    provider.setCustomParameters({ prompt: 'select_account' });
-    if (isLikelyIOSWeb) {
-      await auth.signInWithRedirect(provider);
-      return null;
-    }
-    return auth.signInWithPopup(provider);
-  } catch (e) {
-    console.error('Microsoft sign in error:', e);
-    throw e;
-  }
+  if (preferRedirect) return auth.signInWithRedirect(msProvider);
+  return auth.signInWithPopup(msProvider);
 }
 
-// ---------- Email/Password ----------
-export async function signInWithEmail(email, password) {
-  return auth.signInWithEmailAndPassword(email, password);
+export async function signInWithEmailSmart(email, password) {
+  const which = await fetchProviderForEmail(email);
+  if (which === 'password') {
+    return auth.signInWithEmailAndPassword(email, password);
+  }
+  if (which === 'google') {
+    return signInWithGoogle();
+  }
+  if (which === 'microsoft') {
+    return signInWithMicrosoft();
+  }
+  // No provider registered — treat as new user creation
+  return auth.createUserWithEmailAndPassword(email, password);
 }
 
 export async function signUpWithEmail(email, password) {
   const cred = await auth.createUserWithEmailAndPassword(email, password);
-  // Optional but recommended
-  try { await cred.user.sendEmailVerification?.(); } catch (_) {}
+  try { await cred.user.sendEmailVerification?.(); } catch (_e) {}
   return cred;
 }
 
@@ -141,13 +79,91 @@ export function sendPasswordReset(email) {
   return auth.sendPasswordResetEmail(email);
 }
 
-// ---------- Sign-out ----------
+// ---- Sign-out ----
 export async function signOut() {
   try {
-    if (isIOSNative && FA?.signOut) {
-      await FA.signOut();
+    // If you wired Firebase Auth plugin for Capacitor, call it here as well.
+    if (isIOSNative && window.FA?.signOut) {
+      await window.FA.signOut();
     }
   } finally {
     return auth.signOut();
+  }
+}
+
+// ---- Watchlist helpers (adjust to your schema) ----
+export async function loadUserWatchlist(uid) {
+  if (!uid) return new Set();
+  try {
+    const doc = await db.collection('watchlists').doc(uid).get();
+    const data = doc.exists ? (doc.data() || {}) : {};
+    const tickers = Array.isArray(data.tickers) ? data.tickers : [];
+    return new Set(tickers);
+  } catch {
+    return new Set();
+  }
+}
+
+export async function saveUserWatchlist(uid, tickersSet) {
+  if (!uid) return;
+  const tickers = Array.from(tickersSet || []);
+  await db.collection('watchlists').doc(uid).set({ tickers }, { merge: true });
+}
+
+// ---- Delete Account helpers ----
+// If account was created with email/password, reauth with password and delete.
+export async function deleteCurrentUserWithPassword(password, purgeEndpoint) {
+  const user = auth.currentUser;
+  if (!user) throw new Error('No signed-in user');
+  if (!password) throw new Error('Password required');
+
+  const cred = firebase.auth.EmailAuthProvider.credential(user.email, password);
+  await user.reauthenticateWithCredential(cred);
+
+  await purgeUserData(purgeEndpoint, user);
+  await user.delete();
+}
+
+// "Smart" delete: reauth using the correct provider (password/google/microsoft).
+export async function deleteCurrentUserSmart({ password, purgeEndpoint }) {
+  const user = auth.currentUser;
+  if (!user) throw new Error('No signed-in user');
+  const email = user.email;
+  const which = email ? await fetchProviderForEmail(email) : null;
+
+  if (which === 'password') {
+    return deleteCurrentUserWithPassword(password, purgeEndpoint);
+  }
+
+  // For provider accounts: reauth via redirect/popup on the provider, then delete.
+  let provider = null;
+  if (which === 'google') provider = googleProvider;
+  if (which === 'microsoft') provider = msProvider;
+
+  if (!provider) {
+    // default to password flow if unknown
+    return deleteCurrentUserWithPassword(password, purgeEndpoint);
+  }
+
+  const doAuth = preferRedirect ? auth.signInWithRedirect.bind(auth) : auth.signInWithPopup.bind(auth);
+  await doAuth(provider); // This will return to your app via redirect result; you should call handleAuthRedirectResult() at startup.
+
+  // Once reauthed (after redirect), call purge + delete.
+  const refreshedUser = auth.currentUser;
+  await purgeUserData(purgeEndpoint, refreshedUser);
+  await refreshedUser.delete();
+}
+
+async function purgeUserData(purgeEndpoint, user) {
+  if (!purgeEndpoint) return; // allow apps without backend purge (not recommended)
+  const idToken = await user.getIdToken();
+  const res = await fetch(purgeEndpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+    body: JSON.stringify({ uid: user.uid })
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error('Purge failed: ' + t);
   }
 }
