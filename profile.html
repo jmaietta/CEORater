@@ -19,7 +19,7 @@
     <div class="container mx-auto px-4 py-4">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
-          <a href="/" id="backToHome" class="flex items-center gap-2 text-blue-600 hover:text-blue-700">
+          <a href="/CEORater/" id="backToHome" class="flex items-center gap-2 text-blue-600 hover:text-blue-700">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
             </svg>
@@ -52,7 +52,7 @@
           <div>
             <h3 id="profileEmail" class="text-lg font-medium text-gray-900">Loading...</h3>
             <p id="profileMemberSince" class="text-sm text-gray-600">Loading...</p>
-            <p class="text-sm text-green-600 mt-1">✓ Verified account</p>
+            <p id="verificationLabel" class="text-sm text-green-600 mt-1">Signed in</p>
           </div>
         </div>
       </div>
@@ -73,7 +73,7 @@
             <div>
               <h4 class="font-medium text-blue-900">Our Policies</h4>
               <p class="text-sm text-blue-700 mt-1">
-                Review our 
+                Review our
                 <a href="https://www.ceorater.com/privacy.html" target="_blank" class="underline hover:no-underline">Privacy Policy</a>
                 to understand how we collect, use, and protect your data.
               </p>
@@ -137,9 +137,9 @@
         <p class="text-gray-700 mb-4">
           To confirm deletion, please type your email address below:
         </p>
-        <input 
-          id="emailConfirmation" 
-          type="email" 
+        <input
+          id="emailConfirmation"
+          type="email"
           placeholder="Enter your email"
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
         >
@@ -166,107 +166,108 @@
   <script>
     let currentUser = null;
 
-    // Wait for all scripts to load
-    function initializeProfile() {
-      console.log('Initializing profile page...');
-      
-      // Check if Firebase is loaded
-      if (!window.firebase) {
-        console.error('Firebase not loaded');
-        setTimeout(initializeProfile, 100);
-        return;
-      }
+    function setVerificationLabel(user) {
+      const el = document.getElementById('verificationLabel');
+      if (!el || !user) return;
 
-      // Check if config is loaded
-      if (!window.firebaseConfig) {
-        console.error('Firebase config not loaded');
-        setTimeout(initializeProfile, 100);
-        return;
-      }
+      const providers = (user.providerData || []).map(p => p.providerId);
+      el.classList.remove('text-green-600', 'text-yellow-600', 'text-blue-600', 'text-purple-600');
 
-      // Initialize Firebase
-      try {
-        firebase.initializeApp(window.firebaseConfig);
-        console.log('Firebase initialized successfully');
-      } catch (error) {
-        console.log('Firebase may already be initialized:', error.message);
-      }
-
-      // Set up authentication listener
-      firebase.auth().onAuthStateChanged((user) => {
-        console.log('Auth state changed:', user ? `User: ${user.email}` : 'No user');
-        
-        if (user) {
-          currentUser = user;
-          updateProfileData(user);
+      if (providers.includes('google.com')) {
+        el.textContent = 'Signed in with Google';
+        el.classList.add('text-green-600');
+      } else if (providers.includes('microsoft.com')) {
+        el.textContent = 'Signed in with Microsoft';
+        el.classList.add('text-green-600');
+      } else if (providers.includes('password')) {
+        if (user.emailVerified) {
+          el.textContent = '✓ Email verified';
+          el.classList.add('text-green-600');
         } else {
-          console.log('No user authenticated, redirecting to home');
-          window.location.href = '/';
+          el.textContent = 'Email not verified';
+          el.classList.add('text-yellow-600');
         }
-      });
-
-      // Set up event listeners
-      setupEventListeners();
+      } else {
+        el.textContent = 'Signed in';
+        el.classList.add('text-green-600');
+      }
     }
 
     function updateProfileData(user) {
-      console.log('Updating profile data for:', user.email);
-      
-      // Update email displays
+      // Email
       const profileEmail = document.getElementById('profileEmail');
-      if (profileEmail) {
-        profileEmail.textContent = user.email;
-        console.log('Updated profile email');
-      }
+      if (profileEmail) profileEmail.textContent = user.email;
 
-      // Update avatar
+      // Avatar initials (from local part of email)
       const profileAvatar = document.getElementById('profileAvatar');
       if (profileAvatar) {
-        const initials = user.email.substring(0, 2).toUpperCase();
-        profileAvatar.textContent = initials;
-        console.log('Updated avatar with initials:', initials);
+        const initials = user.email.split('@')[0].slice(0, 2).toUpperCase();
+        profileAvatar.textContent = initials || '--';
       }
 
-      // Update member since
+      // Member since
       const memberSince = document.getElementById('profileMemberSince');
       if (memberSince) {
         if (user.metadata && user.metadata.creationTime) {
           const date = new Date(user.metadata.creationTime);
-          const monthYear = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-          memberSince.textContent = `Member since ${monthYear}`;
+          memberSince.textContent = `Member since ${date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
         } else {
           memberSince.textContent = 'Member since 2025';
         }
-        console.log('Updated member since date');
       }
 
-      // Update expected email in modal
+      // Delete modal helper text / placeholder
       const expectedEmailText = document.getElementById('expectedEmailText');
-      if (expectedEmailText) {
-        expectedEmailText.textContent = `Expected: ${user.email}`;
-        console.log('Updated expected email text');
+      if (expectedEmailText) expectedEmailText.textContent = `Expected: ${user.email}`;
+      const emailInput = document.getElementById('emailConfirmation');
+      if (emailInput) emailInput.placeholder = user.email;
+
+      // Verification label
+      setVerificationLabel(user);
+    }
+
+    // Wait for all scripts to load
+    function initializeProfile() {
+      // Ensure Firebase present
+      if (!window.firebase) { setTimeout(initializeProfile, 100); return; }
+      if (!window.firebaseConfig) { setTimeout(initializeProfile, 100); return; }
+
+      // Initialize Firebase (ignore "already exists")
+      try { firebase.initializeApp(window.firebaseConfig); } catch (_) {}
+
+      // If already signed in (hot load), fill immediately
+      if (firebase.auth().currentUser) {
+        currentUser = firebase.auth().currentUser;
+        updateProfileData(currentUser);
       }
 
-      // Update email input placeholder
-      const emailInput = document.getElementById('emailConfirmation');
-      if (emailInput) {
-        emailInput.placeholder = user.email;
-        console.log('Updated email input placeholder');
-      }
+      // Auth listener (standard path)
+      firebase.auth().onAuthStateChanged((user) => {
+        if (user) {
+          currentUser = user;
+          updateProfileData(user);
+        } else {
+          // NOTE: project pages need the repo path
+          window.location.href = '/CEORater/';
+        }
+      });
+
+      setupEventListeners();
+
+      // Belt & suspenders: retry a couple times in case auth is slow
+      setTimeout(() => { const u = firebase.auth().currentUser; if (u) updateProfileData(u); }, 400);
+      setTimeout(() => { const u = firebase.auth().currentUser; if (u) updateProfileData(u); }, 1200);
     }
 
     function setupEventListeners() {
-      console.log('Setting up event listeners');
-
       // Back button
       document.getElementById('backToHome').addEventListener('click', (e) => {
         e.preventDefault();
-        window.location.href = '/';
+        window.location.href = '/CEORater/';
       });
 
       // Delete account button
       document.getElementById('deleteAccountBtn').addEventListener('click', () => {
-        console.log('Delete account button clicked');
         document.getElementById('deleteConfirmModal').classList.remove('hidden');
       });
 
@@ -282,33 +283,23 @@
         const confirmBtn = document.getElementById('confirmDelete');
         const isMatch = currentUser && e.target.value === currentUser.email;
         confirmBtn.disabled = !isMatch;
-        console.log('Email match:', isMatch);
       });
 
-      // Confirm delete
+      // Confirm delete (will usually require recent re-auth; your index flow handles providers)
       document.getElementById('confirmDelete').addEventListener('click', async () => {
-        console.log('Confirm delete clicked');
         try {
           if (currentUser) {
-            // Delete user data from Firestore if exists
             try {
               const db = firebase.firestore();
               await db.collection('watchlists').doc(currentUser.uid).delete();
-              console.log('Watchlist deleted');
-            } catch (error) {
-              console.log('No watchlist to delete:', error);
-            }
-
-            // Delete the user account
+            } catch (_) {}
             await currentUser.delete();
-            console.log('Account deleted successfully');
-            
             alert('Your account has been permanently deleted.');
-            window.location.href = '/';
+            window.location.href = '/CEORater/';
           }
         } catch (error) {
           console.error('Account deletion failed:', error);
-          alert('Failed to delete account: ' + error.message);
+          alert('Failed to delete account: ' + (error.message || 'Unknown error'));
         }
       });
 
@@ -320,8 +311,6 @@
           document.getElementById('confirmDelete').disabled = true;
         }
       });
-
-      console.log('Event listeners set up successfully');
     }
 
     // Start initialization when DOM is ready
