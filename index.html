@@ -177,27 +177,34 @@
                 </svg>
               </button>
 
-              <!-- Dropdown menu -->
+              <!-- Updated dropdown menu -->
               <div id="userDropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                 <div class="px-4 py-3 border-b border-gray-100">
                   <p class="text-sm font-medium text-gray-900">Signed in as</p>
                   <p id="userEmailDropdown" class="text-sm text-gray-600 truncate"></p>
                 </div>
                 
+                <a href="profile.html" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                  </svg>
+                  Account Settings
+                </a>
+                
+                <button id="exportDataBtn" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
+                  Export Data
+                </button>
+                
+                <hr class="my-1">
+                
                 <button id="logoutBtn" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                   </svg>
                   Sign Out
-                </button>
-                
-                <hr class="my-1">
-                
-                <button id="deleteAccountBtn" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                  </svg>
-                  Delete Account
                 </button>
               </div>
             </div>
@@ -356,47 +363,6 @@
       </div>
 
       <button id="closeLoginModalBtn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-        </svg>
-      </button>
-    </div>
-  </div>
-
-  <!-- ACCOUNT DELETION MODAL -->
-  <div id="deleteAccountModal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-lg p-6 w-full max-w-md relative">
-      <h2 class="text-xl font-bold mb-4 text-red-600">Delete Account</h2>
-      <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-        <p class="text-sm text-red-800 font-semibold mb-2">⚠️ Warning: This action cannot be undone</p>
-        <p class="text-sm text-gray-700">Deleting your account will:</p>
-        <ul class="text-sm text-gray-700 mt-1 ml-4 list-disc">
-          <li>Permanently remove your watchlist</li>
-          <li>Delete all your saved preferences</li>
-          <li>Remove your account credentials</li>
-        </ul>
-      </div>
-      
-      <div class="space-y-4">
-        <div id="deletePasswordSection" class="hidden">
-          <label for="deletePasswordInput" class="block text-sm font-medium text-gray-700 mb-1">
-            Enter your password to confirm:
-          </label>
-          <input id="deletePasswordInput" type="password" placeholder="Password" 
-                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500" />
-        </div>
-
-        <div id="deleteOAuthSection" class="hidden">
-          <p class="text-sm text-gray-600">You will need to re-authenticate with your provider to confirm account deletion.</p>
-        </div>
-        
-        <div class="flex gap-2">
-          <button id="cancelDeleteBtn" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition">Cancel</button>
-          <button id="confirmDeleteBtn" class="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-semibold">Delete My Account</button>
-        </div>
-      </div>
-
-      <button id="closeDeleteModalBtn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>
