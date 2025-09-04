@@ -207,7 +207,7 @@ function handleAuthStateChange(user) {
     loggedOutState.classList.add('hidden');
     
     // Update user info
-    await decorateUserIdentity(user);
+    decorateUserIdentity(user);
     
     auth.loadUserWatchlist(user.uid).then(watchlist => {
       userWatchlist = watchlist;
