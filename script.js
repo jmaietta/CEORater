@@ -384,11 +384,9 @@ function showDeleteModal() {
 
 // ---------- Event Listeners ----------
 document.addEventListener('DOMContentLoaded', () => {
-  // Initialize Firebase auth state listener directly
-  firebase.auth().onAuthStateChanged(handleAuthStateChange);
-
-  // Handle any pending redirect results from OAuth login
-  firebase.auth().getRedirectResult().catch(() => {}); 
+  // Initialize auth immediately
+  auth.initAuth(handleAuthStateChange);
+  auth.completeRedirectLogin?.().catch(() => {}); 
   
   // Show UI structure immediately (app responsive within seconds)
   showSpinner(); // Show loading spinner
@@ -450,8 +448,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Account Deletion Event Listeners
-  deleteAccountBtn?.addEventListener('click', showDeleteModal);
-  
   closeDeleteModalBtn?.addEventListener('click', () => {
     deleteAccountModal.classList.add('hidden');
   });
@@ -679,4 +675,3 @@ document.addEventListener('DOMContentLoaded', () => {
     .catch(() => errorMessage.classList.remove('hidden'))
     .finally(() => loading.style.display = 'none');
 });
-
