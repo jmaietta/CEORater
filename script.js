@@ -94,6 +94,7 @@ function formatRelative(ts) {
 // Auth elements
 const loginBtn = $("loginBtn");
 const logoutBtn = $("logoutBtn");
+const deleteAccountBtn = $("deleteAccountBtn");
 const userEmail = $("userEmail");
 const watchlistCount = $("watchlistCount");
 const loginModal = $("loginModal");
@@ -105,6 +106,15 @@ const signUpEmail = $("signUpEmail");
 const emailInput = $("emailInput");
 const passwordInput = $("passwordInput");
 const forgotPasswordLink = $("forgotPasswordLink");
+
+// Account Deletion Modal Elements
+const deleteAccountModal = $("deleteAccountModal");
+const closeDeleteModalBtn = $("closeDeleteModalBtn");
+const cancelDeleteBtn = $("cancelDeleteBtn");
+const confirmDeleteBtn = $("confirmDeleteBtn");
+const deletePasswordInput = $("deletePasswordInput");
+const deletePasswordSection = $("deletePasswordSection");
+const deleteOAuthSection = $("deleteOAuthSection");
 
 // View toggle
 const allCeosTab = $("allCeosTab");
@@ -142,6 +152,7 @@ function handleAuthStateChange(user) {
   if (user) {
     loginBtn.classList.add('hidden');
     logoutBtn.classList.remove('hidden');
+    deleteAccountBtn.classList.remove('hidden');
     userEmail.classList.remove('hidden');
     // We no longer need the separate watchlistBtn, so we can remove references to it here.
     userEmail.textContent = user.email;
@@ -153,6 +164,7 @@ function handleAuthStateChange(user) {
   } else {
     loginBtn.classList.remove('hidden');
     logoutBtn.classList.add('hidden');
+    deleteAccountBtn.classList.add('hidden');
     userEmail.classList.add('hidden');
     userWatchlist.clear();
     comparisonSet.clear();
@@ -279,6 +291,97 @@ function sortAndRender() {
 
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms) } }
 
+// ---------- Account Deletion Functions ----------
+async function handleAccountDeletion() {
+  const user = currentUser;
+  if (!user) {
+    alert('No user signed in');
+    return;
+  }
+
+  const password = deletePasswordInput.value.trim();
+  
+  try {
+    // Check which provider the user is using
+    const providers = user.providerData.map(p => p.providerId);
+    
+    if (providers.includes('google.com')) {
+      // For Google users, reauthenticate with Google
+      await auth.signInWithGoogle();
+    } else if (providers.includes('microsoft.com')) {
+      // For Microsoft users, reauthenticate with Microsoft
+      await auth.signInWithMicrosoft();
+    } else if (providers.includes('password')) {
+      // For email/password users, reauthenticate with password
+      if (!password) {
+        alert('Please enter your password to confirm deletion');
+        return;
+      }
+      const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
+      await user.reauthenticateWithCredential(credential);
+    }
+
+    // Delete user data from Firestore
+    try {
+      const db = firebase.firestore();
+      await db.collection('watchlists').doc(user.uid).delete();
+    } catch (firestoreError) {
+      console.log('Watchlist deletion error (may not exist):', firestoreError);
+    }
+
+    // Optional: If you have a backend purge endpoint, call it here
+    // const PURGE_ENDPOINT = 'https://get-ceos-test-847610982404.us-east4.run.app/purgeUserData';
+    // const idToken = await user.getIdToken();
+    // await fetch(PURGE_ENDPOINT, {
+    //   method: 'POST',
+    //   headers: { 
+    //     'Content-Type': 'application/json', 
+    //     'Authorization': `Bearer ${idToken}` 
+    //   },
+    //   body: JSON.stringify({ uid: user.uid })
+    // });
+    
+    // Delete the user account
+    await user.delete();
+    
+    deleteAccountModal.classList.add('hidden');
+    alert('Your account has been permanently deleted.');
+    window.location.href = '/';
+    
+  } catch (error) {
+    console.error('Account deletion error:', error);
+    if (error.code === 'auth/wrong-password') {
+      alert('Incorrect password. Please try again.');
+    } else if (error.code === 'auth/requires-recent-login') {
+      alert('For security, please sign out and sign in again before deleting your account.');
+    } else {
+      alert('Failed to delete account: ' + (error.message || 'Unknown error'));
+    }
+  }
+}
+
+function showDeleteModal() {
+  if (!currentUser) return;
+  
+  // Reset modal state
+  deletePasswordInput.value = '';
+  deletePasswordSection.classList.add('hidden');
+  deleteOAuthSection.classList.add('hidden');
+  
+  // Check which provider the user is using
+  const providers = currentUser.providerData.map(p => p.providerId);
+  
+  if (providers.includes('password')) {
+    // Show password input for email/password users
+    deletePasswordSection.classList.remove('hidden');
+  } else if (providers.includes('google.com') || providers.includes('microsoft.com')) {
+    // Show OAuth message for social login users
+    deleteOAuthSection.classList.remove('hidden');
+  }
+  
+  deleteAccountModal.classList.remove('hidden');
+}
+
 // ---------- Event Listeners ----------
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize auth immediately
@@ -343,6 +446,25 @@ document.addEventListener('DOMContentLoaded', () => {
   loginModal.addEventListener('click', e => {
     if (e.target === loginModal) loginModal.classList.add('hidden');
   });
+
+  // Account Deletion Event Listeners
+  deleteAccountBtn?.addEventListener('click', showDeleteModal);
+  
+  closeDeleteModalBtn?.addEventListener('click', () => {
+    deleteAccountModal.classList.add('hidden');
+  });
+  
+  cancelDeleteBtn?.addEventListener('click', () => {
+    deleteAccountModal.classList.add('hidden');
+  });
+  
+  deleteAccountModal?.addEventListener('click', e => {
+    if (e.target === deleteAccountModal) {
+      deleteAccountModal.classList.add('hidden');
+    }
+  });
+  
+  confirmDeleteBtn?.addEventListener('click', handleAccountDeletion);
 
   ceoCardView.addEventListener('click', (e) => {
       const star = e.target.closest('.watchlist-star');
@@ -522,14 +644,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !loginModal.classList.contains('hidden')) {
-      loginModal.classList.add('hidden');
-    }
-    if (e.key === 'Escape' && !ceoDetailModal.classList.contains('hidden')) {
+    if (e.key === 'Escape') {
+      if (!loginModal.classList.contains('hidden')) {
+        loginModal.classList.add('hidden');
+      } else if (!deleteAccountModal.classList.contains('hidden')) {
+        deleteAccountModal.classList.add('hidden');
+      } else if (!ceoDetailModal.classList.contains('hidden')) {
         ceoDetailModal.classList.add('hidden');
-    }
-    if (e.key === 'Escape' && !comparisonModal.classList.contains('hidden')) {
+      } else if (!comparisonModal.classList.contains('hidden')) {
         comparisonModal.classList.add('hidden');
+      }
     }
   });
 
@@ -553,4 +677,3 @@ document.addEventListener('DOMContentLoaded', () => {
     .catch(() => errorMessage.classList.remove('hidden'))
     .finally(() => loading.style.display = 'none');
 });
-
