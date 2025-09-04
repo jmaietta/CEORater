@@ -38,6 +38,27 @@ const noResults = $("noResults");
 const loading = $("loading");
 const errorMessage = $("error-message");
 
+// ===== Minimal identity helpers (mask email + initials) =====
+function maskEmail(email) {
+  if (!email || !email.includes('@')) return email;
+  const [u, d] = email.split('@');
+  const shown = u.slice(0, Math.min(2, u.length));
+  const stars = Math.max(1, u.length - shown.length);
+  return `${shown}${'*'.repeat(stars)}@${d}`;
+}
+function setIdentityUI(user) {
+  const nameOrMasked = maskEmail(user.email);
+  const initials = user.email.split('@')[0].slice(0, 2).toUpperCase();
+
+  const userEmailDisplay = document.getElementById('userEmailDisplay');
+  const userEmailDropdown = document.getElementById('userEmailDropdown');
+  const userAvatar = document.getElementById('userAvatar');
+
+  if (userEmailDisplay) userEmailDisplay.textContent = nameOrMasked;
+  if (userEmailDropdown) userEmailDropdown.textContent = nameOrMasked;
+  if (userAvatar) userAvatar.textContent = initials;
+}
+// =========================================================
 
 // --- Spinner helpers (bulletproof) ---
 function hideSpinner() {
@@ -175,15 +196,10 @@ function handleAuthStateChange(user) {
     // Show logged in state
     loggedInState.classList.remove('hidden');
     loggedOutState.classList.add('hidden');
-    
-    // Update user info
-    userEmailDisplay.textContent = user.email;
-    userEmailDropdown.textContent = user.email;
-    
-    // Set avatar initials
-    const initials = user.email.split('@')[0].slice(0, 2).toUpperCase();
-    userAvatar.textContent = initials;
-    
+
+    // Update header identity (masked email + initials)
+    setIdentityUI(user);
+
     auth.loadUserWatchlist(user.uid).then(watchlist => {
       userWatchlist = watchlist;
       updateWatchlistCount();
@@ -447,23 +463,18 @@ function initializeProfilePage() {
   if (typeof firebase !== 'undefined' && firebase.auth) {
     firebase.auth().onAuthStateChanged((user) => {
       if (user) {
-        // Update user info in the profile page
-        const userEmail = user.email;
-        
-        // Update email displays
-        const emailElements = document.querySelectorAll('[id*="userEmail"], [data-user-email]');
-        emailElements.forEach(el => {
-          if (el) el.textContent = userEmail;
-        });
+        // Update ONLY the profile page email (keep header masked)
+        const profileEmail = document.getElementById('profileEmail');
+        if (profileEmail) profileEmail.textContent = user.email;
 
         // Update expected email in delete confirmation
         const expectedEmailEl = document.querySelector('.text-xs.text-gray-500');
         if (expectedEmailEl && expectedEmailEl.textContent.includes('Expected:')) {
-          expectedEmailEl.textContent = `Expected: ${userEmail}`;
+          expectedEmailEl.textContent = `Expected: ${user.email}`;
         }
 
-        // Update avatar initials
-        const initials = userEmail.split('@')[0].slice(0, 2).toUpperCase();
+        // Update avatar initials on profile page (not header)
+        const initials = user.email.split('@')[0].slice(0, 2).toUpperCase();
         const avatars = document.querySelectorAll('[data-user-avatar]');
         avatars.forEach(avatar => {
           if (avatar) avatar.textContent = initials;
