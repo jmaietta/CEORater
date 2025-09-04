@@ -91,6 +91,26 @@ function formatRelative(ts) {
   return days === 1 ? 'yesterday' : `${days} days ago`;
 }
 
+// Profile page navigation function that works for both PWA and native iOS
+function navigateToProfile() {
+  if (isIOSNative) {
+    // For iOS native app, we can use Capacitor's Browser plugin
+    // or implement in-app navigation
+    if (window.Capacitor?.Plugins?.Browser) {
+      window.Capacitor.Plugins.Browser.open({
+        url: window.location.origin + '/profile.html',
+        windowName: '_self'
+      });
+    } else {
+      // Fallback: navigate within the same webview
+      window.location.href = '/profile.html';
+    }
+  } else {
+    // For PWA/web, use standard navigation
+    window.location.href = '/profile.html';
+  }
+}
+
 // Auth elements - Updated for dropdown
 const loginBtn = $("loginBtn");
 const logoutBtn = $("logoutBtn");
@@ -115,6 +135,9 @@ const userEmailDisplay = $("userEmailDisplay");
 const userEmailDropdown = $("userEmailDropdown");
 const userAvatar = $("userAvatar");
 const dropdownIcon = $("dropdownIcon");
+
+// Account Settings button
+const accountSettingsBtn = $("accountSettingsBtn");
 
 // Account Deletion Modal Elements
 const deleteAccountModal = $("deleteAccountModal");
@@ -397,10 +420,190 @@ function showDeleteModal() {
   deleteAccountModal.classList.remove('hidden');
 }
 
+// ---------- Profile Page Integration ----------
+// Make handleAccountDeletion available globally for profile page
+window.handleAccountDeletion = handleAccountDeletion;
+window.currentUser = null;
+
+// Update global currentUser when auth state changes
+function updateGlobalUser(user) {
+  window.currentUser = user;
+}
+
+// Profile page specific functionality
+function initializeProfilePage() {
+  if (!window.location.pathname.includes('profile.html')) return;
+  
+  // Navigation functionality
+  const navItems = document.querySelectorAll('.nav-item');
+  const sections = document.querySelectorAll('.settings-section');
+
+  function showSection(targetId) {
+    sections.forEach(section => {
+      if (section.id === targetId) {
+        section.classList.remove('hidden');
+      } else {
+        section.classList.add('hidden');
+      }
+    });
+
+    navItems.forEach(item => {
+      const href = item.getAttribute('href');
+      if (href === `#${targetId}`) {
+        item.classList.add('active');
+      } else {
+        item.classList.remove('active');
+      }
+    });
+  }
+
+  navItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetId = item.getAttribute('href').substring(1);
+      showSection(targetId);
+    });
+  });
+
+  // Handle Firebase auth on profile page
+  if (typeof firebase !== 'undefined' && firebase.auth) {
+    firebase.auth().onAuthStateChanged((user) => {
+      if (user) {
+        // Update user info in the profile page
+        const userEmail = user.email;
+        
+        // Update email displays
+        const emailElements = document.querySelectorAll('[id*="userEmail"], [data-user-email]');
+        emailElements.forEach(el => {
+          if (el) el.textContent = userEmail;
+        });
+
+        // Update expected email in delete confirmation
+        const expectedEmailEl = document.querySelector('.text-xs.text-gray-500');
+        if (expectedEmailEl && expectedEmailEl.textContent.includes('Expected:')) {
+          expectedEmailEl.textContent = `Expected: ${userEmail}`;
+        }
+
+        // Update avatar initials
+        const initials = userEmail.split('@')[0].slice(0, 2).toUpperCase();
+        const avatars = document.querySelectorAll('[data-user-avatar]');
+        avatars.forEach(avatar => {
+          if (avatar) avatar.textContent = initials;
+        });
+
+        // Set up account deletion with proper confirmation
+        setupProfileAccountDeletion(user);
+      } else {
+        // Redirect to login if not authenticated
+        window.location.href = '/';
+      }
+    });
+  }
+
+  function setupProfileAccountDeletion(user) {
+    const deleteBtn = document.getElementById('deleteAccountBtn');
+    const deleteModal = document.getElementById('deleteConfirmModal');
+    const cancelBtn = document.getElementById('cancelDelete');
+    const confirmBtn = document.getElementById('confirmDelete');
+    const emailInput = document.getElementById('emailConfirmation');
+
+    deleteBtn?.addEventListener('click', () => {
+      deleteModal?.classList.remove('hidden');
+      // Set the expected email in the placeholder and helper text
+      const expectedEmailEl = document.querySelector('.text-xs.text-gray-500');
+      if (expectedEmailEl) {
+        expectedEmailEl.textContent = `Expected: ${user.email}`;
+      }
+      if (emailInput) {
+        emailInput.placeholder = user.email;
+        emailInput.value = '';
+      }
+      if (confirmBtn) {
+        confirmBtn.disabled = true;
+      }
+    });
+
+    cancelBtn?.addEventListener('click', () => {
+      deleteModal?.classList.add('hidden');
+      if (emailInput) emailInput.value = '';
+      if (confirmBtn) confirmBtn.disabled = true;
+    });
+
+    emailInput?.addEventListener('input', () => {
+      if (confirmBtn) {
+        confirmBtn.disabled = emailInput.value !== user.email;
+      }
+    });
+
+    confirmBtn?.addEventListener('click', async () => {
+      try {
+        // Use the global handleAccountDeletion function
+        await window.handleAccountDeletion();
+      } catch (error) {
+        console.error('Account deletion failed:', error);
+        alert('Account deletion failed: ' + error.message);
+      }
+    });
+
+    // Close modal when clicking outside
+    deleteModal?.addEventListener('click', (e) => {
+      if (e.target === deleteModal) {
+        deleteModal.classList.add('hidden');
+        if (emailInput) emailInput.value = '';
+        if (confirmBtn) confirmBtn.disabled = true;
+      }
+    });
+  }
+
+  // Handle back navigation for iOS
+  const backBtn = document.querySelector('a[href="/"]');
+  if (backBtn) {
+    backBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      
+      if (isIOSNative) {
+        // For iOS, use history or navigate back
+        if (window.history.length > 1) {
+          window.history.back();
+        } else {
+          window.location.href = '/';
+        }
+      } else {
+        window.location.href = '/';
+      }
+    });
+  }
+
+  // Add CSS for nav items
+  const style = document.createElement('style');
+  style.textContent = `
+    .nav-item {
+      color: #6B7280;
+      transition: all 0.2s;
+    }
+    .nav-item:hover {
+      color: #374151;
+      background-color: #F9FAFB;
+    }
+    .nav-item.active {
+      color: #2563EB;
+      background-color: #EFF6FF;
+      border-color: #DBEAFE;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 // ---------- Event Listeners ----------
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize profile page if we're on it
+  initializeProfilePage();
+  
   // Initialize Firebase auth state listener directly
-  firebase.auth().onAuthStateChanged(handleAuthStateChange);
+  firebase.auth().onAuthStateChanged((user) => {
+    handleAuthStateChange(user);
+    updateGlobalUser(user);
+  });
 
   // Handle any pending redirect results from OAuth login
   firebase.auth().getRedirectResult().catch(() => {}); 
@@ -476,6 +679,12 @@ document.addEventListener('DOMContentLoaded', () => {
       userDropdown.classList.remove('hidden');
       dropdownIcon.style.transform = 'rotate(180deg)';
     }
+  });
+
+  // Account Settings navigation
+  accountSettingsBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    navigateToProfile();
   });
 
   // Close dropdown when clicking outside
