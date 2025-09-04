@@ -25,36 +25,6 @@ import { fetchData } from './GoogleSheet.js';
 import * as ui from './ui.js';
 import * as auth from './auth.js';
 
-
-// === Identity display helpers (username + initials with Firestore) ===
-function maskEmail(email) {
-  if (!email || typeof email !== 'string' || !email.includes('@')) return email;
-  const [user, domain] = email.split('@');
-  const shown = user.slice(0, Math.min(2, user.length));
-  const stars = Math.max(1, user.length - shown.length);
-  return `${shown}${'*'.repeat(stars)}@${domain}`;
-}
-
-async function decorateUserIdentity(user) {
-  try {
-    const db = firebase.firestore();
-    const snap = await db.collection('users').doc(user.uid).get();
-    const data = snap.exists ? snap.data() : {};
-    const nameOrMasked = data.username || maskEmail(user.email);
-    const initials = (data.initials || user.email.split('@')[0].slice(0,2)).toUpperCase();
-
-    if (typeof userEmailDisplay !== 'undefined' && userEmailDisplay) userEmailDisplay.textContent = nameOrMasked;
-    if (typeof userEmailDropdown !== 'undefined' && userEmailDropdown) userEmailDropdown.textContent = nameOrMasked;
-    if (typeof userAvatar !== 'undefined' && userAvatar) userAvatar.textContent = (user.email.split('@')[0].slice(0,2)).toUpperCase();
-  } catch (e) {
-    console.warn('decorateUserIdentity fallback due to error:', e);
-    const fallbackMasked = maskEmail(user.email);
-    if (typeof userEmailDisplay !== 'undefined' && userEmailDisplay) userEmailDisplay.textContent = fallbackMasked;
-    if (typeof userEmailDropdown !== 'undefined' && userEmailDropdown) userEmailDropdown.textContent = fallbackMasked;
-    if (typeof userAvatar !== 'undefined' && userAvatar) userAvatar.textContent = (user.email.split('@')[0].slice(0,2)).toUpperCase();
-  }
-}
-// === End identity helpers ===
 // ---------- DOM Elements (for event listeners) ----------
 const $ = id => document.getElementById(id);
 const searchInput = $("searchInput");
@@ -207,7 +177,12 @@ function handleAuthStateChange(user) {
     loggedOutState.classList.add('hidden');
     
     // Update user info
-    decorateUserIdentity(user);
+    userEmailDisplay.textContent = user.email;
+    userEmailDropdown.textContent = user.email;
+    
+    // Set avatar initials
+    const initials = user.email.split('@')[0].slice(0, 2).toUpperCase();
+    userAvatar.textContent = initials;
     
     auth.loadUserWatchlist(user.uid).then(watchlist => {
       userWatchlist = watchlist;
