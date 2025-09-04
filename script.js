@@ -577,7 +577,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const password = passwordInput.value;
     if (!email || !password) return;
     
-    auth.signInWithEmail(email, password).then(() => {
+    auth.signInWithEmailSmart(email, password).then(() => {
       loginModal.classList.add('hidden');
     }).catch(error => {
       console.error('Email sign in error:', error);
