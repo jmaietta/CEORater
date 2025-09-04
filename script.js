@@ -25,6 +25,14 @@ import { fetchData } from './GoogleSheet.js';
 import * as ui from './ui.js';
 import * as auth from './auth.js';
 
+// ---------- Helpers to ensure Firebase is ready ----------
+function waitForFirebaseAuth(cb, tries = 80) {
+  // wait up to ~8s (80 * 100ms) for firebase + auth to exist
+  if (window.firebase && firebase.auth) return cb();
+  if (tries <= 0) return;
+  setTimeout(() => waitForFirebaseAuth(cb, tries - 1), 100);
+}
+
 // ---------- DOM Elements (for event listeners) ----------
 const $ = id => document.getElementById(id);
 const searchInput = $("searchInput");
@@ -38,17 +46,18 @@ const noResults = $("noResults");
 const loading = $("loading");
 const errorMessage = $("error-message");
 
-// ===== Minimal identity helpers (mask email + initials) =====
+// ===== Identity helpers (mask email + robust initials) =====
 function maskEmail(email) {
-  if (!email || !email.includes('@')) return email;
+  if (!email || typeof email !== 'string' || !email.includes('@')) return email || '';
   const [u, d] = email.split('@');
   const shown = u.slice(0, Math.min(2, u.length));
   const stars = Math.max(1, u.length - shown.length);
   return `${shown}${'*'.repeat(stars)}@${d}`;
 }
 function setIdentityUI(user) {
-  const nameOrMasked = maskEmail(user.email);
-  const initials = user.email.split('@')[0].slice(0, 2).toUpperCase();
+  const localPart = (user?.email && user.email.split('@')[0]) || user?.displayName || '';
+  const initials = (localPart.slice(0, 2).toUpperCase()) || '--';
+  const nameOrMasked = user?.email ? maskEmail(user.email) : (user?.displayName || '');
 
   const userEmailDisplay = document.getElementById('userEmailDisplay');
   const userEmailDropdown = document.getElementById('userEmailDropdown');
@@ -105,19 +114,15 @@ function formatRelative(ts) {
 // Profile page navigation function that works for both PWA and native iOS
 function navigateToProfile() {
   if (isIOSNative) {
-    // For iOS native app, we can use Capacitor's Browser plugin
-    // or implement in-app navigation
     if (window.Capacitor?.Plugins?.Browser) {
       window.Capacitor.Plugins.Browser.open({
         url: window.location.origin + '/profile.html',
         windowName: '_self'
       });
     } else {
-      // Fallback: navigate within the same webview
       window.location.href = '/profile.html';
     }
   } else {
-    // For PWA/web, use standard navigation
     window.location.href = '/profile.html';
   }
 }
@@ -253,7 +258,6 @@ async function toggleWatchlist(ticker) {
 }
 
 function updateWatchlistCount() {
-    // Also show/hide the badge if the count is > 0
     if (watchlistCount) {
         if (userWatchlist.size > 0) {
             watchlistCount.textContent = userWatchlist.size;
@@ -313,7 +317,6 @@ function sortAndRender() {
     let A = a[currentSort.key];
     let B = b[currentSort.key];
     
-    // Special handling for CEORaterScore - treat null values as 0 for sorting
     if (currentSort.key === 'ceoRaterScore') {
       A = A ?? 0;
       B = B ?? 0;
@@ -346,17 +349,13 @@ async function handleAccountDeletion() {
   const password = deletePasswordInput.value.trim();
   
   try {
-    // Check which provider the user is using
     const providers = user.providerData.map(p => p.providerId);
     
     if (providers.includes('google.com')) {
-      // For Google users, reauthenticate with Google
       await auth.signInWithGoogle();
     } else if (providers.includes('microsoft.com')) {
-      // For Microsoft users, reauthenticate with Microsoft
       await auth.signInWithMicrosoft();
     } else if (providers.includes('password')) {
-      // For email/password users, reauthenticate with password
       if (!password) {
         alert('Please enter your password to confirm deletion');
         return;
@@ -365,7 +364,6 @@ async function handleAccountDeletion() {
       await user.reauthenticateWithCredential(credential);
     }
 
-    // Delete user data from Firestore
     try {
       const db = firebase.firestore();
       await db.collection('watchlists').doc(user.uid).delete();
@@ -373,7 +371,6 @@ async function handleAccountDeletion() {
       console.log('Watchlist deletion error (may not exist):', firestoreError);
     }
     
-    // Delete the user account
     await user.delete();
     
     deleteAccountModal.classList.add('hidden');
@@ -395,19 +392,15 @@ async function handleAccountDeletion() {
 function showDeleteModal() {
   if (!currentUser) return;
   
-  // Reset modal state
   deletePasswordInput.value = '';
   deletePasswordSection.classList.add('hidden');
   deleteOAuthSection.classList.add('hidden');
   
-  // Check which provider the user is using
   const providers = currentUser.providerData.map(p => p.providerId);
   
   if (providers.includes('password')) {
-    // Show password input for email/password users
     deletePasswordSection.classList.remove('hidden');
   } else if (providers.includes('google.com') || providers.includes('microsoft.com')) {
-    // Show OAuth message for social login users
     deleteOAuthSection.classList.remove('hidden');
   }
   
@@ -415,20 +408,16 @@ function showDeleteModal() {
 }
 
 // ---------- Profile Page Integration ----------
-// Make handleAccountDeletion available globally for profile page
 window.handleAccountDeletion = handleAccountDeletion;
 window.currentUser = null;
 
-// Update global currentUser when auth state changes
 function updateGlobalUser(user) {
   window.currentUser = user;
 }
 
-// Profile page specific functionality
 function initializeProfilePage() {
   if (!window.location.pathname.includes('profile.html')) return;
   
-  // Navigation functionality
   const navItems = document.querySelectorAll('.nav-item');
   const sections = document.querySelectorAll('.settings-section');
 
@@ -459,31 +448,25 @@ function initializeProfilePage() {
     });
   });
 
-  // Handle Firebase auth on profile page
   if (typeof firebase !== 'undefined' && firebase.auth) {
     firebase.auth().onAuthStateChanged((user) => {
       if (user) {
-        // Update ONLY the profile page email (keep header masked)
         const profileEmail = document.getElementById('profileEmail');
         if (profileEmail) profileEmail.textContent = user.email;
 
-        // Update expected email in delete confirmation
         const expectedEmailEl = document.querySelector('.text-xs.text-gray-500');
         if (expectedEmailEl && expectedEmailEl.textContent.includes('Expected:')) {
           expectedEmailEl.textContent = `Expected: ${user.email}`;
         }
 
-        // Update avatar initials on profile page (not header)
         const initials = user.email.split('@')[0].slice(0, 2).toUpperCase();
         const avatars = document.querySelectorAll('[data-user-avatar]');
         avatars.forEach(avatar => {
           if (avatar) avatar.textContent = initials;
         });
 
-        // Set up account deletion with proper confirmation
         setupProfileAccountDeletion(user);
       } else {
-        // Redirect to login if not authenticated
         window.location.href = '/';
       }
     });
@@ -498,7 +481,6 @@ function initializeProfilePage() {
 
     deleteBtn?.addEventListener('click', () => {
       deleteModal?.classList.remove('hidden');
-      // Set the expected email in the placeholder and helper text
       const expectedEmailEl = document.querySelector('.text-xs.text-gray-500');
       if (expectedEmailEl) {
         expectedEmailEl.textContent = `Expected: ${user.email}`;
@@ -526,7 +508,6 @@ function initializeProfilePage() {
 
     confirmBtn?.addEventListener('click', async () => {
       try {
-        // Use the global handleAccountDeletion function
         await window.handleAccountDeletion();
       } catch (error) {
         console.error('Account deletion failed:', error);
@@ -534,7 +515,6 @@ function initializeProfilePage() {
       }
     });
 
-    // Close modal when clicking outside
     deleteModal?.addEventListener('click', (e) => {
       if (e.target === deleteModal) {
         deleteModal.classList.add('hidden');
@@ -544,14 +524,12 @@ function initializeProfilePage() {
     });
   }
 
-  // Handle back navigation for iOS
   const backBtn = document.querySelector('a[href="/"]');
   if (backBtn) {
     backBtn.addEventListener('click', (e) => {
       e.preventDefault();
       
       if (isIOSNative) {
-        // For iOS, use history or navigate back
         if (window.history.length > 1) {
           window.history.back();
         } else {
@@ -563,7 +541,6 @@ function initializeProfilePage() {
     });
   }
 
-  // Add CSS for nav items
   const style = document.createElement('style');
   style.textContent = `
     .nav-item {
@@ -587,18 +564,34 @@ function initializeProfilePage() {
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize profile page if we're on it
   initializeProfilePage();
-  
-  // Initialize Firebase auth state listener directly
-  firebase.auth().onAuthStateChanged((user) => {
-    handleAuthStateChange(user);
-    updateGlobalUser(user);
-  });
 
-  // Handle any pending redirect results from OAuth login
-  firebase.auth().getRedirectResult().catch(() => {}); 
+  // Initialize Firebase auth listener only after Firebase is ready
+  waitForFirebaseAuth(() => {
+    try {
+      if (firebase.apps?.length === 0 && window.firebaseConfig) {
+        firebase.initializeApp(window.firebaseConfig);
+      }
+    } catch (_) {}
+
+    firebase.auth().onAuthStateChanged((user) => {
+      handleAuthStateChange(user);
+      updateGlobalUser(user);
+    });
+
+    // Hot-load fallback in case user is already signed in
+    const u = firebase.auth().currentUser;
+    if (u) {
+      handleAuthStateChange(u);
+      updateGlobalUser(u);
+    }
+
+    // Handle any pending redirect results from OAuth login
+    firebase.auth().getRedirectResult().catch(() => {});
+  });
   
   // Show UI structure immediately (app responsive within seconds)
   showSpinner(); // Show loading spinner
+
   // Instant offline-first hydrate from local cache (if present)
   try {
     const bundle = getCachedBundle();
@@ -612,7 +605,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   } catch (_) {}
 
-  
   // Set up ALL event listeners IMMEDIATELY - app is now interactive
   searchInput.addEventListener('input', debounce(applyFilters, 300));
   industryFilter.addEventListener('change', applyFilters);
@@ -637,7 +629,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     obs.observe(grid, { childList: true });
   })();
-
 
   // Mobile filter toggle listener
   toggleFiltersBtn.addEventListener('click', () => {
@@ -732,15 +723,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Listener for the entire comparison tray (handles "x" and "Clear All")
   comparisonTray.addEventListener('click', e => {
-    // Handle "Clear All" button click
     if (e.target.id === 'clearCompareBtn') {
         comparisonSet.clear();
         sortAndRender();
         ui.updateComparisonTray(comparisonSet);
         return;
     }
-
-    // Handle individual remove ("x") button clicks
     const removeBtn = e.target.closest('.remove-from-tray-btn');
     if (removeBtn) {
         const ticker = removeBtn.dataset.ticker;
@@ -842,7 +830,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     
-    // Updated headers to include CEORaterScore
     const headers = ['CEO', 'Company', 'Ticker', 'CEORaterScore', 'AlphaScore', 'CompScore', 'Market Cap ($B)', 'AlphaScore Quartile', 'TSR Alpha', 'Avg Annual TSR Alpha', 'Industry', 'Sector', 'TSR During Tenure', 'Avg Annual TSR', 'Compensation ($MM)', 'Comp Cost / 1% Avg TSR ($MM)', 'Tenure (yrs)', 'Founder'];
     
     const csvContent = [
@@ -851,7 +838,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `"${c.ceo}"`,
         `"${c.company}"`,
         c.ticker,
-        c.ceoRaterScore ? Math.round(c.ceoRaterScore) : 'N/A', // NEW: CEORaterScore
+        c.ceoRaterScore ? Math.round(c.ceoRaterScore) : 'N/A',
         Math.round(c.alphaScore),
         c.compensationScore || 'N/A',
         (c.marketCap / 1e9).toFixed(2),
