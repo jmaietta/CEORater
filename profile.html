@@ -166,7 +166,6 @@
   <script>
     let currentUser = null;
 
-    // Wait until Firebase + Auth + config exist, then run cb
     function waitForFirebaseAuth(cb, tries = 120) {
       if (window.firebase && firebase.auth && window.firebaseConfig) {
         try { if (firebase.apps?.length === 0) firebase.initializeApp(window.firebaseConfig); } catch (_) {}
@@ -282,7 +281,6 @@
         }
       });
 
-      // Close when clicking the overlay
       modal?.addEventListener('click', (e) => {
         if (e.target === modal) {
           modal.classList.add('hidden');
@@ -293,11 +291,9 @@
     }
 
     function boot() {
-      // If already signed in, fill immediately
       const u = firebase.auth().currentUser;
       if (u) { currentUser = u; fillProfile(u); }
 
-      // Listener
       firebase.auth().onAuthStateChanged((user) => {
         if (user) {
           currentUser = user;
@@ -307,7 +303,6 @@
         }
       });
 
-      // A couple of retries in case user object hydrates slowly
       setTimeout(() => { const u = firebase.auth().currentUser; if (u) fillProfile(u); }, 400);
       setTimeout(() => { const u = firebase.auth().currentUser; if (u) fillProfile(u); }, 1200);
 
