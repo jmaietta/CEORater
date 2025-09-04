@@ -91,11 +91,10 @@ function formatRelative(ts) {
   return days === 1 ? 'yesterday' : `${days} days ago`;
 }
 
-// Auth elements
+// Auth elements - Updated for dropdown
 const loginBtn = $("loginBtn");
 const logoutBtn = $("logoutBtn");
 const deleteAccountBtn = $("deleteAccountBtn");
-const userEmail = $("userEmail");
 const watchlistCount = $("watchlistCount");
 const loginModal = $("loginModal");
 const closeLoginModalBtn = $("closeLoginModalBtn");
@@ -106,6 +105,16 @@ const signUpEmail = $("signUpEmail");
 const emailInput = $("emailInput");
 const passwordInput = $("passwordInput");
 const forgotPasswordLink = $("forgotPasswordLink");
+
+// New dropdown elements
+const loggedInState = $("loggedInState");
+const loggedOutState = $("loggedOutState");
+const userMenuButton = $("userMenuButton");
+const userDropdown = $("userDropdown");
+const userEmailDisplay = $("userEmailDisplay");
+const userEmailDropdown = $("userEmailDropdown");
+const userAvatar = $("userAvatar");
+const dropdownIcon = $("dropdownIcon");
 
 // Account Deletion Modal Elements
 const deleteAccountModal = $("deleteAccountModal");
@@ -150,22 +159,28 @@ let currentView = 'all';
 function handleAuthStateChange(user) {
   currentUser = user;
   if (user) {
-    loginBtn.classList.add('hidden');
-    logoutBtn.classList.remove('hidden');
-    deleteAccountBtn.classList.remove('hidden');
-    userEmail.classList.remove('hidden');
-    // We no longer need the separate watchlistBtn, so we can remove references to it here.
-    userEmail.textContent = user.email;
+    // Show logged in state
+    loggedInState.classList.remove('hidden');
+    loggedOutState.classList.add('hidden');
+    
+    // Update user info
+    userEmailDisplay.textContent = user.email;
+    userEmailDropdown.textContent = user.email;
+    
+    // Set avatar initials
+    const initials = user.email.split('@')[0].slice(0, 2).toUpperCase();
+    userAvatar.textContent = initials;
+    
     auth.loadUserWatchlist(user.uid).then(watchlist => {
-        userWatchlist = watchlist;
-        updateWatchlistCount();
-        refreshView();
+      userWatchlist = watchlist;
+      updateWatchlistCount();
+      refreshView();
     });
   } else {
-    loginBtn.classList.remove('hidden');
-    logoutBtn.classList.add('hidden');
-    deleteAccountBtn.classList.add('hidden');
-    userEmail.classList.add('hidden');
+    // Show logged out state
+    loggedInState.classList.add('hidden');
+    loggedOutState.classList.remove('hidden');
+    
     userWatchlist.clear();
     comparisonSet.clear();
     ui.updateComparisonTray(comparisonSet);
@@ -449,6 +464,30 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === loginModal) loginModal.classList.add('hidden');
   });
 
+  // User dropdown functionality
+  userMenuButton?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = !userDropdown.classList.contains('hidden');
+    
+    if (isOpen) {
+      userDropdown.classList.add('hidden');
+      dropdownIcon.style.transform = 'rotate(0deg)';
+    } else {
+      userDropdown.classList.remove('hidden');
+      dropdownIcon.style.transform = 'rotate(180deg)';
+    }
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!userDropdown.classList.contains('hidden') && 
+        !userMenuButton.contains(e.target) && 
+        !userDropdown.contains(e.target)) {
+      userDropdown.classList.add('hidden');
+      dropdownIcon.style.transform = 'rotate(0deg)';
+    }
+  });
+
   // Account Deletion Event Listeners
   closeDeleteModalBtn?.addEventListener('click', () => {
     deleteAccountModal.classList.add('hidden');
@@ -677,4 +716,3 @@ document.addEventListener('DOMContentLoaded', () => {
     .catch(() => errorMessage.classList.remove('hidden'))
     .finally(() => loading.style.display = 'none');
 });
-
