@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Account Settings - CEORater</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -157,7 +157,7 @@
     </div>
   </div>
 
-  <!-- Firebase and Auth Scripts -->
+  <!-- Firebase and Auth Scripts (defer so they load before DOMContentLoaded, in order) -->
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
@@ -166,13 +166,24 @@
   <script>
     let currentUser = null;
 
+    // Wait until Firebase + Auth + config exist, then run cb
+    function waitForFirebaseAuth(cb, tries = 120) { // ~12s max
+      if (window.firebase && firebase.auth && window.firebaseConfig) {
+        try {
+          if (firebase.apps?.length === 0) firebase.initializeApp(window.firebaseConfig);
+        } catch (_) {}
+        return cb();
+      }
+      if (tries <= 0) return;
+      setTimeout(() => waitForFirebaseAuth(cb, tries - 1), 100);
+    }
+
     function setVerificationLabel(user) {
       const el = document.getElementById('verificationLabel');
       if (!el || !user) return;
 
       const providers = (user.providerData || []).map(p => p.providerId);
-      el.classList.remove('text-green-600', 'text-yellow-600', 'text-blue-600', 'text-purple-600');
-
+      el.classList.remove('text-green-600', 'text-yellow-600');
       if (providers.includes('google.com')) {
         el.textContent = 'Signed in with Google';
         el.classList.add('text-green-600');
@@ -193,131 +204,119 @@
       }
     }
 
-    function updateProfileData(user) {
+    function fillProfile(user) {
       // Email
-      const profileEmail = document.getElementById('profileEmail');
-      if (profileEmail) profileEmail.textContent = user.email;
+      const emailEl = document.getElementById('profileEmail');
+      if (emailEl) emailEl.textContent = user.email || user.displayName || 'Signed in';
 
-      // Avatar initials (from local part of email)
-      const profileAvatar = document.getElementById('profileAvatar');
-      if (profileAvatar) {
-        const initials = user.email.split('@')[0].slice(0, 2).toUpperCase();
-        profileAvatar.textContent = initials || '--';
+      // Avatar initials from local-part (fallback to displayName)
+      const avatarEl = document.getElementById('profileAvatar');
+      if (avatarEl) {
+        const local = (user.email && user.email.split('@')[0]) || (user.displayName || '').split(' ')[0] || '';
+        const initials = local.slice(0, 2).toUpperCase() || '--';
+        avatarEl.textContent = initials;
       }
 
       // Member since
-      const memberSince = document.getElementById('profileMemberSince');
-      if (memberSince) {
-        if (user.metadata && user.metadata.creationTime) {
-          const date = new Date(user.metadata.creationTime);
-          memberSince.textContent = `Member since ${date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
-        } else {
-          memberSince.textContent = 'Member since 2025';
-        }
+      const sinceEl = document.getElementById('profileMemberSince');
+      if (sinceEl) {
+        const t = user.metadata?.creationTime ? new Date(user.metadata.creationTime) : null;
+        sinceEl.textContent = t
+          ? `Member since ${t.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+          : 'Member since 2025';
       }
 
-      // Delete modal helper text / placeholder
-      const expectedEmailText = document.getElementById('expectedEmailText');
-      if (expectedEmailText) expectedEmailText.textContent = `Expected: ${user.email}`;
-      const emailInput = document.getElementById('emailConfirmation');
-      if (emailInput) emailInput.placeholder = user.email;
+      // Modal helpers
+      const expectedEl = document.getElementById('expectedEmailText');
+      if (expectedEl) expectedEl.textContent = `Expected: ${user.email || ''}`;
+      const input = document.getElementById('emailConfirmation');
+      if (input) input.placeholder = user.email || '';
 
-      // Verification label
+      // Verification line
       setVerificationLabel(user);
     }
 
-    // Wait for all scripts to load
-    function initializeProfile() {
-      // Ensure Firebase present
-      if (!window.firebase) { setTimeout(initializeProfile, 100); return; }
-      if (!window.firebaseConfig) { setTimeout(initializeProfile, 100); return; }
+    function setupDeleteModal() {
+      const openBtn = document.getElementById('deleteAccountBtn');
+      const modal   = document.getElementById('deleteConfirmModal');
+      const cancel  = document.getElementById('cancelDelete');
+      const confirm = document.getElementById('confirmDelete');
+      const input   = document.getElementById('emailConfirmation');
 
-      // Initialize Firebase (ignore "already exists")
-      try { firebase.initializeApp(window.firebaseConfig); } catch (_) {}
+      openBtn?.addEventListener('click', () => {
+        modal?.classList.remove('hidden');
+        if (input) {
+          input.value = '';
+          input.placeholder = currentUser?.email || '';
+        }
+        if (confirm) confirm.disabled = true;
+      });
 
-      // If already signed in (hot load), fill immediately
-      if (firebase.auth().currentUser) {
-        currentUser = firebase.auth().currentUser;
-        updateProfileData(currentUser);
-      }
+      cancel?.addEventListener('click', () => {
+        modal?.classList.add('hidden');
+        if (input) input.value = '';
+        if (confirm) confirm.disabled = true;
+      });
 
-      // Auth listener (standard path)
+      input?.addEventListener('input', () => {
+        if (!confirm) return;
+        confirm.disabled = !(currentUser && input.value === currentUser.email);
+      });
+
+      confirm?.addEventListener('click', async () => {
+        try {
+          if (!currentUser) return;
+
+          // Try to delete watchlist doc (ignore if it doesn't exist)
+          try { await firebase.firestore().collection('watchlists').doc(currentUser.uid).delete(); } catch (_) {}
+
+          await currentUser.delete();
+          alert('Your account has been permanently deleted.');
+          window.location.href = '/CEORater/';
+        } catch (err) {
+          console.error('Account deletion failed:', err);
+          alert('Failed to delete account: ' + (err?.message || 'Unknown error'));
+        }
+      });
+
+      // Close when clicking the overlay
+      modal?.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.classList.add('hidden');
+          if (input) input.value = '';
+          if (confirm) confirm.disabled = true;
+        }
+      });
+    }
+
+    function boot() {
+      // If already signed in, fill immediately (hot load)
+      const u = firebase.auth().currentUser;
+      if (u) { currentUser = u; fillProfile(u); }
+
+      // Standard listener
       firebase.auth().onAuthStateChanged((user) => {
         if (user) {
           currentUser = user;
-          updateProfileData(user);
+          fillProfile(user);
         } else {
-          // NOTE: project pages need the repo path
+          // Not signed in -> back to app home (GitHub Pages project path)
           window.location.href = '/CEORater/';
         }
       });
 
-      setupEventListeners();
+      // A couple of retries in case the user object is slow to hydrate
+      setTimeout(() => { const u = firebase.auth().currentUser; if (u) fillProfile(u); }, 400);
+      setTimeout(() => { const u = firebase.auth().currentUser; if (u) fillProfile(u); }, 1200);
 
-      // Belt & suspenders: retry a couple times in case auth is slow
-      setTimeout(() => { const u = firebase.auth().currentUser; if (u) updateProfileData(u); }, 400);
-      setTimeout(() => { const u = firebase.auth().currentUser; if (u) updateProfileData(u); }, 1200);
+      setupDeleteModal();
     }
 
-    function setupEventListeners() {
-      // Back button
-      document.getElementById('backToHome').addEventListener('click', (e) => {
-        e.preventDefault();
-        window.location.href = '/CEORater/';
-      });
-
-      // Delete account button
-      document.getElementById('deleteAccountBtn').addEventListener('click', () => {
-        document.getElementById('deleteConfirmModal').classList.remove('hidden');
-      });
-
-      // Cancel delete
-      document.getElementById('cancelDelete').addEventListener('click', () => {
-        document.getElementById('deleteConfirmModal').classList.add('hidden');
-        document.getElementById('emailConfirmation').value = '';
-        document.getElementById('confirmDelete').disabled = true;
-      });
-
-      // Email confirmation input
-      document.getElementById('emailConfirmation').addEventListener('input', (e) => {
-        const confirmBtn = document.getElementById('confirmDelete');
-        const isMatch = currentUser && e.target.value === currentUser.email;
-        confirmBtn.disabled = !isMatch;
-      });
-
-      // Confirm delete (will usually require recent re-auth; your index flow handles providers)
-      document.getElementById('confirmDelete').addEventListener('click', async () => {
-        try {
-          if (currentUser) {
-            try {
-              const db = firebase.firestore();
-              await db.collection('watchlists').doc(currentUser.uid).delete();
-            } catch (_) {}
-            await currentUser.delete();
-            alert('Your account has been permanently deleted.');
-            window.location.href = '/CEORater/';
-          }
-        } catch (error) {
-          console.error('Account deletion failed:', error);
-          alert('Failed to delete account: ' + (error.message || 'Unknown error'));
-        }
-      });
-
-      // Close modal on outside click
-      document.getElementById('deleteConfirmModal').addEventListener('click', (e) => {
-        if (e.target.id === 'deleteConfirmModal') {
-          document.getElementById('deleteConfirmModal').classList.add('hidden');
-          document.getElementById('emailConfirmation').value = '';
-          document.getElementById('confirmDelete').disabled = true;
-        }
-      });
-    }
-
-    // Start initialization when DOM is ready
+    // Start when DOM is ready and Firebase is available
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initializeProfile);
+      document.addEventListener('DOMContentLoaded', () => waitForFirebaseAuth(boot));
     } else {
-      initializeProfile();
+      waitForFirebaseAuth(boot);
     }
   </script>
 </body>
