@@ -157,7 +157,7 @@
     </div>
   </div>
 
-  <!-- Firebase and Auth Scripts (defer so they load before DOMContentLoaded, in order) -->
+  <!-- Firebase and Auth Scripts -->
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
@@ -167,11 +167,9 @@
     let currentUser = null;
 
     // Wait until Firebase + Auth + config exist, then run cb
-    function waitForFirebaseAuth(cb, tries = 120) { // ~12s max
+    function waitForFirebaseAuth(cb, tries = 120) {
       if (window.firebase && firebase.auth && window.firebaseConfig) {
-        try {
-          if (firebase.apps?.length === 0) firebase.initializeApp(window.firebaseConfig);
-        } catch (_) {}
+        try { if (firebase.apps?.length === 0) firebase.initializeApp(window.firebaseConfig); } catch (_) {}
         return cb();
       }
       if (tries <= 0) return;
@@ -181,9 +179,8 @@
     function setVerificationLabel(user) {
       const el = document.getElementById('verificationLabel');
       if (!el || !user) return;
-
       const providers = (user.providerData || []).map(p => p.providerId);
-      el.classList.remove('text-green-600', 'text-yellow-600');
+      el.classList.remove('text-green-600','text-yellow-600');
       if (providers.includes('google.com')) {
         el.textContent = 'Signed in with Google';
         el.classList.add('text-green-600');
@@ -205,15 +202,27 @@
     }
 
     function fillProfile(user) {
-      // Email
+      // Email (real email on profile page)
       const emailEl = document.getElementById('profileEmail');
       if (emailEl) emailEl.textContent = user.email || user.displayName || 'Signed in';
 
-      // Avatar initials from local-part (fallback to displayName)
+      // Initials: first letter of first + first letter of last (fallback to email local-part)
       const avatarEl = document.getElementById('profileAvatar');
       if (avatarEl) {
-        const local = (user.email && user.email.split('@')[0]) || (user.displayName || '').split(' ')[0] || '';
-        const initials = local.slice(0, 2).toUpperCase() || '--';
+        let initials = '--';
+        if (user.displayName) {
+          const parts = user.displayName.trim().split(/\s+/);
+          const a = (parts[0]?.[0] || '').toUpperCase();
+          const b = (parts.length > 1 ? parts[parts.length - 1][0] : (parts[0]?.[1] || '')).toUpperCase();
+          initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
+        }
+        if (initials === '--' && user.email) {
+          const local = user.email.split('@')[0] || '';
+          const letters = local.replace(/[^A-Za-z]/g, '');
+          const a = (letters[0] || local[0] || '').toUpperCase();
+          const b = (letters[1] || local[1] || '').toUpperCase();
+          initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
+        }
         avatarEl.textContent = initials;
       }
 
@@ -232,7 +241,7 @@
       const input = document.getElementById('emailConfirmation');
       if (input) input.placeholder = user.email || '';
 
-      // Verification line
+      // Verification
       setVerificationLabel(user);
     }
 
@@ -245,10 +254,7 @@
 
       openBtn?.addEventListener('click', () => {
         modal?.classList.remove('hidden');
-        if (input) {
-          input.value = '';
-          input.placeholder = currentUser?.email || '';
-        }
+        if (input) { input.value = ''; input.placeholder = currentUser?.email || ''; }
         if (confirm) confirm.disabled = true;
       });
 
@@ -266,10 +272,7 @@
       confirm?.addEventListener('click', async () => {
         try {
           if (!currentUser) return;
-
-          // Try to delete watchlist doc (ignore if it doesn't exist)
           try { await firebase.firestore().collection('watchlists').doc(currentUser.uid).delete(); } catch (_) {}
-
           await currentUser.delete();
           alert('Your account has been permanently deleted.');
           window.location.href = '/CEORater/';
@@ -290,29 +293,27 @@
     }
 
     function boot() {
-      // If already signed in, fill immediately (hot load)
+      // If already signed in, fill immediately
       const u = firebase.auth().currentUser;
       if (u) { currentUser = u; fillProfile(u); }
 
-      // Standard listener
+      // Listener
       firebase.auth().onAuthStateChanged((user) => {
         if (user) {
           currentUser = user;
           fillProfile(user);
         } else {
-          // Not signed in -> back to app home (GitHub Pages project path)
           window.location.href = '/CEORater/';
         }
       });
 
-      // A couple of retries in case the user object is slow to hydrate
+      // A couple of retries in case user object hydrates slowly
       setTimeout(() => { const u = firebase.auth().currentUser; if (u) fillProfile(u); }, 400);
       setTimeout(() => { const u = firebase.auth().currentUser; if (u) fillProfile(u); }, 1200);
 
       setupDeleteModal();
     }
 
-    // Start when DOM is ready and Firebase is available
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => waitForFirebaseAuth(boot));
     } else {
