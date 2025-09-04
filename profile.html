@@ -49,6 +49,30 @@
           <div id="profileAvatar" class="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold text-xl">
             --
           </div>
+        <!-- Username & Initials form -->
+        <div class="grid sm:grid-cols-2 gap-4 mt-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+            <input id="usernameInput" type="text" placeholder="Choose a username"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" />
+            <p id="usernameHelp" class="mt-1 text-xs text-gray-500">Letters, numbers, underscores; 3–20 chars.</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Profile Initials</label>
+            <input id="initialsInput" type="text" placeholder="e.g., JM"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" />
+            <p class="mt-1 text-xs text-gray-500">1–3 letters (A–Z).</p>
+          </div>
+        </div>
+
+        <div class="mt-4 flex gap-3">
+          <button id="saveProfileBtn"
+                  class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+            Save
+          </button>
+          <span id="saveProfileStatus" class="text-sm text-gray-600"></span>
+        </div>
+    
           <div>
             <h3 id="profileEmail" class="text-lg font-medium text-gray-900">Loading...</h3>
             <p id="profileMemberSince" class="text-sm text-gray-600">Loading...</p>
@@ -330,6 +354,89 @@
     } else {
       initializeProfile();
     }
+    // === Username/Initials helpers ===
+    const db = () => firebase.firestore();
+    const unameOk = u => /^[a-zA-Z0-9_]{3,20}$/.test(u);
+    const initialsOk = s => /^[A-Za-z]{1,3}$/.test(s);
+
+    async function loadUserProfileUI(user) {
+      try {
+        const snap = await db().collection('users').doc(user.uid).get();
+        const data = snap.exists ? snap.data() : {};
+        const usernameInput = document.getElementById('usernameInput');
+        const initialsInput = document.getElementById('initialsInput');
+        if (usernameInput) usernameInput.value = data.username || '';
+        if (initialsInput) initialsInput.value = data.initials || '';
+
+        // Update visible avatar
+        const avatar = document.getElementById('profileAvatar');
+        if (avatar) {
+          const initials = (data.initials || user.email.substring(0,2)).toUpperCase();
+          avatar.textContent = initials;
+        }
+      } catch (e) {
+        console.error('Load profile failed:', e);
+      }
+    }
+
+    async function claimUsername(uid, desiredUsername, previousUsername) {
+      const usernamesRef = db().collection('usernames').doc(desiredUsername.toLowerCase());
+      const userDocRef  = db().collection('users').doc(uid);
+      await firebase.firestore().runTransaction(async tx => {
+        const unameSnap = await tx.get(usernamesRef);
+        if (unameSnap.exists && unameSnap.data().uid !== uid) {
+          throw new Error('That username is already taken.');
+        }
+        if (previousUsername && previousUsername.toLowerCase() !== desiredUsername.toLowerCase()) {
+          tx.delete(db().collection('usernames').doc(previousUsername.toLowerCase()));
+        }
+        tx.set(usernamesRef, { uid }, { merge: true });
+        tx.set(userDocRef, { username: desiredUsername }, { merge: true });
+      });
+    }
+
+    async function saveProfile(user) {
+      const status = document.getElementById('saveProfileStatus');
+      const usernameInput = document.getElementById('usernameInput');
+      const initialsInput = document.getElementById('initialsInput');
+      const desired = (usernameInput?.value || '').trim();
+      const initials = (initialsInput?.value || '').trim().toUpperCase();
+
+      try {
+        if (status) status.textContent = 'Saving…';
+
+        const snap = await db().collection('users').doc(user.uid).get();
+        const old = snap.exists ? snap.data() : {};
+
+        if (desired) {
+          if (!unameOk(desired)) throw new Error('Invalid username format.');
+          await claimUsername(user.uid, desired, old.username);
+        } else if (old?.username) {
+          await firebase.firestore().runTransaction(async tx => {
+            tx.delete(db().collection('usernames').doc(old.username.toLowerCase()));
+            tx.set(db().collection('users').doc(user.uid), { username: firebase.firestore.FieldValue.delete() }, { merge: true });
+          });
+        }
+
+        if (initials) {
+          if (!initialsOk(initials)) throw new Error('Initials must be 1–3 letters.');
+          await db().collection('users').doc(user.uid).set({ initials }, { merge: true });
+        } else {
+          await db().collection('users').doc(user.uid).set({ initials: firebase.firestore.FieldValue.delete() }, { merge: true });
+        }
+
+        if (status) { status.textContent = 'Saved ✓'; setTimeout(() => { status.textContent=''; }, 1500); }
+      } catch (e) {
+        console.error(e);
+        if (status) {
+          status.textContent = e.message || 'Save failed';
+          status.classList.add('text-red-600');
+          setTimeout(() => { status.textContent=''; status.classList.remove('text-red-600'); }, 2500);
+        }
+      }
+    }
+    // === End helpers ===
+
   </script>
 </body>
 </html>
