@@ -14,7 +14,7 @@ const $confirm = document.getElementById('confirmDeleteBtn');
 const $close   = document.getElementById('closeDeleteModalBtn');
 
 // Replace with your deployed backend URL:
-const PURGE_ENDPOINT = 'https://YOUR_BACKEND_DOMAIN/purgeUserData';
+const PURGE_ENDPOINT = 'https://get-ceos-test-847610982404.us-east4.run.app/purgeUserData';
 
 // Show Account/Delete only when logged in
 auth.onAuthStateChanged((u) => {
