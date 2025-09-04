@@ -21,16 +21,6 @@ if (isIOSNative) {
   nullify('microsoftSignIn');
 }
 
-// =========================
-// your existing script.js content starts here
-// (rest of your original logic untouched, for auth, UI, etc.)
-// =========================
-
-// Example placeholder for existing Firebase init (you already have this in firebase-config.js)
-// firebase.initializeApp(firebaseConfig);
-
-// ... existing auth code continues ...
-
 import { fetchData } from './GoogleSheet.js';
 import * as ui from './ui.js';
 import * as auth from './auth.js';
@@ -366,18 +356,6 @@ async function handleAccountDeletion() {
     } catch (firestoreError) {
       console.log('Watchlist deletion error (may not exist):', firestoreError);
     }
-
-    // Optional: If you have a backend purge endpoint, call it here
-    // const PURGE_ENDPOINT = 'https://get-ceos-test-847610982404.us-east4.run.app/purgeUserData';
-    // const idToken = await user.getIdToken();
-    // await fetch(PURGE_ENDPOINT, {
-    //   method: 'POST',
-    //   headers: { 
-    //     'Content-Type': 'application/json', 
-    //     'Authorization': `Bearer ${idToken}` 
-    //   },
-    //   body: JSON.stringify({ uid: user.uid })
-    // });
     
     // Delete the user account
     await user.delete();
