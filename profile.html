@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Account Settings - CEORater</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
   <style>
     .font-orbitron { font-family: 'Orbitron', monospace; }
     .font-inter { font-family: 'Inter', sans-serif; }
@@ -46,13 +46,13 @@
       </div>
       <div class="p-6">
         <div class="flex items-center space-x-6 mb-6">
-          <div id="profileAvatar" class="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold text-xl" data-user-avatar>
+          <div id="profileAvatar" data-user-avatar class="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold text-xl">
             --
           </div>
           <div>
             <h3 id="profileEmail" class="text-lg font-medium text-gray-900">Loading...</h3>
             <p id="profileMemberSince" class="text-sm text-gray-600">Loading...</p>
-            <p id="verificationLabel" class="text-sm mt-1"></p>
+            <p class="text-sm text-green-600 mt-1">✓ Verified account</p>
           </div>
         </div>
       </div>
@@ -73,7 +73,7 @@
             <div>
               <h4 class="font-medium text-blue-900">Our Policies</h4>
               <p class="text-sm text-blue-700 mt-1">
-                Review our
+                Review our 
                 <a href="https://www.ceorater.com/privacy.html" target="_blank" class="underline hover:no-underline">Privacy Policy</a>
                 to understand how we collect, use, and protect your data.
               </p>
@@ -105,7 +105,7 @@
               </ul>
               <div class="bg-red-100 border border-red-300 rounded p-3 mb-4">
                 <p class="text-sm text-red-800 font-medium">
-                  ⚠️ This will permanently delete your CEORater account and all data.
+                  ⚠️ If you signed in with Google or Microsoft, you don’t need to type your email—just confirm.
                 </p>
               </div>
             </div>
@@ -134,8 +134,8 @@
       </div>
 
       <div class="mb-6">
-        <p class="text-gray-700 mb-4">
-          To confirm deletion, please type your email address below:
+        <p class="text-gray-700 mb-2">
+          To confirm deletion, please type your email address below (not required for Google/Microsoft sign-in):
         </p>
         <input 
           id="emailConfirmation" 
@@ -157,140 +157,97 @@
     </div>
   </div>
 
-  <!-- Firebase -->
+  <!-- Firebase and App Scripts -->
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
-  <script defer src="firebase-config.js"></script>
+  <script defer src="/CEORater/firebase-config.js"></script>
+  <!-- IMPORTANT: load your main app logic so Google/Microsoft deletion can re-auth & complete -->
+  <script defer src="/CEORater/script.js"></script>
 
+  <!-- Belt-and-suspenders fallback (runs ONLY if script.js didn’t attach the handler) -->
   <script>
-    let currentUser = null;
-
-    function computeInitials(user) {
-      if (user && user.displayName) {
-        const parts = user.displayName.trim().split(/\s+/);
-        const a = (parts[0]?.[0] || '').toUpperCase();
-        const b = (parts.length > 1 ? parts[parts.length - 1][0] : (parts[0]?.[1] || '')).toUpperCase();
-        const out = (a + b).replace(/[^A-Z]/g, '').slice(0, 2);
-        if (out) return out;
+    document.addEventListener('DOMContentLoaded', () => {
+      function isOAuthUser(u) {
+        try { return (u?.providerData || []).some(p => p.providerId === 'google.com' || p.providerId === 'microsoft.com'); }
+        catch (_) { return false; }
       }
-      if (user && user.email) {
-        const local = user.email.split('@')[0] || '';
-        const letters = local.replace(/[^A-Za-z]/g, '');
-        const a = (letters[0] || local[0] || '').toUpperCase();
-        const b = (letters[1] || local[1] || '').toUpperCase();
-        const out = (a + b).replace(/[^A-Z]/g, '').slice(0, 2);
-        if (out) return out;
-      }
-      return '--';
-    }
-
-    function initializeProfile() {
-      if (!window.firebaseConfig) { setTimeout(initializeProfile, 100); return; }
-      try { firebase.initializeApp(window.firebaseConfig); } catch(e) {}
-
-      firebase.auth().onAuthStateChanged((user) => {
-        if (!user) { window.location.href = '/CEORater/'; return; }
-        currentUser = user;
-
-        // Fill basic info
-        const emailEl = document.getElementById('profileEmail');
-        const sinceEl = document.getElementById('profileMemberSince');
-        const avatarEl = document.getElementById('profileAvatar');
-        const labelEl = document.getElementById('verificationLabel');
-
-        if (emailEl) emailEl.textContent = user.email || user.displayName || 'Signed in';
-        if (sinceEl) {
-          const t = user.metadata?.creationTime ? new Date(user.metadata.creationTime) : new Date();
-          sinceEl.textContent = 'Member since ' + t.toLocaleDateString('en-US', {month:'long', year:'numeric'});
-        }
-        if (avatarEl) avatarEl.textContent = computeInitials(user);
-
-        const providers = (user.providerData || []).map(p => p.providerId);
-        if (providers.includes('google.com')) {
-          labelEl.textContent = 'Signed in with Google';
-          labelEl.className = 'text-sm text-green-600 mt-1';
-        } else if (providers.includes('microsoft.com')) {
-          labelEl.textContent = 'Signed in with Microsoft';
-          labelEl.className = 'text-sm text-green-600 mt-1';
-        } else if (providers.includes('password')) {
-          labelEl.textContent = user.emailVerified ? '✓ Email verified' : 'Email not verified';
-          labelEl.className = user.emailVerified ? 'text-sm text-green-600 mt-1' : 'text-sm text-yellow-600 mt-1';
-        } else {
-          labelEl.textContent = 'Signed in';
-          labelEl.className = 'text-sm text-gray-600 mt-1';
-        }
-
-        // Set expected email & modal interactions
+      function enableConfirmForOAuth(u) {
+        const btn = document.getElementById('confirmDelete');
+        const input = document.getElementById('emailConfirmation');
         const expected = document.getElementById('expectedEmailText');
-        if (expected) expected.textContent = `Expected: ${user.email || ''}`;
+        if (!btn) return;
+        if (isOAuthUser(u)) {
+          // Don’t force email typing for OAuth users
+          btn.disabled = false;
+          if (expected) expected.textContent = 'Using Google/Microsoft re-authentication';
+        }
+      }
+      // If script.js didn’t wire up the modal, attach a minimal working flow:
+      if (!window.handleAccountDeletion) {
+        // Show modal
+        const openBtn = document.getElementById('deleteAccountBtn');
+        const modal = document.getElementById('deleteConfirmModal');
+        const cancel = document.getElementById('cancelDelete');
+        const confirm = document.getElementById('confirmDelete');
+        const emailInput = document.getElementById('emailConfirmation');
+        const expected = document.getElementById('expectedEmailText');
 
-        document.getElementById('deleteAccountBtn').onclick = () => {
-          document.getElementById('deleteConfirmModal').classList.remove('hidden');
-        };
-        document.getElementById('cancelDelete').onclick = () => {
-          document.getElementById('deleteConfirmModal').classList.add('hidden');
-          document.getElementById('emailConfirmation').value = '';
-          document.getElementById('confirmDelete').disabled = true;
-        };
-        document.getElementById('emailConfirmation').oninput = (e) => {
-          document.getElementById('confirmDelete').disabled = e.target.value !== (user.email || '');
-        };
+        openBtn?.addEventListener('click', async () => {
+          modal?.classList.remove('hidden');
+          const u = firebase.auth().currentUser;
+          if (u?.email && expected) expected.textContent = 'Expected: ' + u.email;
+          enableConfirmForOAuth(u);
+          // For non-OAuth users, require exact match:
+          confirm.disabled = isOAuthUser(u) ? false : true;
+        });
+        cancel?.addEventListener('click', () => { modal?.classList.add('hidden'); });
 
-        // Delete confirm: ALWAYS reauth with redirect for Google/Microsoft (iOS-safe)
-        document.getElementById('confirmDelete').onclick = async () => {
-          const typed = document.getElementById('emailConfirmation').value || '';
-          if (typed !== (user.email || '')) { alert('Please type your email exactly to confirm.'); return; }
+        emailInput?.addEventListener('input', () => {
+          const u = firebase.auth().currentUser;
+          if (!u) return;
+          if (isOAuthUser(u)) {
+            confirm.disabled = false;
+          } else {
+            confirm.disabled = (emailInput.value !== (u.email || ''));
+          }
+        });
 
-          const provs = (user.providerData || []).map(p => p.providerId);
+        confirm?.addEventListener('click', async () => {
+          const u = firebase.auth().currentUser;
+          if (!u) return alert('Not signed in.');
           try {
-            if (provs.includes('google.com')) {
+            if (isOAuthUser(u)) {
+              // Re-auth via redirect, then finish deletion on return:
               sessionStorage.setItem('pendingDelete', '1');
-              await user.reauthenticateWithRedirect(new firebase.auth.GoogleAuthProvider());
+              const provider = (u.providerData || []).some(p=>p.providerId==='google.com')
+                ? new firebase.auth.GoogleAuthProvider()
+                : new firebase.auth.OAuthProvider('microsoft.com');
+              await u.reauthenticateWithRedirect(provider);
               return;
+            } else {
+              // Email/password users will be handled by script.js; this is a fallback only.
+              alert('Please use the main app flow to delete email/password accounts.');
             }
-            if (provs.includes('microsoft.com')) {
-              sessionStorage.setItem('pendingDelete', '1');
-              await user.reauthenticateWithRedirect(new firebase.auth.OAuthProvider('microsoft.com'));
-              return;
-            }
+          } catch (e) {
+            alert('Delete failed: ' + (e?.message || e));
+          }
+        });
 
-            // email/password (reauth handled by main page modal)
-            try { await firebase.firestore().collection('watchlists').doc(user.uid).delete(); } catch(_) {}
-            await user.delete();
+        // Complete pending OAuth deletion after redirect:
+        firebase.auth().getRedirectResult().then(async () => {
+          if (sessionStorage.getItem('pendingDelete') === '1') {
+            sessionStorage.removeItem('pendingDelete');
+            const u = firebase.auth().currentUser;
+            if (!u) return;
+            try { await firebase.firestore().collection('watchlists').doc(u.uid).delete(); } catch(_) {}
+            await u.delete();
             alert('Your account has been permanently deleted.');
             window.location.href = '/CEORater/';
-          } catch (e) {
-            alert('Failed to delete account: ' + (e?.message || 'Unknown error'));
           }
-        };
-
-        // Finish pending delete after redirect
-        if (sessionStorage.getItem('pendingDelete') === '1') {
-          sessionStorage.removeItem('pendingDelete');
-          (async () => {
-            try { await firebase.firestore().collection('watchlists').doc(user.uid).delete(); } catch(_) {}
-            try {
-              await user.delete();
-              alert('Your account has been permanently deleted.');
-              window.location.href = '/CEORater/';
-            } catch (e) {
-              if (e?.code === 'auth/requires-recent-login') {
-                alert('Please try deleting again; re-authentication did not complete.');
-              } else {
-                alert('Failed to delete account: ' + (e?.message || 'Unknown error'));
-              }
-            }
-          })();
-        }
-      });
-    }
-
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initializeProfile);
-    } else {
-      initializeProfile();
-    }
+        });
+      }
+    });
   </script>
 </body>
 </html>
