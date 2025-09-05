@@ -21,6 +21,14 @@ if (isIOSNative) {
   nullify('microsoftSignIn');
 }
 
+// --- New: robust platform detection for redirects vs popups (improves Google sign-in on iOS/Safari)
+const ua = (typeof navigator !== 'undefined' ? navigator.userAgent || '' : '');
+const isLikelyIOSWeb =
+  /iPad|iPhone|iPod/.test(ua) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS desktop mode
+const isSafari = /Safari/.test(ua) && !/Chrome|CriOS|FxiOS/.test(ua);
+const preferRedirect = isIOSNative || isLikelyIOSWeb || isSafari;
+
 import { fetchData } from './GoogleSheet.js';
 import * as ui from './ui.js';
 import * as auth from './auth.js';
@@ -653,7 +661,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Handle any pending redirect results from OAuth login
-    firebase.auth().getRedirectResult().catch(() => {});
+    firebase.auth().getRedirectResult()
+      .then(res => {
+        // If returned from Google/Microsoft redirect and user is present: close login modal
+        if (res && res.user) {
+          loginModal?.classList.add('hidden');
+        }
+      })
+      .catch(() => {});
     // If we just returned from a reauth redirect for deletion, finish deletion now
     (async () => {
       try {
@@ -850,13 +865,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   logoutBtn.addEventListener('click', () => auth.signOut());
   
-  googleSignIn.addEventListener('click', () => {
-    auth.signInWithGoogle().then(() => {
+  // --- Updated: Google sign-in uses redirect on iOS/Safari, popup elsewhere
+  googleSignIn.addEventListener('click', async () => {
+    try {
+      if (preferRedirect) {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        await firebase.auth().signInWithRedirect(provider);
+      } else {
+        await auth.signInWithGoogle();
+      }
       loginModal.classList.add('hidden');
-    }).catch(error => {
+    } catch (error) {
       console.error('Google sign in error:', error);
-      alert('Sign in failed. Please try again.');
-    });
+      const msg =
+        error?.code === 'auth/unauthorized-domain'
+          ? 'Sign-in blocked: unauthorized domain. Add your GitHub Pages domain in Firebase Auth settings.'
+          : (error?.message || 'Sign in failed. Please try again.');
+      alert(msg);
+    }
   });
 
   microsoftSignIn.addEventListener('click', () => {
@@ -902,15 +928,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // --- Updated: remove duplicate verification send (auth.js already sends it)
   signUpEmail.addEventListener('click', async () => {
     const email = emailInput.value;
     const password = passwordInput.value;
     if (!email || !password) return;
     try {
-      await auth.signUpWithEmail(email, password);
-      const u = firebase.auth().currentUser;
-      if (u) { try { await u.sendEmailVerification(); } catch (e) { console.warn('sendEmailVerification failed', e); } }
-      alert('Check your inbox to verify your email.');
+      await auth.signUpWithEmail(email, password); // single send inside auth.js
+      alert('Check your inbox to verify your email. (If not there, check Spam/Promotions.)');
       loginModal.classList.add('hidden');
     } catch (error) {
       console.error('Email sign up error:', error);
