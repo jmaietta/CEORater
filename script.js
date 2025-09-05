@@ -616,19 +616,30 @@ function initializeProfilePage() {
     const confirmBtn = document.getElementById('confirmDelete');
     const emailInput = document.getElementById('emailConfirmation');
 
+    // 🔧 NEW: detect OAuth users (Google/Microsoft)
+    const isOAuth = (user.providerData || []).some(p =>
+      p.providerId === 'google.com' || p.providerId === 'microsoft.com'
+    );
+
     deleteBtn?.addEventListener('click', () => {
       deleteModal?.classList.remove('hidden');
+
       const expectedById = document.getElementById('expectedEmailText');
       const expectedEmailEl = expectedById || document.querySelector('.text-xs.text-gray-500');
       if (expectedEmailEl) {
-        expectedEmailEl.textContent = `Expected: ${bestEmail || ''}`;
+        expectedEmailEl.textContent = isOAuth
+          ? 'Using Google/Microsoft re-authentication'
+          : `Expected: ${bestEmail || ''}`;
       }
+
       if (emailInput) {
         emailInput.placeholder = bestEmail || '';
         emailInput.value = '';
       }
+
+      // ✅ OAuth users do NOT need to type their email
       if (confirmBtn) {
-        confirmBtn.disabled = !!(bestEmail) ? true : false;
+        confirmBtn.disabled = isOAuth ? false : !!bestEmail;
       }
     });
 
@@ -640,11 +651,11 @@ function initializeProfilePage() {
 
     emailInput?.addEventListener('input', () => {
       if (!confirmBtn) return;
-      if (bestEmail) {
-        confirmBtn.disabled = emailInput.value !== bestEmail;
-      } else {
-        // If we don't have an email on record (rare), don't block deletion on text match
+      if (isOAuth) {
+        // Keep enabled for OAuth
         confirmBtn.disabled = false;
+      } else {
+        confirmBtn.disabled = (emailInput.value !== (bestEmail || ''));
       }
     });
 
