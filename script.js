@@ -37,7 +37,7 @@ if (isIOSNative) {
 }
 
 // --- New: robust platform detection for redirects vs popups (improves Google sign-in on iOS/Safari)
-const ua = (typeof navigator !== 'undefined' ? 
+const ua = (typeof navigator !== 'undefined' ?
 navigator.userAgent || '' : '');
 const isLikelyIOSWeb =
   /iPad|iPhone|iPod/.test(ua) ||
@@ -91,7 +91,7 @@ function computeInitials(user) {
   }
   return '--';
 }
-  
+
 // Best-effort resolver for user's email (handles rare cases where user.email is null)
 let lastKnownEmail = (function(){ try { return localStorage.getItem('lastKnownEmail') || null; } catch(_) { return null; } })();
 
@@ -306,8 +306,8 @@ let view = [];
 let currentSort = { key: 'ceoRaterScore', dir: 'desc' }; // Changed default to CEORaterScore
 let currentUser = null;
 let userWatchlist = new Set();
-let comparisonSet = new Set(); 
-let currentView = 'all'; 
+let comparisonSet = new Set();
+let currentView = 'all';
 
 // ---------- App Logic ----------
 function handleAuthStateChange(user) {
@@ -329,7 +329,7 @@ function handleAuthStateChange(user) {
     // Show logged out state
     if (loggedInState) loggedInState.classList.add('hidden');
     if (loggedOutState) loggedOutState.classList.remove('hidden');
-    
+
     userWatchlist.clear();
     comparisonSet.clear();
     ui.updateComparisonTray(comparisonSet);
@@ -350,7 +350,7 @@ function toggleCompare(ticker) {
     }
     comparisonSet.add(ticker);
   }
-  
+
   sortAndRender();
   ui.updateComparisonTray(comparisonSet);
 }
@@ -360,13 +360,13 @@ async function toggleWatchlist(ticker) {
     loginModal.classList.remove('hidden');
     return;
   }
-  
+
   if (userWatchlist.has(ticker)) {
     userWatchlist.delete(ticker);
   } else {
     userWatchlist.add(ticker);
   }
-  
+
   await auth.saveUserWatchlist(currentUser.uid, userWatchlist);
   updateWatchlistCount();
   refreshView();
@@ -410,7 +410,7 @@ function applyFilters() {
   const ind = industryFilter?.value || '';
   const sec = sectorFilter?.value || '';
   const founder = founderFilter?.value || '';
-  
+
   let filteredData = master.filter(c => {
     const matchTerm = (c.ceo + c.company + c.ticker).toLowerCase().includes(term);
     const matchInd = !ind || c.industry === ind;
@@ -431,16 +431,16 @@ function sortAndRender() {
   view.sort((a, b) => {
     let A = a[currentSort.key];
     let B = b[currentSort.key];
-    
+
     if (currentSort.key === 'ceoRaterScore') {
       A = A ?? 0;
       B = B ?? 0;
     }
-    
+
     let cmp = (typeof A === 'number' && typeof B === 'number') ? A - B : String(A).localeCompare(String(B));
     return currentSort.dir === 'asc' ? cmp : -cmp;
   });
-  
+
   if (noResults) {
     if (view.length === 0 && currentView !== 'watchlist') {
       noResults.classList.remove('hidden');
@@ -448,7 +448,7 @@ function sortAndRender() {
       noResults.classList.add('hidden');
     }
   }
-  
+
   ui.renderCards(view, userWatchlist, comparisonSet, currentView);
   hideSpinner(); // ensure spinner disappears after first render
 }
@@ -464,7 +464,7 @@ async function handleAccountDeletion() {
   }
 
   const password = deletePasswordInput?.value?.trim() || '';
-  
+
   try {
     const providers = user.providerData.map(p => p.providerId);
 
@@ -494,13 +494,13 @@ async function handleAccountDeletion() {
     } catch (firestoreError) {
       console.log('Watchlist deletion error (may not exist):', firestoreError);
     }
-    
+
     await user.delete();
-    
+
     if (deleteAccountModal) deleteAccountModal.classList.add('hidden');
     alert('Your account has been permanently deleted.');
     window.location.href = '/CEORater/';
-    
+
   } catch (error) {
     console.error('Account deletion error:', error);
     if (error.code === 'auth/wrong-password') {
@@ -523,19 +523,19 @@ async function handleAccountDeletion() {
 
 function showDeleteModal() {
   if (!currentUser) return;
-  
+
   if (deletePasswordInput) deletePasswordInput.value = '';
   if (deletePasswordSection) deletePasswordSection.classList.add('hidden');
   if (deleteOAuthSection) deleteOAuthSection.classList.add('hidden');
-  
+
   const providers = currentUser.providerData.map(p => p.providerId);
-  
+
   if (providers.includes('password')) {
     if (deletePasswordSection) deletePasswordSection.classList.remove('hidden');
   } else if (providers.includes('google.com') || providers.includes('microsoft.com')) {
     if (deleteOAuthSection) deleteOAuthSection.classList.remove('hidden');
   }
-  
+
   if (deleteAccountModal) deleteAccountModal.classList.remove('hidden');
 }
 
@@ -549,7 +549,7 @@ function updateGlobalUser(user) {
 
 function initializeProfilePage() {
   if (!window.location.pathname.includes('profile.html')) return;
-  
+
   const navItems = document.querySelectorAll('.nav-item');
   const sections = document.querySelectorAll('.settings-section');
 
@@ -583,7 +583,7 @@ function initializeProfilePage() {
   // Show loading state initially
   const profileEmail = document.getElementById('profileEmail');
   if (profileEmail) profileEmail.textContent = 'Loading...';
-  
+
   const avatars = document.querySelectorAll('[data-user-avatar]');
   avatars.forEach(avatar => { if (avatar) avatar.textContent = '--'; });
 
@@ -606,11 +606,11 @@ function initializeProfilePage() {
 
           const expectedById = document.getElementById('expectedEmailText');
           const expectedEmailEl = expectedById || document.querySelector('.text-xs.text-gray-500');
-          if (expectedEmailEl) { 
+          if (expectedEmailEl) {
             const isOAuth = (user.providerData || []).some(p =>
               p.providerId === 'google.com' || p.providerId === 'microsoft.com'
             );
-            expectedEmailEl.textContent = isOAuth 
+            expectedEmailEl.textContent = isOAuth
               ? 'Using Google/Microsoft re-authentication'
               : `Expected: ${bestEmail || ''}`;
           }
@@ -618,22 +618,8 @@ function initializeProfilePage() {
           const emailInput = document.getElementById('emailConfirmation');
           if (emailInput) { emailInput.placeholder = bestEmail || ''; }
 
-          // Compute JM-style initials (prefer displayName; fallback to email)
-          let initials = '--';
-          if (user.displayName) {
-            const parts = user.displayName.trim().split(/\s+/);
-            const a = (parts[0]?.[0] || '').toUpperCase();
-            const b = (parts.length > 1 ? parts[parts.length - 1][0] : (parts[0]?.[1] || '')).toUpperCase();
-            initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
-          }
-          if (initials === '--' && (bestEmail || user.email)) {
-            const src = bestEmail || user.email;
-            const local = (src && src.split('@')[0]) || '';
-            const letters = local.replace(/[^A-Za-z]/g, '');
-            const a = (letters[0] || local[0] || '').toUpperCase();
-            const b = (letters[1] || local[1] || '').toUpperCase();
-            initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
-          }
+          // Use the consistent one-letter avatar function
+          const initials = computeInitials(user);
 
           const avatars = document.querySelectorAll('[data-user-avatar]');
           avatars.forEach(avatar => { if (avatar) avatar.textContent = initials; });
@@ -655,7 +641,7 @@ function initializeProfilePage() {
       resolveBestEmail(currentUser).then((bestEmail) => {
         const profileEmail = document.getElementById('profileEmail');
         if (profileEmail) profileEmail.textContent = bestEmail || currentUser.displayName || 'Signed in';
-        
+
         // Update initials immediately - single letter ONLY
         let initials = '--';
         if (currentUser.displayName) {
@@ -795,12 +781,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (_) {}
 
-    
+
     // Prefer LOCAL so the session survives browser restarts; fall back to SESSION if storage is blocked
     firebase.auth()
       .setPersistence(firebase.auth.Auth.Persistence.LOCAL)
       .catch(() => firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION));
-   
+
     // Debug: ensure we are pointing at expected project
     try {
       const opts = firebase.app().options || {};
@@ -882,7 +868,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     })();
   });
-  
+
   // Show UI structure immediately (app responsive within seconds)
   showSpinner(); // Show loading spinner
 
@@ -950,7 +936,7 @@ document.addEventListener('DOMContentLoaded', () => {
     e.stopPropagation();
     if (!userDropdown) return;
     const isOpen = !userDropdown.classList.contains('hidden');
-    
+
     if (isOpen) {
       userDropdown.classList.add('hidden');
       if (dropdownIcon) dropdownIcon.style.transform = 'rotate(0deg)';
@@ -968,8 +954,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Close dropdown when clicking outside
   document.addEventListener('click', (e) => {
-    if (userDropdown && !userDropdown.classList.contains('hidden') && 
-        !userMenuButton?.contains(e.target) && 
+    if (userDropdown && !userDropdown.classList.contains('hidden') &&
+        !userMenuButton?.contains(e.target) &&
         !userDropdown.contains(e.target)) {
       userDropdown.classList.add('hidden');
       if (dropdownIcon) dropdownIcon.style.transform = 'rotate(0deg)';
@@ -980,17 +966,17 @@ document.addEventListener('DOMContentLoaded', () => {
   closeDeleteModalBtn?.addEventListener('click', () => {
     if (deleteAccountModal) deleteAccountModal.classList.add('hidden');
   });
-  
+
   cancelDeleteBtn?.addEventListener('click', () => {
     if (deleteAccountModal) deleteAccountModal.classList.add('hidden');
   });
-  
+
   deleteAccountModal?.addEventListener('click', e => {
     if (e.target === deleteAccountModal) {
       deleteAccountModal.classList.add('hidden');
     }
   });
-  
+
   confirmDeleteBtn?.addEventListener('click', handleAccountDeletion);
 
   if (ceoCardView) ceoCardView.addEventListener('click', (e) => {
@@ -998,7 +984,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (star) {
           e.stopPropagation();
           toggleWatchlist(star.dataset.ticker);
-          return; 
+          return;
       }
 
       const compareBtn = e.target.closest('.compare-btn');
@@ -1043,7 +1029,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ceoDetailModal.classList.add('hidden');
       }
   });
-  
+
   if (compareNowBtn) compareNowBtn.addEventListener('click', () => {
       ui.renderComparisonModal(master, comparisonSet);
       if (comparisonModal) comparisonModal.classList.remove('hidden');
@@ -1056,7 +1042,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   if (logoutBtn) logoutBtn.addEventListener('click', () => auth.signOut());
-  
+
   // ******** IMPORTANT CHANGE: Google sign-in always via redirect ********
   if (!OAUTH_DISABLED && googleSignIn) {
     googleSignIn.addEventListener('click', async () => {
@@ -1089,7 +1075,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   }
-  
+
   if (forgotPasswordLink) forgotPasswordLink.addEventListener('click', (e) => {
     e.preventDefault();
     const email = emailInput?.value;
@@ -1110,12 +1096,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
   });
-  
+
   if (signInEmail) signInEmail.addEventListener('click', () => {
     const email = emailInput?.value;
     const password = passwordInput?.value;
     if (!email || !password) return;
-    
+
     auth.signInWithEmailSmart(email, password).then(() => {
       if (loginModal) loginModal.classList.add('hidden');
     }).catch(error => {
@@ -1146,9 +1132,9 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('No data to export');
       return;
     }
-    
+
     const headers = ['CEO', 'Company', 'Ticker', 'CEORaterScore', 'AlphaScore', 'CompScore', 'Market Cap ($B)', 'AlphaScore Quartile', 'TSR Alpha', 'Avg Annual TSR Alpha', 'Industry', 'Sector', 'TSR During Tenure', 'Avg Annual TSR', 'Compensation ($MM)', 'Comp Cost / 1% Avg TSR ($MM)', 'Tenure (yrs)', 'Founder'];
-    
+
     const csvContent = [
       headers.join(','),
       ...view.map(c => [
@@ -1172,7 +1158,7 @@ document.addEventListener('DOMContentLoaded', () => {
         c.founder,
       ].join(','))
     ].join('\n');
-    
+
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1201,7 +1187,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (emailInput) emailInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter' && signInEmail) signInEmail.click();
   });
-  
+
   if (passwordInput) passwordInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter' && signInEmail) signInEmail.click();
   });
