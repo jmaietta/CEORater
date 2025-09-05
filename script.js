@@ -456,8 +456,7 @@ function sortAndRender() {
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms) } }
 
 // ---------- Account Deletion Functions ----------
-async function handleAccountDeletion() {
-  const user = currentUser;
+async function handleAccountDeletion(user) {
   if (!user) {
     alert('No user signed in');
     return;
@@ -710,7 +709,7 @@ function initializeProfilePage() {
 
     confirmBtn?.addEventListener('click', async () => {
       try {
-        await window.handleAccountDeletion();
+        await window.handleAccountDeletion(user);
       } catch (error) {
         console.error('Account deletion failed:', error);
         alert('Account deletion failed: ' + error.message);
@@ -1359,3 +1358,4 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 })();
 // ==== end post-patch overrides ====
+
