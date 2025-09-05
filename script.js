@@ -1051,17 +1051,34 @@ if (!OAUTH_DISABLED && microsoftSignIn) {
       });
   });
   
-  signInEmail.addEventListener('click', () => {
-    const email = emailInput.value;
-    const password = passwordInput.value;
-    if (!email || !password) return;
-    
-    auth.signInWithEmailSmart(email, password).then(() => {
-      loginModal.classList.add('hidden');
-    }).catch(error => {
-      console.error('Email sign in error:', error);
-      alert('Sign in failed: ' + error.message);
-    });
+  signInEmail.addEventListener('click', async () => {
+  const rawEmail = emailInput.value || '';
+  const email = rawEmail.trim().toLowerCase();
+  const password = passwordInput.value;
+  if (!email || !password) return;
+
+  try {
+    await firebase.auth().signInWithEmailAndPassword(email, password);
+    loginModal.classList.add('hidden');
+  } catch (error) {
+    console.error('Email sign in error:', error);
+    let msg = 'Sign in failed.';
+    if (error && error.code) {
+      if (error.code === 'auth/user-not-found') {
+        msg = 'No account found for this email. If you previously used Google or Microsoft here, sign in with that provider once and set a password from the menu.';
+      } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        msg = 'Incorrect password. Try again or use “Forgot Password?”.';
+      } else if (error.code === 'auth/too-many-requests') {
+        msg = 'Too many attempts. Please wait a minute and try again.';
+      } else if (error.code === 'auth/invalid-email') {
+        msg = 'Please enter a valid email address.';
+      } else if (error.message) {
+        msg = error.message;
+      }
+    }
+    alert(msg);
+  }
+});
   });
 
   // Allow browsers/Keychain to save credentials via a real form submit
