@@ -54,77 +54,88 @@ export async function signInWithMicrosoft() {
   return auth.signInWithPopup(msProvider);
 }
 
+// STRICT sign-in: do not auto-create if user doesn't exist
 export async function signInWithEmailSmart(email, password) {
   const which = await fetchProviderForEmail(email);
   if (which === 'password') {
     return auth.signInWithEmailAndPassword(email, password);
   }
   if (which === 'google') {
-    return signInWithGoogle();
+    // Email belongs to a Google account; do not auto-create. Ask user to use Google button.
+    const err = new Error('This email is registered with Google. Please use "Continue with Google".');
+    err.code = 'auth/wrong-provider';
+    throw err;
   }
   if (which === 'microsoft') {
-    return signInWithMicrosoft();
+    // Email belongs to a Microsoft account; do not auto-create. Ask user to use Microsoft button.
+    const err = new Error('This email is registered with Microsoft. Please use "Continue with Microsoft".');
+    err.code = 'auth/wrong-provider';
+    throw err;
   }
-  // No provider registered — treat as new user creation
-  return auth.createUserWithEmailAndPassword(email, password);
+  // No provider registered — STRICT sign-in: do NOT auto-create here.
+  const err = new Error('No account found for this email. Please sign up first.');
+  err.code = 'auth/user-not-found';
+  throw err;
 }
 
+// ---- Sign-up (explicit) ----
 export async function signUpWithEmail(email, password) {
   const cred = await auth.createUserWithEmailAndPassword(email, password);
   try { await cred.user.sendEmailVerification?.(); } catch (_e) {}
   return cred;
 }
 
-export function sendPasswordReset(email) {
-  return auth.sendPasswordResetEmail(email);
-}
-
 // ---- Sign-out ----
 export async function signOut() {
-  try {
-    // If you wired Firebase Auth plugin for Capacitor, call it here as well.
-    if (isIOSNative && window.FA?.signOut) {
-      await window.FA.signOut();
-    }
-  } finally {
-    return auth.signOut();
-  }
+  return auth.signOut();
 }
 
-// ---- Watchlist helpers (adjust to your schema) ----
+// ---- Watchlist helpers ----
 export async function loadUserWatchlist(uid) {
-  if (!uid) return new Set();
   try {
     const doc = await db.collection('watchlists').doc(uid).get();
-    const data = doc.exists ? (doc.data() || {}) : {};
-    const tickers = Array.isArray(data.tickers) ? data.tickers : [];
-    return new Set(tickers);
-  } catch {
+    const set = new Set(doc.exists ? (doc.data()?.tickers || []) : []);
+    return set;
+  } catch (_e) {
     return new Set();
   }
 }
 
-export async function saveUserWatchlist(uid, tickersSet) {
-  if (!uid) return;
-  const tickers = Array.from(tickersSet || []);
-  await db.collection('watchlists').doc(uid).set({ tickers }, { merge: true });
+export async function saveUserWatchlist(uid, set) {
+  try {
+    const arr = Array.from(set);
+    await db.collection('watchlists').doc(uid).set({ tickers: arr }, { merge: true });
+  } catch (_e) {
+    // swallow
+  }
 }
 
-// ---- Delete Account helpers ----
-// If account was created with email/password, reauth with password and delete.
+// ---- Delete-account helpers ----
+async function purgeUserData(purgeEndpoint, user) {
+  // Optional: call your backend to purge any server-side data keyed by uid/email
+  if (!purgeEndpoint) return;
+  try {
+    await fetch(purgeEndpoint, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ uid: user?.uid, email: user?.email })
+    });
+  } catch (_e) {
+    // non-fatal
+  }
+}
+
 export async function deleteCurrentUserWithPassword(password, purgeEndpoint) {
   const user = auth.currentUser;
   if (!user) throw new Error('No signed-in user');
-  if (!password) throw new Error('Password required');
+  if (!user.email) throw new Error('User has no email');
 
   const cred = firebase.auth.EmailAuthProvider.credential(user.email, password);
   await user.reauthenticateWithCredential(cred);
-
   await purgeUserData(purgeEndpoint, user);
   await user.delete();
 }
 
-// "Smart" delete: reauth using the correct provider (password/google/microsoft).
 export async function deleteCurrentUserSmart({ password, purgeEndpoint }) {
   const user = auth.currentUser;
   if (!user) throw new Error('No signed-in user');
@@ -146,24 +157,10 @@ export async function deleteCurrentUserSmart({ password, purgeEndpoint }) {
   }
 
   const doAuth = preferRedirect ? auth.signInWithRedirect.bind(auth) : auth.signInWithPopup.bind(auth);
-  await doAuth(provider); // This will return to your app via redirect result; you should call handleAuthRedirectResult() at startup.
+  await doAuth(provider); // This will return to your app via redirect; call handleAuthRedirectResult() at startup.
 
   // Once reauthed (after redirect), call purge + delete.
   const refreshedUser = auth.currentUser;
   await purgeUserData(purgeEndpoint, refreshedUser);
   await refreshedUser.delete();
-}
-
-async function purgeUserData(purgeEndpoint, user) {
-  if (!purgeEndpoint) return; // allow apps without backend purge (not recommended)
-  const idToken = await user.getIdToken();
-  const res = await fetch(purgeEndpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
-    body: JSON.stringify({ uid: user.uid })
-  });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error('Purge failed: ' + t);
-  }
 }
