@@ -656,12 +656,16 @@ function initializeProfilePage() {
         const profileEmail = document.getElementById('profileEmail');
         if (profileEmail) profileEmail.textContent = bestEmail || currentUser.displayName || 'Signed in';
         
-        // Update initials immediately
+        // Update initials immediately - single letter only
         let initials = '--';
         if (currentUser.displayName) {
-          const parts = currentUser.displayName.trim().split(/\s+/);
-          const a = (parts[0]?.[0] || '').toUpperCase();
-          initials = a || initials;
+          const ch = (currentUser.displayName.trim()[0] || '').toUpperCase();
+          if (ch && /[A-Z]/.test(ch)) initials = ch;
+        }
+        if (initials === '--' && bestEmail) {
+          const local = (bestEmail.split('@')[0] || '');
+          const ch = (local.replace(/[^A-Za-z]/g, '')[0] || local[0] || '').toUpperCase();
+          if (ch) initials = ch;
         }
         const avatars = document.querySelectorAll('[data-user-avatar]');
         avatars.forEach(avatar => { if (avatar) avatar.textContent = initials; });
