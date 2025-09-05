@@ -1239,12 +1239,12 @@ document.addEventListener('DOMContentLoaded', () => {
       var initials = '--';
       if (user && user.displayName && user.displayName.trim()) {
         var ch = (user.displayName.trim()[0] || '').toUpperCase();
-        if (ch) return ch;
+        if (ch && /[A-Z]/.test(ch)) return ch;
       }
       if (user && user.email) {
         var local = (user.email.split('@')[0] || '');
-        var lettersFirst = ((local.replace(/[^A-Za-z]/g, '')[0]) || local[0] || '').toUpperCase();
-        if (lettersFirst) return lettersFirst;
+        var ch = (local.replace(/[^A-Za-z]/g, '')[0] || local[0] || '').toUpperCase();
+        if (ch) return ch;
       }
       return initials;
     };
