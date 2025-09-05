@@ -683,7 +683,6 @@ function initializeProfilePage() {
       }
 
       if (emailInput) {
-        emailInput.value ||= bestEmail || '';
         emailInput.placeholder = bestEmail ? '' : 'you@example.com';
       }
 
@@ -1360,3 +1359,4 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 })();
 // ==== end post-patch overrides ====
+
