@@ -1,3 +1,18 @@
+// ===== Feature flag: email-only auth (disable Google/Microsoft sign-in UI) =====
+const OAUTH_DISABLED = true;
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof OAUTH_DISABLED !== 'undefined' && OAUTH_DISABLED) {
+    ['googleSignIn','microsoftSignIn'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.style.display = 'none';
+        el.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); return false; }, { capture: true });
+      }
+    });
+  }
+});
+
 // Detect Capacitor iOS (native app) vs web/PWA
 const isIOSNative =
   !!(window.Capacitor &&
@@ -84,65 +99,33 @@ function computeInitials(user) {
   return '--';
 }
 
-// IMPROVED: Best-effort resolver for user's email (handles OAuth providers better)
+// Best-effort resolver for user's email (handles rare cases where user.email is null)
+let lastKnownEmail = (function(){ try { return localStorage.getItem('lastKnownEmail') || null; } catch(_) { return null; } })();
+
 async function resolveBestEmail(user) {
   try {
-    if (!user) return null;
-    
-    // Method 1: Direct email field
-    if (user.email) {
-      return user.email;
-    }
-    
-    // Method 2: Provider data (Google/Microsoft OAuth often stores email here)
-    if (user.providerData && user.providerData.length > 0) {
-      for (const provider of user.providerData) {
-        if (provider.email) {
-          return provider.email;
-        }
-      }
-    }
-    
-    // Method 3: Get from ID token
+    if (!user) return lastKnownEmail;
+    // direct
+    if (user.email) { lastKnownEmail = user.email; try { localStorage.setItem('lastKnownEmail', lastKnownEmail); } catch(_) {} ; return lastKnownEmail; }
+    // providerData
+    const pd = (user.providerData || []).map(p => p && p.email).find(Boolean);
+    if (pd) { lastKnownEmail = pd; try { localStorage.setItem('lastKnownEmail', lastKnownEmail); } catch(_) {} ; return lastKnownEmail; }
+    // ID token claims
     try {
-      const idTokenResult = await user.getIdTokenResult();
-      if (idTokenResult.claims.email) {
-        return idTokenResult.claims.email;
-      }
-    } catch (e) {
-      console.log('Could not get ID token:', e);
-    }
-    
-    // Method 4: Try reloading the user
+      const t = await user.getIdTokenResult();
+      const cl = t && t.claims;
+      if (cl && cl.email) { lastKnownEmail = cl.email; try { localStorage.setItem('lastKnownEmail', lastKnownEmail); } catch(_) {} ; return lastKnownEmail; }
+    } catch(_) {}
+    // Reload and retry direct
     try {
       await user.reload();
-      const refreshedUser = firebase.auth().currentUser;
-      if (refreshedUser && refreshedUser.email) {
-        return refreshedUser.email;
-      }
-      // Check refreshed user's provider data too
-      if (refreshedUser && refreshedUser.providerData) {
-        for (const provider of refreshedUser.providerData) {
-          if (provider.email) {
-            return provider.email;
-          }
-        }
-      }
-    } catch (e) {
-      console.log('Could not reload user:', e);
-    }
-    
-    // Method 5: Try localStorage as last resort
-    try {
-      const stored = localStorage.getItem('lastKnownEmail');
-      if (stored) return stored;
-    } catch (e) {}
-    
-    // Return null if no email found
-    return null;
-  } catch (error) {
-    console.error('Error resolving email:', error);
-    return null;
+      const refreshed = firebase.auth().currentUser;
+      if (refreshed && refreshed.email) { lastKnownEmail = refreshed.email; try { localStorage.setItem('lastKnownEmail', lastKnownEmail); } catch(_) {} ; return lastKnownEmail; }
+    } catch(_) {}
+    // Fallback to storage
+    return lastKnownEmail;
+  } catch(_) {
+    return lastKnownEmail;
   }
 }
 
@@ -205,7 +188,7 @@ function showAuthError(err) {
     return;
   }
   if (code === 'auth/cancelled-popup-request' || code === 'auth/popup-closed-by-user') {
-    return; // user canceled—don't show scary error
+    return; // user canceled—don’t show scary error
   }
   alert(msg);
 }
@@ -342,15 +325,7 @@ function handleAuthStateChange(user) {
     loggedOutState.classList.add('hidden');
 
     // Update header identity (masked email + initials)
-    resolveBestEmail(user).then(email => {
-      setIdentityUI(user, email);
-      // Store email if found for later use
-      if (email) {
-        try {
-          localStorage.setItem('lastKnownEmail', email);
-        } catch (e) {}
-      }
-    });
+    resolveBestEmail(user).then(email => setIdentityUI(user, email));
 
     auth.loadUserWatchlist(user.uid).then(watchlist => {
       userWatchlist = watchlist;
@@ -493,190 +468,61 @@ async function handleAccountDeletion() {
     return;
   }
 
-  const password = deletePasswordInput ? deletePasswordInput.value.trim() : '';
-
+  const password = deletePasswordInput.value.trim();
+  
   try {
-    const providers = (user.providerData || []).map(p => p && p.providerId);
+    const providers = user.providerData.map(p => p.providerId);
 
-    // --- OAuth users (Google/Microsoft): Re-authenticate ---
-    if (providers.includes('google.com') || providers.includes('microsoft.com')) {
-      const isGoogle = providers.includes('google.com');
-      const provider = isGoogle 
-        ? new firebase.auth.GoogleAuthProvider() 
-        : new firebase.auth.OAuthProvider('microsoft.com');
-      
-      // Add scopes and parameters
-      if (provider.addScope) {
-        provider.addScope('email');
-      }
-      if (provider.setCustomParameters) {
-        provider.setCustomParameters({ prompt: 'select_account' });
-      }
-
-      // Check if we should use popup or redirect
-      const canUsePopup = typeof preferRedirect !== 'undefined' ? !preferRedirect : true;
-      
-      if (canUsePopup && user.reauthenticateWithPopup) {
-        try {
-          // Try popup first
-          await user.reauthenticateWithPopup(provider);
-          
-          // If successful, delete immediately
-          try {
-            await firebase.firestore().collection('watchlists').doc(user.uid).delete();
-          } catch(firestoreError) {
-            console.log('Watchlist deletion error (may not exist):', firestoreError);
-          }
-          
-          await user.delete();
-          
-          if (deleteAccountModal) {
-            deleteAccountModal.classList.add('hidden');
-          }
-          
-          alert('Your account has been permanently deleted.');
-          window.location.href = '/CEORater/';
-          return;
-          
-        } catch (popupError) {
-          console.error('Popup reauth error:', popupError);
-          
-          // Check if it's a popup-specific error
-          const code = popupError && popupError.code;
-          const popupIssues = [
-            'auth/popup-blocked', 
-            'auth/popup-closed-by-user', 
-            'auth/cancelled-popup-request',
-            'auth/operation-not-supported-in-this-environment'
-          ];
-          
-          if (popupIssues.includes(code)) {
-            // Fallback to redirect
-            console.log('Popup failed, using redirect for re-authentication');
-          } else {
-            // Other error - show to user
-            alert('Reauthentication failed: ' + (popupError.message || 'Unknown error'));
-            return;
-          }
-        }
-      }
-      
-      // Use redirect method (either as primary or fallback)
-      console.log('Using redirect for OAuth re-authentication');
-      
-      // Set flags in both session and local storage for redundancy
-      try {
-        sessionStorage.setItem('pendingDelete', '1');
-        localStorage.setItem('pendingDelete', '1');
-      } catch(e) {
-        console.warn('Could not set storage flags:', e);
-      }
-      
-      // Initiate redirect
+    if (providers.includes('google.com')) {
+      try { sessionStorage.setItem('pendingDelete', '1'); localStorage.setItem('pendingDelete', '1'); } catch(_) {}
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try { provider.addScope('email'); provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
       await user.reauthenticateWithRedirect(provider);
-      // User will return to the app after authentication
+      return; // resume after redirect
+    } else if (providers.includes('microsoft.com')) {
+      try { sessionStorage.setItem('pendingDelete', '1'); localStorage.setItem('pendingDelete', '1'); } catch(_) {}
+      const provider = new firebase.auth.OAuthProvider('microsoft.com');
+      await user.reauthenticateWithRedirect(provider);
       return;
-    }
-
-    // --- Email/password users ---
-    if (providers.includes('password')) {
+    } else if (providers.includes('password')) {
       if (!password) {
         alert('Please enter your password to confirm deletion');
         return;
       }
-      
       const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
       await user.reauthenticateWithCredential(credential);
-      
-      // Delete Firestore data
-      try {
-        await firebase.firestore().collection('watchlists').doc(user.uid).delete();
-      } catch (firestoreError) {
-        console.log('Watchlist deletion error (may not exist):', firestoreError);
-      }
-      
-      // Delete the user
-      await user.delete();
-      
-      if (deleteAccountModal) {
-        deleteAccountModal.classList.add('hidden');
-      }
-      
-      alert('Your account has been permanently deleted.');
-      window.location.href = '/CEORater/';
     }
 
-  } catch (error) {
-    console.error('Account deletion error:', error);
-    
-    if (error.code === 'auth/wrong-password') {
-      alert('Incorrect password. Please try again.');
-    } else if (error.code === 'auth/requires-recent-login') {
-      alert('For security, please sign out and sign in again before deleting your account.');
-    } else if (error.code === 'auth/unauthorized-domain') {
-      alert('Unauthorized domain. Check your Firebase auth settings.');
-    } else {
-      alert('Failed to delete account: ' + (error.message || 'Unknown error'));
-    }
-  }
-}
-
-// Add this function to handle the redirect result completion
-async function completeOAuthDeletion() {
-  try {
-    // Check both storage locations
-    const pendingDelete = sessionStorage.getItem('pendingDelete') === '1' || 
-                          localStorage.getItem('pendingDelete') === '1';
-    
-    if (!pendingDelete) {
-      return false;
-    }
-    
-    console.log('Completing pending account deletion after OAuth redirect');
-    
-    // Clear the flags
     try {
-      sessionStorage.removeItem('pendingDelete');
-      localStorage.removeItem('pendingDelete');
-    } catch(e) {}
-    
-    const user = firebase.auth().currentUser;
-    
-    if (!user) {
-      console.error('No user found after redirect');
-      return false;
+      const db = firebase.firestore();
+      await db.collection('watchlists').doc(user.uid).delete();
+    } catch (firestoreError) {
+      console.log('Watchlist deletion error (may not exist):', firestoreError);
     }
     
-    // Delete Firestore data
-    try {
-      await firebase.firestore().collection('watchlists').doc(user.uid).delete();
-    } catch(e) {
-      console.log('Watchlist deletion error (may not exist):', e);
-    }
-    
-    // Delete the user account
     await user.delete();
     
+    deleteAccountModal.classList.add('hidden');
     alert('Your account has been permanently deleted.');
     window.location.href = '/CEORater/';
-    return true;
     
   } catch (error) {
-    console.error('Failed to complete deletion after redirect:', error);
-    
-    // Clear the flags to prevent infinite loop
-    try {
-      sessionStorage.removeItem('pendingDelete');
-      localStorage.removeItem('pendingDelete');
-    } catch(e) {}
-    
-    if (error.code === 'auth/requires-recent-login') {
-      alert('Authentication expired. Please try deleting your account again.');
+    console.error('Account deletion error:', error);
+    if (error.code === 'auth/wrong-password') {
+      alert('Incorrect password. Please try again.');
+    } else if (error.code === 'auth/popup-closed-by-user') {
+      alert('Sign-in popup was closed before completing. Please try again.');
+    } else if (error.code === 'auth/account-exists-with-different-credential') {
+      alert('This email is linked to a different sign-in method. Try that method.');
+    } else if (error.code === 'auth/credential-already-in-use') {
+      alert('Credential already in use.');
+    } else if (error.code === 'auth/unauthorized-domain') {
+      alert('Unauthorized domain. Check your Firebase auth settings.');
+    } else if (error.code === 'auth/requires-recent-login') {
+      alert('For security, please sign out and sign in again before deleting your account.');
     } else {
       alert('Failed to delete account: ' + (error.message || 'Unknown error'));
     }
-    
-    return false;
   }
 }
 
@@ -748,26 +594,10 @@ function initializeProfilePage() {
 
           const expectedById = document.getElementById('expectedEmailText');
           const expectedEmailEl = expectedById || document.querySelector('.text-xs.text-gray-500');
-          
-          // Check if OAuth user
-          const isOAuth = (user.providerData || []).some(p => 
-            p.providerId === 'google.com' || p.providerId === 'microsoft.com'
-          );
-          
-          if (isOAuth) {
-            if (expectedEmailEl) expectedEmailEl.textContent = 'Using Google/Microsoft re-authentication';
-          } else if (expectedEmailEl && bestEmail) {
-            expectedEmailEl.textContent = `Expected: ${bestEmail}`;
-          }
+          if (expectedEmailEl) { expectedEmailEl.textContent = `Expected: ${bestEmail || ''}`; }
 
           const emailInput = document.getElementById('emailConfirmation');
-          if (emailInput) {
-            if (isOAuth) {
-              emailInput.placeholder = 'Not required for Google/Microsoft accounts';
-            } else {
-              emailInput.placeholder = bestEmail || '';
-            }
-          }
+          if (emailInput) { emailInput.placeholder = bestEmail || ''; }
 
           // Compute JM-style initials (prefer displayName; fallback to email)
           let initials = '--';
@@ -797,6 +627,539 @@ function initializeProfilePage() {
     });
   }
 
-  // IMPROVED: Updated setupProfileAccountDeletion function for OAuth users
   function setupProfileAccountDeletion(user, bestEmail) {
-    const
+    const deleteBtn = document.getElementById('deleteAccountBtn');
+    const deleteModal = document.getElementById('deleteConfirmModal');
+    const cancelBtn = document.getElementById('cancelDelete');
+    const confirmBtn = document.getElementById('confirmDelete');
+    const emailInput = document.getElementById('emailConfirmation');
+
+    // 🔧 NEW: detect OAuth users (Google/Microsoft)
+    const isOAuth = (user.providerData || []).some(p =>
+      p.providerId === 'google.com' || p.providerId === 'microsoft.com'
+    );
+
+    deleteBtn?.addEventListener('click', () => {
+      deleteModal?.classList.remove('hidden');
+
+      const expectedById = document.getElementById('expectedEmailText');
+      const expectedEmailEl = expectedById || document.querySelector('.text-xs.text-gray-500');
+      if (expectedEmailEl) {
+        expectedEmailEl.textContent = isOAuth
+          ? 'Using Google/Microsoft re-authentication'
+          : `Expected: ${bestEmail || ''}`;
+      }
+
+      if (emailInput) {
+        emailInput.placeholder = bestEmail || '';
+        emailInput.value = '';
+      }
+
+      // ✅ OAuth users do NOT need to type their email
+      if (confirmBtn) {
+        confirmBtn.disabled = isOAuth ? false : !!bestEmail;
+      }
+    });
+
+    cancelBtn?.addEventListener('click', () => {
+      deleteModal?.classList.add('hidden');
+      if (emailInput) emailInput.value = '';
+      if (confirmBtn) confirmBtn.disabled = true;
+    });
+
+    emailInput?.addEventListener('input', () => {
+      if (!confirmBtn) return;
+      if (isOAuth) {
+        // Keep enabled for OAuth
+        confirmBtn.disabled = false;
+      } else {
+        confirmBtn.disabled = (emailInput.value !== (bestEmail || ''));
+      }
+    });
+
+    confirmBtn?.addEventListener('click', async () => {
+      try {
+        await window.handleAccountDeletion();
+      } catch (error) {
+        console.error('Account deletion failed:', error);
+        alert('Account deletion failed: ' + error.message);
+      }
+    });
+
+    deleteModal?.addEventListener('click', (e) => {
+      if (e.target === deleteModal) {
+        deleteModal.classList.add('hidden');
+        if (emailInput) emailInput.value = '';
+        if (confirmBtn) confirmBtn.disabled = true;
+      }
+    });
+  }
+
+  // Legacy back link guard (if a plain "/" anchor exists)
+  const backBtn = document.querySelector('a[href="/"]');
+  if (backBtn) {
+    backBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (isIOSNative) {
+        if (window.history.length > 1) {
+          window.history.back();
+        } else {
+          window.location.href = '/CEORater/';
+        }
+      } else {
+        window.location.href = '/CEORater/';
+      }
+    });
+  }
+
+  const style = document.createElement('style');
+  style.textContent = `
+    .nav-item {
+      color: #6B7280;
+      transition: all 0.2s;
+    }
+    .nav-item:hover {
+      color: #374151;
+      background-color: #F9FAFB;
+    }
+    .nav-item.active {
+      color: #2563EB;
+      background-color: #EFF6FF;
+      border-color: #DBEAFE;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+// ---------- Event Listeners ----------
+document.addEventListener('DOMContentLoaded', () => {
+  // Initialize profile page if we're on it
+  initializeProfilePage();
+
+  // Initialize Firebase auth listener only after Firebase is ready
+  waitForFirebaseAuth(() => {
+    try {
+      if (firebase.apps?.length === 0 && window.firebaseConfig) {
+        firebase.initializeApp(window.firebaseConfig);
+      }
+    } catch (_) {}
+
+    
+    // Use SESSION persistence so redirect sign-in works reliably on Windows/Safari
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
+    
+    // Debug: ensure we are pointing at expected project
+    try {
+      const opts = firebase.app().options || {};
+      console.log('Firebase project:', opts.projectId, 'authDomain:', opts.authDomain, 'origin:', location.origin);
+    } catch {}
+
+    firebase.auth().onAuthStateChanged((user) => {
+      handleAuthStateChange(user);
+      updateGlobalUser(user);
+    });
+
+    // Hot-load fallback in case user is already signed in
+    const u = firebase.auth().currentUser;
+    if (u) {
+      handleAuthStateChange(u);
+      updateGlobalUser(u);
+    }
+
+    // Handle any pending redirect results from OAuth login
+    firebase.auth().getRedirectResult()
+      .then(async (res) => {
+        // If returned from Google/Microsoft redirect and user is present
+        if (res && res.user) {
+          try {
+            const email = await resolveBestEmail(res.user);
+            setIdentityUI(res.user, email);
+
+            // --- Tiny write: persist a minimal user profile on first OAuth return ---
+            try {
+              const providerId =
+                (res.additionalUserInfo && res.additionalUserInfo.providerId) ||
+                (res.user.providerData && res.user.providerData[0] && res.user.providerData[0].providerId) ||
+                null;
+
+              await firebase.firestore()
+                .collection('users')
+                .doc(res.user.uid)
+                .set({
+                  email: email || null,
+                  displayName: res.user.displayName || null,
+                  provider: providerId,
+                  createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                }, { merge: true });
+            } catch (persistErr) {
+              console.warn('Profile persist failed (non-fatal):', persistErr);
+            }
+            // -----------------------------------------------------------------------
+
+          } catch(_) {}
+          loginModal?.classList.add('hidden');
+        } else if (res && res.error) {
+          showAuthError(res.error);
+        }
+      })
+      .catch(showAuthError);
+    // If we just returned from a reauth redirect for deletion, finish deletion now
+    (async () => {
+      try {
+        if (sessionStorage.getItem('pendingDelete') === '1') {
+          sessionStorage.removeItem('pendingDelete');
+          const u2 = firebase.auth().currentUser;
+          if (u2) {
+            try { await firebase.firestore().collection('watchlists').doc(u2.uid).delete(); } catch (_) {}
+            try {
+              await u2.delete();
+              alert('Your account has been permanently deleted.');
+              window.location.href = '/CEORater/';
+            } catch (e) {
+              if (e && e.code === 'auth/requires-recent-login') {
+                alert('Please try deleting again; security re-authentication did not complete.');
+              } else {
+                alert('Failed to delete account: ' + (e?.message || 'Unknown error'));
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Pending delete completion error:', e);
+      }
+    })();
+  });
+  
+  // Show UI structure immediately (app responsive within seconds)
+  showSpinner(); // Show loading spinner
+
+  // Instant offline-first hydrate from local cache (if present)
+  try {
+    const bundle = getCachedBundle();
+    if (bundle) {
+      master = bundle.data;
+      ui.refreshFilters(master);
+      ui.updateStatCards(master);
+      applyFilters();
+      if (lastUpdated) lastUpdated.textContent = 'Last updated: ' + formatRelative(bundle.ts);
+      hideSpinner(); // hide immediately upon cached render
+    }
+  } catch (_) {}
+
+  // Set up ALL event listeners IMMEDIATELY - app is now interactive
+  searchInput.addEventListener('input', debounce(applyFilters, 300));
+  industryFilter.addEventListener('change', applyFilters);
+  sectorFilter.addEventListener('change', applyFilters);
+  founderFilter.addEventListener('change', applyFilters);
+  sortControl.addEventListener('change', e => {
+    const [k, d] = e.target.value.split('-');
+    currentSort = { key: k, dir: d };
+    sortAndRender();
+  });
+
+  // Safety net: hide spinner when first cards appear
+  (function ensureSpinnerStops() {
+    const grid = document.getElementById('ceoCardView');
+    if (!grid) return;
+    if (grid.children.length > 0) {
+      hideSpinner();
+      const obs = new MutationObserver(()=>{});
+      return;
+    }
+    const obs = new MutationObserver(() => {
+      if (grid.children.length > 0) {
+        hideSpinner();
+        obs.disconnect();
+      }
+    });
+    obs.observe(grid, { childList: true });
+  })();
+
+  // Mobile filter toggle listener
+  toggleFiltersBtn.addEventListener('click', () => {
+    const isHidden = mobileFilterControls.classList.toggle('hidden');
+    toggleFiltersIcon.classList.toggle('rotate-180');
+    const buttonText = toggleFiltersBtn.querySelector('span');
+    buttonText.textContent = isHidden ? 'Show Filters & Options' : 'Hide Filters & Options';
+  });
+
+  allCeosTab.addEventListener('click', switchToAllView);
+  watchlistTab.addEventListener('click', switchToWatchlistView);
+
+  loginBtn.addEventListener('click', () => loginModal.classList.remove('hidden'));
+  closeLoginModalBtn.addEventListener('click', () => loginModal.classList.add('hidden'));
+  loginModal.addEventListener('click', e => {
+    if (e.target === loginModal) loginModal.classList.add('hidden');
+  });
+
+  // User dropdown functionality
+  userMenuButton?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = !userDropdown.classList.contains('hidden');
+    
+    if (isOpen) {
+      userDropdown.classList.add('hidden');
+      dropdownIcon.style.transform = 'rotate(0deg)';
+    } else {
+      userDropdown.classList.remove('hidden');
+      dropdownIcon.style.transform = 'rotate(180deg)';
+    }
+  });
+
+  // Account Settings navigation
+  accountSettingsBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    navigateToProfile();
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!userDropdown.classList.contains('hidden') && 
+        !userMenuButton.contains(e.target) && 
+        !userDropdown.contains(e.target)) {
+      userDropdown.classList.add('hidden');
+      dropdownIcon.style.transform = 'rotate(0deg)';
+    }
+  });
+
+  // Account Deletion Event Listeners
+  closeDeleteModalBtn?.addEventListener('click', () => {
+    deleteAccountModal.classList.add('hidden');
+  });
+  
+  cancelDeleteBtn?.addEventListener('click', () => {
+    deleteAccountModal.classList.add('hidden');
+  });
+  
+  deleteAccountModal?.addEventListener('click', e => {
+    if (e.target === deleteAccountModal) {
+      deleteAccountModal.classList.add('hidden');
+    }
+  });
+  
+  confirmDeleteBtn?.addEventListener('click', handleAccountDeletion);
+
+  ceoCardView.addEventListener('click', (e) => {
+      const star = e.target.closest('.watchlist-star');
+      if (star) {
+          e.stopPropagation();
+          toggleWatchlist(star.dataset.ticker);
+          return; 
+      }
+
+      const compareBtn = e.target.closest('.compare-btn');
+      if (compareBtn) {
+          e.stopPropagation();
+          toggleCompare(compareBtn.dataset.ticker);
+          return;
+      }
+
+      const card = e.target.closest('.ceo-card');
+      if (card) {
+          const ticker = card.dataset.ticker;
+          const ceoName = card.dataset.ceoName;
+          const ceoData = master.find(c => c.ticker === ticker && c.ceo === ceoName);
+          if (ceoData) {
+              ui.renderDetailModal(ceoData);
+              ceoDetailModal.classList.remove('hidden');
+          }
+      }
+  });
+
+  // Listener for the entire comparison tray (handles "x" and "Clear All")
+  comparisonTray.addEventListener('click', e => {
+    if (e.target.id === 'clearCompareBtn') {
+        comparisonSet.clear();
+        sortAndRender();
+        ui.updateComparisonTray(comparisonSet);
+        return;
+    }
+    const removeBtn = e.target.closest('.remove-from-tray-btn');
+    if (removeBtn) {
+        const ticker = removeBtn.dataset.ticker;
+        if (ticker) {
+            toggleCompare(ticker);
+        }
+    }
+  });
+
+  closeDetailModal.addEventListener('click', () => ceoDetailModal.classList.add('hidden'));
+  ceoDetailModal.addEventListener('click', e => {
+      if (e.target === ceoDetailModal) {
+          ceoDetailModal.classList.add('hidden');
+      }
+  });
+  
+  compareNowBtn.addEventListener('click', () => {
+      ui.renderComparisonModal(master, comparisonSet);
+      comparisonModal.classList.remove('hidden');
+  });
+  closeComparisonModalBtn.addEventListener('click', () => comparisonModal.classList.add('hidden'));
+  comparisonModal.addEventListener('click', e => {
+    if (e.target === comparisonModal) {
+      comparisonModal.classList.add('hidden');
+    }
+  });
+
+  logoutBtn.addEventListener('click', () => auth.signOut());
+  
+  // ******** IMPORTANT CHANGE: Google sign-in always via redirect ********
+if (!OAUTH_DISABLED && googleSignIn) {
+  googleSignIn.addEventListener('click', async () => {
+    try {
+      if (preferRedirect) {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        try { provider.addScope('email'); provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
+        await firebase.auth().signInWithRedirect(provider);
+      } else {
+        await auth.signInWithGoogle();
+      }
+      loginModal.classList.add('hidden');
+    } catch (error) {
+      console.error('Google sign in error:', error);
+      const msg =
+        error?.code === 'auth/unauthorized-domain'
+          ? 'Sign-in blocked: unauthorized domain. Add your GitHub Pages domain in Firebase Auth settings.'
+          : (error?.message || 'Sign in failed. Please try again.');
+      alert(msg);
+    }
+  });
+}
+if (!OAUTH_DISABLED && microsoftSignIn) {
+  microsoftSignIn.addEventListener('click', () => {
+    auth.signInWithMicrosoft().then(() => {
+      loginModal.classList.add('hidden');
+    }).catch(error => {
+      console.error('Microsoft sign in error:', error);
+      alert('Sign in failed: ' + error.message);
+    });
+  });
+}
+  
+  forgotPasswordLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    const email = emailInput.value;
+    if (!email) {
+      alert('Please enter your email address to reset your password.');
+      return;
+    }
+    auth.sendPasswordReset(email)
+      .then(() => {
+        alert('Password reset email sent! Please check your inbox.');
+      })
+      .catch((error) => {
+        console.error('Password reset error:', error);
+        if (error.code === 'auth/user-not-found') {
+          alert('No account found with that email address.');
+        } else {
+          alert('Failed to send password reset email. Please try again.');
+        }
+      });
+  });
+  
+  signInEmail.addEventListener('click', () => {
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    if (!email || !password) return;
+    
+    auth.signInWithEmailSmart(email, password).then(() => {
+      loginModal.classList.add('hidden');
+    }).catch(error => {
+      console.error('Email sign in error:', error);
+      alert('Sign in failed: ' + error.message);
+    });
+  });
+
+  // --- Updated: remove duplicate verification send (auth.js already sends it)
+  signUpEmail.addEventListener('click', async () => {
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    if (!email || !password) return;
+    try {
+      await auth.signUpWithEmail(email, password); // single send inside auth.js
+      alert('Check your inbox to verify your email. (If not there, check Spam/Promotions.)');
+      loginModal.classList.add('hidden');
+    } catch (error) {
+      console.error('Email sign up error:', error);
+      alert('Sign up failed: ' + error.message);
+    }
+  });
+
+  // Enhanced CSV export with CEORaterScore
+  $("downloadExcelButton").addEventListener('click', () => {
+    if (view.length === 0) {
+      alert('No data to export');
+      return;
+    }
+    
+    const headers = ['CEO', 'Company', 'Ticker', 'CEORaterScore', 'AlphaScore', 'CompScore', 'Market Cap ($B)', 'AlphaScore Quartile', 'TSR Alpha', 'Avg Annual TSR Alpha', 'Industry', 'Sector', 'TSR During Tenure', 'Avg Annual TSR', 'Compensation ($MM)', 'Comp Cost / 1% Avg TSR ($MM)', 'Tenure (yrs)', 'Founder'];
+    
+    const csvContent = [
+      headers.join(','),
+      ...view.map(c => [
+        `"${c.ceo}"`,
+        `"${c.company}"`,
+        c.ticker,
+        c.ceoRaterScore ? Math.round(c.ceoRaterScore) : 'N/A',
+        Math.round(c.alphaScore),
+        c.compensationScore || 'N/A',
+        (c.marketCap / 1e9).toFixed(2),
+        c.quartile,
+        c.tsrAlpha,
+        c.avgAnnualTsrAlpha,
+        `"${c.industry || ''}"`,
+        `"${c.sector || ''}"`,
+        c.tsrValue,
+        c.avgAnnualTsr,
+        c.compensation,
+        c.compensationCost,
+        c.tenure,
+        c.founder,
+      ].join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ceorater-${currentView}-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (!loginModal.classList.contains('hidden')) {
+        loginModal.classList.add('hidden');
+      } else if (!deleteAccountModal.classList.contains('hidden')) {
+        deleteAccountModal.classList.add('hidden');
+      } else if (!ceoDetailModal.classList.contains('hidden')) {
+        ceoDetailModal.classList.add('hidden');
+      } else if (!comparisonModal.classList.contains('hidden')) {
+        comparisonModal.classList.add('hidden');
+      }
+    }
+  });
+
+  emailInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') signInEmail.click();
+  });
+  
+  passwordInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') signInEmail.click();
+  });
+
+  // NOW load data asynchronously in the background (non-blocking)
+  fetchData()
+    .then(data => {
+      master = data;
+      ui.refreshFilters(master);
+      ui.updateStatCards(master);
+      applyFilters();
+      lastUpdated.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+    })
+    .catch(() => errorMessage.classList.remove('hidden'))
+    .finally(() => loading.style.display = 'none');
+});
