@@ -159,3 +159,233 @@
 
   <!-- Firebase and App Scripts -->
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
+  <script defer src="/CEORater/firebase-config.js"></script>
+  <!-- IMPORTANT: load your main app logic so Google/Microsoft deletion can re-auth & complete -->
+  <script defer src="/CEORater/script.js"></script>
+
+  <!-- Complete OAuth deletion handler -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      function isOAuthUser(u) {
+        try { 
+          return (u?.providerData || []).some(p => 
+            p.providerId === 'google.com' || p.providerId === 'microsoft.com'
+          ); 
+        } catch (_) { 
+          return false; 
+        }
+      }
+      
+      function enableConfirmForOAuth(u) {
+        const btn = document.getElementById('confirmDelete');
+        const input = document.getElementById('emailConfirmation');
+        const expected = document.getElementById('expectedEmailText');
+        if (!btn) return;
+        
+        if (isOAuthUser(u)) {
+          // Don't force email typing for OAuth users
+          btn.disabled = false;
+          if (expected) expected.textContent = 'Using Google/Microsoft re-authentication';
+          if (input) input.placeholder = 'Not required for Google/Microsoft accounts';
+        }
+      }
+      
+      // Wire up the deletion modal
+      const openBtn = document.getElementById('deleteAccountBtn');
+      const modal = document.getElementById('deleteConfirmModal');
+      const cancel = document.getElementById('cancelDelete');
+      const confirm = document.getElementById('confirmDelete');
+      const emailInput = document.getElementById('emailConfirmation');
+      const expected = document.getElementById('expectedEmailText');
+
+      openBtn?.addEventListener('click', async () => {
+        modal?.classList.remove('hidden');
+        
+        // Wait for Firebase auth to be ready
+        const waitForAuth = (callback) => {
+          if (typeof firebase !== 'undefined' && firebase.auth) {
+            callback();
+          } else {
+            setTimeout(() => waitForAuth(callback), 100);
+          }
+        };
+        
+        waitForAuth(() => {
+          const u = firebase.auth().currentUser;
+          if (u?.email && expected) {
+            expected.textContent = 'Expected: ' + u.email;
+          }
+          enableConfirmForOAuth(u);
+          
+          // For non-OAuth users, require exact match
+          confirm.disabled = isOAuthUser(u) ? false : true;
+        });
+      });
+      
+      cancel?.addEventListener('click', () => { 
+        modal?.classList.add('hidden');
+        if (emailInput) emailInput.value = '';
+        if (confirm) confirm.disabled = true;
+      });
+
+      emailInput?.addEventListener('input', () => {
+        if (typeof firebase === 'undefined' || !firebase.auth) return;
+        
+        const u = firebase.auth().currentUser;
+        if (!u) return;
+        
+        if (isOAuthUser(u)) {
+          confirm.disabled = false;
+        } else {
+          confirm.disabled = (emailInput.value !== (u.email || ''));
+        }
+      });
+
+      confirm?.addEventListener('click', async () => {
+        if (typeof firebase === 'undefined' || !firebase.auth) {
+          alert('Firebase not initialized.');
+          return;
+        }
+        
+        const u = firebase.auth().currentUser;
+        if (!u) {
+          alert('Not signed in.');
+          return;
+        }
+        
+        try {
+          if (isOAuthUser(u)) {
+            // Determine which provider
+            const provider = (u.providerData || []).some(p => p.providerId === 'google.com')
+              ? new firebase.auth.GoogleAuthProvider()
+              : new firebase.auth.OAuthProvider('microsoft.com');
+            
+            // Add scopes and parameters
+            if (provider.addScope) {
+              provider.addScope('email');
+            }
+            if (provider.setCustomParameters) {
+              provider.setCustomParameters({ prompt: 'select_account' });
+            }
+            
+            // Try popup first
+            const canUsePopup = !(/iPad|iPhone|iPod/.test(navigator.userAgent || '') || 
+                                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+            
+            if (canUsePopup && u.reauthenticateWithPopup) {
+              try {
+                await u.reauthenticateWithPopup(provider);
+                
+                // Delete Firestore data
+                try {
+                  await firebase.firestore().collection('watchlists').doc(u.uid).delete();
+                } catch(_) {}
+                
+                // Delete the user
+                await u.delete();
+                alert('Your account has been permanently deleted.');
+                window.location.href = '/CEORater/';
+                return;
+                
+              } catch (popupError) {
+                console.error('Popup failed:', popupError);
+                
+                // Check if it's a popup-specific error
+                const code = popupError?.code;
+                if (code === 'auth/popup-blocked' || 
+                    code === 'auth/popup-closed-by-user' ||
+                    code === 'auth/cancelled-popup-request') {
+                  // Fall through to redirect method
+                  console.log('Falling back to redirect method');
+                } else {
+                  alert('Reauthentication failed: ' + (popupError.message || 'Unknown error'));
+                  return;
+                }
+              }
+            }
+            
+            // Use redirect method
+            sessionStorage.setItem('pendingDelete', '1');
+            localStorage.setItem('pendingDelete', '1');
+            await u.reauthenticateWithRedirect(provider);
+            return;
+            
+          } else {
+            // Email/password users - use the main app's handler if available
+            if (window.handleAccountDeletion) {
+              await window.handleAccountDeletion();
+            } else {
+              alert('Please use the main app flow to delete email/password accounts.');
+            }
+          }
+        } catch (e) {
+          console.error('Delete failed:', e);
+          alert('Delete failed: ' + (e?.message || 'Unknown error'));
+        }
+      });
+
+      // Close modal when clicking outside
+      modal?.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.classList.add('hidden');
+          if (emailInput) emailInput.value = '';
+          if (confirm) confirm.disabled = true;
+        }
+      });
+
+      // Complete pending OAuth deletion after redirect
+      const waitForFirebase = (callback) => {
+        if (typeof firebase !== 'undefined' && firebase.auth) {
+          callback();
+        } else {
+          setTimeout(() => waitForFirebase(callback), 100);
+        }
+      };
+      
+      waitForFirebase(() => {
+        firebase.auth().getRedirectResult().then(async (result) => {
+          const pendingDelete = sessionStorage.getItem('pendingDelete') === '1' || 
+                               localStorage.getItem('pendingDelete') === '1';
+          
+          if (pendingDelete && result && result.user) {
+            sessionStorage.removeItem('pendingDelete');
+            localStorage.removeItem('pendingDelete');
+            
+            const u = result.user;
+            
+            try {
+              // Delete Firestore data
+              try {
+                await firebase.firestore().collection('watchlists').doc(u.uid).delete();
+              } catch(_) {}
+              
+              // Delete the user
+              await u.delete();
+              alert('Your account has been permanently deleted.');
+              window.location.href = '/CEORater/';
+            } catch (error) {
+              console.error('Failed to complete deletion:', error);
+              
+              if (error.code === 'auth/requires-recent-login') {
+                alert('Authentication expired. Please try deleting your account again.');
+              } else {
+                alert('Failed to delete account: ' + (error.message || 'Unknown error'));
+              }
+            }
+          }
+        }).catch((error) => {
+          console.error('Error checking redirect result:', error);
+          
+          // Clear pending delete flags on error
+          try {
+            sessionStorage.removeItem('pendingDelete');
+            localStorage.removeItem('pendingDelete');
+          } catch(e) {}
+        });
+      });
+    });
+  </script>
+</body>
+</html>
