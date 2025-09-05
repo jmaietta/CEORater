@@ -365,6 +365,8 @@ function sortAndRender() {
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms) } }
 
 // ---------- Account Deletion Functions ----------
+// Uses provider *reauth* on the CURRENT user (popup on web, redirect on iOS) and
+// completes deletion after redirect if needed.
 async function handleAccountDeletion() {
   const user = currentUser;
   if (!user) {
@@ -372,16 +374,40 @@ async function handleAccountDeletion() {
     return;
   }
 
-  const password = deletePasswordInput.value.trim();
-  
+  const doDelete = async () => {
+    try {
+      const db = firebase.firestore();
+      await db.collection('watchlists').doc(user.uid).delete().catch(() => {});
+    } catch (_) {}
+    await user.delete();
+    deleteAccountModal.classList.add('hidden');
+    alert('Your account has been permanently deleted.');
+    window.location.href = '/CEORater/';
+  };
+
   try {
     const providers = user.providerData.map(p => p.providerId);
-    
+
     if (providers.includes('google.com')) {
-      await auth.signInWithGoogle();
+      const provider = new firebase.auth.GoogleAuthProvider();
+      if (isIOSNative) {
+        sessionStorage.setItem('pendingDelete', '1');
+        await user.reauthenticateWithRedirect(provider);
+        return; // resume after redirect
+      } else {
+        await user.reauthenticateWithPopup(provider);
+      }
     } else if (providers.includes('microsoft.com')) {
-      await auth.signInWithMicrosoft();
+      const provider = new firebase.auth.OAuthProvider('microsoft.com');
+      if (isIOSNative) {
+        sessionStorage.setItem('pendingDelete', '1');
+        await user.reauthenticateWithRedirect(provider);
+        return;
+      } else {
+        await user.reauthenticateWithPopup(provider);
+      }
     } else if (providers.includes('password')) {
+      const password = deletePasswordInput.value.trim();
       if (!password) {
         alert('Please enter your password to confirm deletion');
         return;
@@ -390,25 +416,11 @@ async function handleAccountDeletion() {
       await user.reauthenticateWithCredential(credential);
     }
 
-    try {
-      const db = firebase.firestore();
-      await db.collection('watchlists').doc(user.uid).delete();
-    } catch (firestoreError) {
-      console.log('Watchlist deletion error (may not exist):', firestoreError);
-    }
-    
-    await user.delete();
-    
-    deleteAccountModal.classList.add('hidden');
-    alert('Your account has been permanently deleted.');
-    window.location.href = '/CEORater/';
-    
+    await doDelete();
   } catch (error) {
     console.error('Account deletion error:', error);
-    if (error.code === 'auth/wrong-password') {
-      alert('Incorrect password. Please try again.');
-    } else if (error.code === 'auth/requires-recent-login') {
-      alert('For security, please sign out and sign in again before deleting your account.');
+    if (error.code === 'auth/requires-recent-login') {
+      alert('For security, please sign in again and retry deleting your account.');
     } else {
       alert('Failed to delete account: ' + (error.message || 'Unknown error'));
     }
@@ -628,6 +640,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle any pending redirect results from OAuth login
     firebase.auth().getRedirectResult().catch(() => {});
+
+    // If we just returned from a *reauth* redirect for deletion, finish deletion now
+    (async () => {
+      try {
+        if (sessionStorage.getItem('pendingDelete') === '1') {
+          sessionStorage.removeItem('pendingDelete');
+          const u2 = firebase.auth().currentUser;
+          if (u2) {
+            try { await firebase.firestore().collection('watchlists').doc(u2.uid).delete(); } catch (_) {}
+            try {
+              await u2.delete();
+              alert('Your account has been permanently deleted.');
+              window.location.href = '/CEORater/';
+            } catch (e) {
+              if (e && e.code === 'auth/requires-recent-login') {
+                alert('Please try deleting again; security re-authentication did not complete.');
+              } else {
+                alert('Failed to delete account: ' + (e?.message || 'Unknown error'));
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Pending delete completion error:', e);
+      }
+    })();
   });
   
   // Show UI structure immediately (app responsive within seconds)
@@ -851,17 +889,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  signUpEmail.addEventListener('click', () => {
+  // After email sign-up, send verification email
+  signUpEmail.addEventListener('click', async () => {
     const email = emailInput.value;
     const password = passwordInput.value;
     if (!email || !password) return;
-    
-    auth.signUpWithEmail(email, password).then(() => {
+    try {
+      await auth.signUpWithEmail(email, password);
+      const u = firebase.auth().currentUser;
+      if (u) {
+        try { await u.sendEmailVerification(); } catch (_) {}
+      }
+      alert('Check your inbox to verify your email.');
       loginModal.classList.add('hidden');
-    }).catch(error => {
+    } catch (error) {
       console.error('Email sign up error:', error);
       alert('Sign up failed: ' + error.message);
-    });
+    }
   });
 
   // Enhanced CSV export with CEORaterScore
