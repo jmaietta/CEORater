@@ -124,14 +124,53 @@ async function resolveBestEmail(user) {
 
 function setIdentityUI(user, effectiveEmail) {
   const initials = computeInitials(user);
-  const nameOrMasked = effectiveEmail ? maskEmail(effectiveEmail) : (user?.displayName || 'Signed in');
+  const masked = effectiveEmail ? maskEmail(effectiveEmail) : (user?.displayName || 'Signed in');
+  const full = effectiveEmail || user?.email || '';
 
   const userEmailDisplay = document.getElementById('userEmailDisplay');
   const userEmailDropdown = document.getElementById('userEmailDropdown');
   const userAvatar = document.getElementById('userAvatar');
 
-  if (userEmailDisplay) { userEmailDisplay.textContent = nameOrMasked; userEmailDisplay.title = effectiveEmail || user?.email || ''; userEmailDisplay.dataset.identityBound = '1'; }
-  if (userEmailDropdown) { userEmailDropdown.textContent = nameOrMasked; userEmailDropdown.title = effectiveEmail || user?.email || ''; userEmailDropdown.dataset.identityBound = '1'; }
+  if (userEmailDisplay) {
+    userEmailDisplay.textContent = masked;    // header = masked
+    userEmailDisplay.title = full;
+    userEmailDisplay.dataset.identityBound = '1';
+  }
+  if (userEmailDropdown) {
+    userEmailDropdown.textContent = full;     // dropdown = full
+    userEmailDropdown.title = full;
+    userEmailDropdown.dataset.identityBound = '1';
+  }
+  if (userAvatar) {
+    userAvatar.textContent = initials;        // single-letter avatar
+    userAvatar.title = full || user?.displayName || '';
+    userAvatar.dataset.identityBound = '1';
+  }
+
+  // Enforce again once in case another script mutates them
+  setTimeout(() => {
+    if (userEmailDisplay && userEmailDisplay.textContent !== masked) userEmailDisplay.textContent = masked;
+    if (userEmailDropdown && userEmailDropdown.textContent !== full) userEmailDropdown.textContent = full;
+    if (userAvatar && userAvatar.textContent !== initials) userAvatar.textContent = initials;
+  }, 300);
+
+  // Strong guard: if any script mutates these nodes later, restore our values.
+  try {
+    const guard = new MutationObserver(() => {
+      if (userEmailDisplay && userEmailDisplay.dataset.identityBound === '1' && userEmailDisplay.textContent !== masked) {
+        userEmailDisplay.textContent = masked;
+      }
+      if (userEmailDropdown && userEmailDropdown.dataset.identityBound === '1' && userEmailDropdown.textContent !== full) {
+        userEmailDropdown.textContent = full;
+      }
+      if (userAvatar && userAvatar.dataset.identityBound === '1' && userAvatar.textContent !== initials) {
+        userAvatar.textContent = initials;
+      }
+    });
+    guard.observe(document.body, { subtree: true, childList: true, characterData: true });
+  } catch (_) {}
+}
+if (userEmailDropdown) { userEmailDropdown.textContent = nameOrMasked; userEmailDropdown.title = effectiveEmail || user?.email || ''; userEmailDropdown.dataset.identityBound = '1'; }
   if (userAvatar) { userAvatar.textContent = initials; userAvatar.title = user?.displayName || effectiveEmail || user?.email || ''; userAvatar.dataset.identityBound = '1'; }
 
   // Enforce again once in case another script mutates them
@@ -592,22 +631,8 @@ function initializeProfilePage() {
           const emailInput = document.getElementById('emailConfirmation');
           if (emailInput) { emailInput.placeholder = bestEmail || ''; }
 
-          // Compute JM-style initials (prefer displayName; fallback to email)
-          let initials = '--';
-          if (user.displayName) {
-            const parts = user.displayName.trim().split(/\s+/);
-            const a = (parts[0]?.[0] || '').toUpperCase();
-            const b = (parts.length > 1 ? parts[parts.length - 1][0] : (parts[0]?.[1] || '')).toUpperCase();
-            initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
-          }
-          if (initials === '--' && (bestEmail || user.email)) {
-            const src = bestEmail || user.email;
-            const local = (src && src.split('@')[0]) || '';
-            const letters = local.replace(/[^A-Za-z]/g, '');
-            const a = (letters[0] || local[0] || '').toUpperCase();
-            const b = (letters[1] || local[1] || '').toUpperCase();
-            initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
-          }
+          // Compute single-letter initials consistently
+          const initials = computeInitials(user);
 
           const avatars = document.querySelectorAll('[data-user-avatar]');
           avatars.forEach(avatar => { if (avatar) avatar.textContent = initials; });
@@ -842,11 +867,11 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch (_) {}
 
   // Set up ALL event listeners IMMEDIATELY - app is now interactive
-  searchInput.addEventListener('input', debounce(applyFilters, 300));
-  industryFilter.addEventListener('change', applyFilters);
-  sectorFilter.addEventListener('change', applyFilters);
-  founderFilter.addEventListener('change', applyFilters);
-  sortControl.addEventListener('change', e => {
+  searchInput?.addEventListener('input', debounce(applyFilters, 300));
+  industryFilter?.addEventListener('change', applyFilters);
+  sectorFilter?.addEventListener('change', applyFilters);
+  founderFilter?.addEventListener('change', applyFilters);
+  sortControl?.addEventListener('change', e => {
     const [k, d] = e.target.value.split('-');
     currentSort = { key: k, dir: d };
     sortAndRender();
@@ -1063,7 +1088,17 @@ if (!OAUTH_DISABLED && microsoftSignIn) {
       console.error('Email sign in error:', error);
       alert('Sign in failed: ' + error.message);
     });
-  });
+  }
+
+  // Allow browsers/Keychain to save credentials via a real form submit
+  const signInForm = document.getElementById('signInForm');
+  if (signInForm && typeof signInForm.addEventListener === 'function') {
+    signInForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (typeof signInEmail?.click === 'function') signInEmail.click();
+    });
+  }
+);
 
   // --- Updated: remove duplicate verification send (auth.js already sends it)
   signUpEmail.addEventListener('click', async () => {
@@ -1158,6 +1193,3 @@ if (!OAUTH_DISABLED && microsoftSignIn) {
     .catch(() => errorMessage.classList.remove('hidden'))
     .finally(() => loading.style.display = 'none');
 });
-
-
-
