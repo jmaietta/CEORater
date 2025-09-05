@@ -738,9 +738,11 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (_) {}
 
     
-    // Use SESSION persistence so redirect sign-in works reliably on Windows/Safari
-    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
-    
+    // Prefer LOCAL so the session survives browser restarts; fall back to SESSION if storage is blocked
+    firebase.auth()
+      .setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+      .catch(() => firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION));
+   
     // Debug: ensure we are pointing at expected project
     try {
       const opts = firebase.app().options || {};
@@ -1156,4 +1158,5 @@ if (!OAUTH_DISABLED && microsoftSignIn) {
     .catch(() => errorMessage.classList.remove('hidden'))
     .finally(() => loading.style.display = 'none');
 });
+
 
