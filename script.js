@@ -644,8 +644,8 @@ function initializeProfilePage() {
       }
 
       if (emailInput) {
-        emailInput.placeholder = bestEmail || '';
-        emailInput.value = '';
+        emailInput.value ||= bestEmail || '';
+        emailInput.placeholder = bestEmail ? '' : 'you@example.com';
       }
 
       // ✅ OAuth users do NOT need to type their email
@@ -1158,5 +1158,6 @@ if (!OAUTH_DISABLED && microsoftSignIn) {
     .catch(() => errorMessage.classList.remove('hidden'))
     .finally(() => loading.style.display = 'none');
 });
+
 
 
