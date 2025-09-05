@@ -11,6 +11,18 @@
   <style>
     .font-orbitron { font-family: 'Orbitron', monospace; }
     .font-inter { font-family: 'Inter', sans-serif; }
+    /* Ensure the avatar is a perfect circle */
+    #profileAvatar {
+      width: 4rem; /* 64px */
+      height: 4rem; /* 64px */
+      border-radius: 9999px; /* Tailwind's rounded-full */
+    }
+    @media (min-width: 768px) {
+      #profileAvatar {
+        width: 5rem; /* 80px */
+        height: 5rem; /* 80px */
+      }
+    }
   </style>
 </head>
 <body class="bg-gray-50 font-inter">
@@ -44,7 +56,7 @@
       </div>
       <div class="p-6">
         <div class="flex items-center space-x-6 mb-6">
-          <div id="profileAvatar" data-user-avatar class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold text-xl md:text-2xl">
+          <div id="profileAvatar" data-user-avatar class="bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold text-xl md:text-2xl">
             --
           </div>
           <div>
