@@ -21,13 +21,15 @@ if (isIOSNative) {
   nullify('microsoftSignIn');
 }
 
-// --- New: robust platform detection for redirects vs popups (improves Google sign-in on iOS/Safari)
+// --- New: robust platform detection (kept for reference)
 const ua = (typeof navigator !== 'undefined' ? navigator.userAgent || '' : '');
 const isLikelyIOSWeb =
   /iPad|iPhone|iPod/.test(ua) ||
   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS desktop mode
 const isSafari = /Safari/.test(ua) && !/Chrome|CriOS|FxiOS/.test(ua);
-const preferRedirect = isIOSNative || isLikelyIOSWeb || isSafari;
+
+// ******** IMPORTANT CHANGE: force redirect everywhere (Windows-friendly) ********
+const preferRedirect = true;
 
 import { fetchData } from './GoogleSheet.js';
 import * as ui from './ui.js';
@@ -118,6 +120,34 @@ function setIdentityUI(user) {
   } catch (_) {}
 }
 // =========================================================
+
+// ---------- Central auth error helper ----------
+function showAuthError(err) {
+  console.error('Auth error:', err);
+  const code = err?.code || '';
+  const msg = err?.message || 'Sign-in failed. Please try again.';
+
+  if (code === 'auth/unauthorized-domain') {
+    alert('Sign-in blocked: unauthorized domain.\n\nIf this appears despite authorizing jmaietta.github.io, confirm this page is using the same Firebase project as your console (check firebase-config.js).');
+    return;
+  }
+  if (code === 'auth/popup-blocked') {
+    alert('Your browser blocked the popup. Using redirect instead.');
+    try {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      return firebase.auth().signInWithRedirect(provider);
+    } catch (e) { console.error(e); }
+    return;
+  }
+  if (code === 'auth/web-storage-unsupported') {
+    alert('Your browser blocked sign-in storage. Redirect flow should still work; please try again.');
+    return;
+  }
+  if (code === 'auth/cancelled-popup-request' || code === 'auth/popup-closed-by-user') {
+    return; // user canceled—no scary alert
+  }
+  alert(msg);
+}
 
 // --- Spinner helpers (bulletproof) ---
 function hideSpinner() {
@@ -249,6 +279,11 @@ function handleAuthStateChange(user) {
     // Show logged in state
     loggedInState.classList.remove('hidden');
     loggedOutState.classList.add('hidden');
+
+    // Close modal proactively on sign-in
+    if (loginModal && !loginModal.classList.contains('hidden')) {
+      loginModal.classList.add('hidden');
+    }
 
     // Update header identity (masked email + initials)
     setIdentityUI(user);
@@ -648,6 +683,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (_) {}
 
+    // ******** IMPORTANT CHANGE: always use SESSION persistence for redirect flow ********
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
+
+    // Helpful debug (checks you’re on the project you think you are)
+    try {
+      const opts = firebase.app().options || {};
+      console.log('Firebase project:', opts.projectId, 'authDomain:', opts.authDomain, 'origin:', location.origin);
+    } catch {}
+
     firebase.auth().onAuthStateChanged((user) => {
       handleAuthStateChange(user);
       updateGlobalUser(user);
@@ -666,9 +710,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // If returned from Google/Microsoft redirect and user is present: close login modal
         if (res && res.user) {
           loginModal?.classList.add('hidden');
+        } else if (res && res.error) {
+          showAuthError(res.error);
         }
       })
-      .catch(() => {});
+      .catch(showAuthError);
     // If we just returned from a reauth redirect for deletion, finish deletion now
     (async () => {
       try {
@@ -865,23 +911,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   logoutBtn.addEventListener('click', () => auth.signOut());
   
-  // --- Updated: Google sign-in uses redirect on iOS/Safari, popup elsewhere
+  // ******** IMPORTANT CHANGE: Google sign-in always via redirect ********
   googleSignIn.addEventListener('click', async () => {
     try {
-      if (preferRedirect) {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        await firebase.auth().signInWithRedirect(provider);
-      } else {
-        await auth.signInWithGoogle();
-      }
+      const provider = new firebase.auth.GoogleAuthProvider();
+      await firebase.auth().signInWithRedirect(provider);
       loginModal.classList.add('hidden');
     } catch (error) {
-      console.error('Google sign in error:', error);
-      const msg =
-        error?.code === 'auth/unauthorized-domain'
-          ? 'Sign-in blocked: unauthorized domain. Add your GitHub Pages domain in Firebase Auth settings.'
-          : (error?.message || 'Sign in failed. Please try again.');
-      alert(msg);
+      showAuthError(error);
     }
   });
 
