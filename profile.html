@@ -51,7 +51,7 @@
           </div>
           <div>
             <h3 id="profileEmail" class="text-lg font-medium text-gray-900">Loading...</h3>
-            <p id="profileProvider" class="text-sm text-gray-600">Loading...</p>
+            <p id="profileProvider" class="text-sm text-gray-600">Email/Password account</p>
             <p class="text-sm text-green-600 mt-1">✓ Verified account</p>
           </div>
         </div>
@@ -113,7 +113,7 @@
     </div>
   </div>
 
-  <!-- Account Deletion Confirmation Modal -->
+  <!-- Account Deletion Confirmation Modal (email-only) -->
   <div id="deleteConfirmModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-lg max-w-md w-full p-6">
       <div class="flex items-center space-x-3 mb-4">
@@ -128,21 +128,27 @@
         </div>
       </div>
 
-      <!-- OAuth message (hidden by default) -->
-      <div id="oauthDeleteMessage" class="hidden mb-6 p-4 bg-gray-50 rounded-lg"></div>
-
-      <!-- Email confirmation section (hidden for OAuth) -->
-      <div id="emailConfirmationSection" class="mb-6">
-        <p class="text-gray-700 mb-2">
-          To confirm deletion, please type your email address below:
+      <div class="mb-6">
+        <p class="text-gray-700 mb-3">
+          To confirm deletion, please type your email address and password below:
         </p>
+
+        <label class="text-sm text-gray-600 block mb-1">Email</label>
         <input 
           id="emailConfirmation" 
           type="email" 
           placeholder="Enter your email"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 mb-2"
+        >
+        <p id="expectedEmailText" class="text-xs text-gray-500 mb-4">Expected: Loading...</p>
+
+        <label class="text-sm text-gray-600 block mb-1">Password</label>
+        <input
+          id="deletePasswordInput"
+          type="password"
+          placeholder="Enter your password"
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
         >
-        <p id="expectedEmailText" class="text-xs text-gray-500 mt-2">Expected: Loading...</p>
       </div>
 
       <div class="flex space-x-3">
@@ -164,204 +170,89 @@
   <script defer src="/CEORater/script.js"></script>
 
   <script>
+    // Keep this lightweight: we rely on main script.js for most logic
     document.addEventListener('DOMContentLoaded', () => {
-      // Wait for Firebase to be ready
-      const waitForFirebase = (callback, tries = 50) => {
-        if (typeof firebase !== 'undefined' && firebase.auth) {
-          callback();
-        } else if (tries > 0) {
-          setTimeout(() => waitForFirebase(callback, tries - 1), 100);
-        }
+      const waitForFirebase = (cb, tries = 50) => {
+        if (typeof firebase !== 'undefined' && firebase.auth) return cb();
+        if (tries <= 0) return;
+        setTimeout(() => waitForFirebase(cb, tries - 1), 100);
       };
 
       waitForFirebase(() => {
-        // Listen for auth state
         firebase.auth().onAuthStateChanged(async (user) => {
           if (!user) {
             window.location.href = '/CEORater/';
             return;
           }
 
-          // Get email from various sources
-          let email = user.email;
-          if (!email && user.providerData && user.providerData.length > 0) {
-            email = user.providerData[0].email;
-          }
-
-          // Display profile info
+          // Email & avatar initials
+          let email = user.email || (user.providerData?.[0]?.email) || '';
           const profileEmail = document.getElementById('profileEmail');
           const profileProvider = document.getElementById('profileProvider');
           const profileAvatar = document.getElementById('profileAvatar');
 
-          if (profileEmail) {
-            profileEmail.textContent = email || user.displayName || 'User';
-          }
+          if (profileEmail) profileEmail.textContent = email || user.displayName || 'User';
+          if (profileProvider) profileProvider.textContent = 'Email/Password account';
 
-          if (profileProvider) {
-            const provider = user.providerData[0]?.providerId;
-            if (provider === 'google.com') {
-              profileProvider.textContent = 'Signed in with Google';
-            } else if (provider === 'microsoft.com') {
-              profileProvider.textContent = 'Signed in with Microsoft';
-            } else if (provider === 'password') {
-              profileProvider.textContent = 'Email/Password account';
-            } else {
-              profileProvider.textContent = 'Signed in';
-            }
-          }
-
-          // Set initials
           if (profileAvatar) {
             let initials = '--';
             if (user.displayName) {
-              const parts = user.displayName.split(' ');
-              initials = (parts[0]?.[0] || '') + (parts[parts.length - 1]?.[0] || '');
-              initials = initials.toUpperCase() || '--';
+              const parts = user.displayName.trim().split(/\s+/);
+              const a = (parts[0]?.[0] || '').toUpperCase();
+              const b = (parts.length > 1 ? parts[parts.length - 1][0] : (parts[0]?.[1] || '')).toUpperCase();
+              initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
             } else if (email) {
-              initials = email.substring(0, 2).toUpperCase();
+              const local = email.split('@')[0] || '';
+              const letters = local.replace(/[^A-Za-z]/g, '');
+              const a = (letters[0] || local[0] || '').toUpperCase();
+              const b = (letters[1] || local[1] || '').toUpperCase();
+              initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
             }
             profileAvatar.textContent = initials;
           }
 
-          // Set up deletion modal
+          // Delete modal wiring (email-only)
           const deleteBtn = document.getElementById('deleteAccountBtn');
           const modal = document.getElementById('deleteConfirmModal');
           const cancelBtn = document.getElementById('cancelDelete');
           const confirmBtn = document.getElementById('confirmDelete');
           const emailInput = document.getElementById('emailConfirmation');
-          const emailSection = document.getElementById('emailConfirmationSection');
-          const oauthMessage = document.getElementById('oauthDeleteMessage');
+          const expectedTxt = document.getElementById('expectedEmailText');
+          const pwdInput = document.getElementById('deletePasswordInput');
 
           deleteBtn?.addEventListener('click', () => {
             modal.classList.remove('hidden');
-            
-            const isOAuth = user.providerData.some(p => 
-              p.providerId === 'google.com' || p.providerId === 'microsoft.com'
-            );
-
-            if (isOAuth) {
-              // OAuth user - hide email section, show OAuth message
-              emailSection.style.display = 'none';
-              oauthMessage.classList.remove('hidden');
-              
-              const providerName = user.providerData[0].providerId === 'google.com' ? 'Google' : 'Microsoft';
-              oauthMessage.innerHTML = `
-                <div class="flex items-start gap-3">
-                  <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
-                  <div>
-                    <p class="text-gray-700 font-medium">You're signed in with ${providerName}</p>
-                    <p class="text-sm text-gray-600 mt-1">
-                      Click "Delete My Account" below to proceed. You'll be asked to re-authenticate with ${providerName} for security.
-                    </p>
-                  </div>
-                </div>
-              `;
-              
-              // Enable confirm button immediately for OAuth
-              confirmBtn.disabled = false;
-            } else {
-              // Email/password user - show email section
-              emailSection.style.display = 'block';
-              oauthMessage.classList.add('hidden');
-              
-              if (email) {
-                document.getElementById('expectedEmailText').textContent = `Expected: ${email}`;
-              }
-              
-              // Require email match
-              confirmBtn.disabled = true;
-            }
+            if (email) expectedTxt.textContent = `Expected: ${email}`;
+            confirmBtn.disabled = true;
+            if (emailInput) emailInput.value = '';
+            if (pwdInput) pwdInput.value = '';
           });
 
           cancelBtn?.addEventListener('click', () => {
             modal.classList.add('hidden');
             if (emailInput) emailInput.value = '';
+            if (pwdInput) pwdInput.value = '';
+            confirmBtn.disabled = true;
           });
 
-          // Email validation for password users only
-          emailInput?.addEventListener('input', () => {
-            const isOAuth = user.providerData.some(p => 
-              p.providerId === 'google.com' || p.providerId === 'microsoft.com'
-            );
-            
-            if (!isOAuth && email) {
-              confirmBtn.disabled = emailInput.value !== email;
-            }
-          });
+          const validate = () => {
+            const ok = (emailInput?.value === email) && (pwdInput?.value?.length > 0);
+            confirmBtn.disabled = !ok;
+          };
 
-          // Handle deletion
+          emailInput?.addEventListener('input', validate);
+          pwdInput?.addEventListener('input', validate);
+
           confirmBtn?.addEventListener('click', async () => {
             try {
-              // Check if OAuth or password user
-              const isOAuth = user.providerData.some(p => 
-                p.providerId === 'google.com' || p.providerId === 'microsoft.com'
-              );
-
-              if (isOAuth) {
-                // OAuth deletion flow
-                const provider = user.providerData[0].providerId === 'google.com'
-                  ? new firebase.auth.GoogleAuthProvider()
-                  : new firebase.auth.OAuthProvider('microsoft.com');
-
-                // Try popup first, fallback to redirect
-                try {
-                  await user.reauthenticateWithPopup(provider);
-                  
-                  // Delete Firestore data
-                  try {
-                    await firebase.firestore().collection('watchlists').doc(user.uid).delete();
-                  } catch (e) {
-                    console.log('Watchlist deletion error:', e);
-                  }
-                  
-                  // Delete user
-                  await user.delete();
-                  alert('Your account has been permanently deleted.');
-                  window.location.href = '/CEORater/';
-                  
-                } catch (popupError) {
-                  // Fallback to redirect
-                  if (popupError.code === 'auth/popup-blocked' || 
-                      popupError.code === 'auth/cancelled-popup-request') {
-                    sessionStorage.setItem('pendingDelete', '1');
-                    localStorage.setItem('pendingDelete', '1');
-                    await user.reauthenticateWithRedirect(provider);
-                  } else {
-                    throw popupError;
-                  }
-                }
+              if (window.handleAccountDeletion) {
+                await window.handleAccountDeletion();
               } else {
-                // Password user - use main app handler
-                if (window.handleAccountDeletion) {
-                  await window.handleAccountDeletion();
-                } else {
-                  alert('Please enter your password in the main app to delete your account.');
-                }
+                alert('Unable to delete from this page. Please try again.');
               }
-            } catch (error) {
-              console.error('Deletion failed:', error);
-              alert('Account deletion failed: ' + (error.message || 'Unknown error'));
-            }
-          });
-
-          // Handle redirect result for OAuth deletion
-          firebase.auth().getRedirectResult().then(async (result) => {
-            if (sessionStorage.getItem('pendingDelete') === '1' || 
-                localStorage.getItem('pendingDelete') === '1') {
-              sessionStorage.removeItem('pendingDelete');
-              localStorage.removeItem('pendingDelete');
-              
-              if (result.user) {
-                try {
-                  await firebase.firestore().collection('watchlists').doc(result.user.uid).delete();
-                } catch (e) {}
-                
-                await result.user.delete();
-                alert('Your account has been permanently deleted.');
-                window.location.href = '/CEORater/';
-              }
+            } catch (e) {
+              console.error('Deletion failed:', e);
+              alert('Account deletion failed: ' + (e?.message || 'Unknown error'));
             }
           });
         });
