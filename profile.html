@@ -105,7 +105,7 @@
               </ul>
               <div class="bg-red-100 border border-red-300 rounded p-3 mb-4">
                 <p class="text-sm text-red-800 font-medium">
-                  ⚠️ If you signed in with Google or Microsoft, you don’t need to type your email—just confirm.
+                  ⚠️ If you signed in with Google or Microsoft, you don't need to type your email—just confirm.
                 </p>
               </div>
             </div>
@@ -159,95 +159,3 @@
 
   <!-- Firebase and App Scripts -->
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"></script>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
-  <script defer src="/CEORater/firebase-config.js"></script>
-  <!-- IMPORTANT: load your main app logic so Google/Microsoft deletion can re-auth & complete -->
-  <script defer src="/CEORater/script.js"></script>
-
-  <!-- Belt-and-suspenders fallback (runs ONLY if script.js didn’t attach the handler) -->
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      function isOAuthUser(u) {
-        try { return (u?.providerData || []).some(p => p.providerId === 'google.com' || p.providerId === 'microsoft.com'); }
-        catch (_) { return false; }
-      }
-      function enableConfirmForOAuth(u) {
-        const btn = document.getElementById('confirmDelete');
-        const input = document.getElementById('emailConfirmation');
-        const expected = document.getElementById('expectedEmailText');
-        if (!btn) return;
-        if (isOAuthUser(u)) {
-          // Don’t force email typing for OAuth users
-          btn.disabled = false;
-          if (expected) expected.textContent = 'Using Google/Microsoft re-authentication';
-        }
-      }
-      // If script.js didn’t wire up the modal, attach a minimal working flow:
-      if (!window.handleAccountDeletion) {
-        // Show modal
-        const openBtn = document.getElementById('deleteAccountBtn');
-        const modal = document.getElementById('deleteConfirmModal');
-        const cancel = document.getElementById('cancelDelete');
-        const confirm = document.getElementById('confirmDelete');
-        const emailInput = document.getElementById('emailConfirmation');
-        const expected = document.getElementById('expectedEmailText');
-
-        openBtn?.addEventListener('click', async () => {
-          modal?.classList.remove('hidden');
-          const u = firebase.auth().currentUser;
-          if (u?.email && expected) expected.textContent = 'Expected: ' + u.email;
-          enableConfirmForOAuth(u);
-          // For non-OAuth users, require exact match:
-          confirm.disabled = isOAuthUser(u) ? false : true;
-        });
-        cancel?.addEventListener('click', () => { modal?.classList.add('hidden'); });
-
-        emailInput?.addEventListener('input', () => {
-          const u = firebase.auth().currentUser;
-          if (!u) return;
-          if (isOAuthUser(u)) {
-            confirm.disabled = false;
-          } else {
-            confirm.disabled = (emailInput.value !== (u.email || ''));
-          }
-        });
-
-        confirm?.addEventListener('click', async () => {
-          const u = firebase.auth().currentUser;
-          if (!u) return alert('Not signed in.');
-          try {
-            if (isOAuthUser(u)) {
-              // Re-auth via redirect, then finish deletion on return:
-              sessionStorage.setItem('pendingDelete', '1');
-              const provider = (u.providerData || []).some(p=>p.providerId==='google.com')
-                ? new firebase.auth.GoogleAuthProvider()
-                : new firebase.auth.OAuthProvider('microsoft.com');
-              await u.reauthenticateWithRedirect(provider);
-              return;
-            } else {
-              // Email/password users will be handled by script.js; this is a fallback only.
-              alert('Please use the main app flow to delete email/password accounts.');
-            }
-          } catch (e) {
-            alert('Delete failed: ' + (e?.message || e));
-          }
-        });
-
-        // Complete pending OAuth deletion after redirect:
-        firebase.auth().getRedirectResult().then(async () => {
-          if (sessionStorage.getItem('pendingDelete') === '1') {
-            sessionStorage.removeItem('pendingDelete');
-            const u = firebase.auth().currentUser;
-            if (!u) return;
-            try { await firebase.firestore().collection('watchlists').doc(u.uid).delete(); } catch(_) {}
-            await u.delete();
-            alert('Your account has been permanently deleted.');
-            window.location.href = '/CEORater/';
-          }
-        });
-      }
-    });
-  </script>
-</body>
-</html>
