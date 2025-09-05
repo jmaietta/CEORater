@@ -82,15 +82,32 @@ function setIdentityUI(user) {
   const userEmailDropdown = document.getElementById('userEmailDropdown');
   const userAvatar = document.getElementById('userAvatar');
 
-  if (userEmailDisplay) { userEmailDisplay.textContent = nameOrMasked; userEmailDisplay.title = user?.email || ''; }
-  if (userEmailDropdown) { userEmailDropdown.textContent = nameOrMasked; userEmailDropdown.title = user?.email || ''; }
-  if (userAvatar) { userAvatar.textContent = initials; userAvatar.title = user?.displayName || user?.email || ''; }
+  if (userEmailDisplay) { userEmailDisplay.textContent = nameOrMasked; userEmailDisplay.title = user?.email || ''; userEmailDisplay.dataset.identityBound = '1'; }
+  if (userEmailDropdown) { userEmailDropdown.textContent = nameOrMasked; userEmailDropdown.title = user?.email || ''; userEmailDropdown.dataset.identityBound = '1'; }
+  if (userAvatar) { userAvatar.textContent = initials; userAvatar.title = user?.displayName || user?.email || ''; userAvatar.dataset.identityBound = '1'; }
 
   // In case some other script overwrites the label later, enforce again once.
   setTimeout(() => {
     if (userEmailDisplay && userEmailDisplay.textContent !== nameOrMasked) userEmailDisplay.textContent = nameOrMasked;
     if (userEmailDropdown && userEmailDropdown.textContent !== nameOrMasked) userEmailDropdown.textContent = nameOrMasked;
+    if (userAvatar && userAvatar.textContent !== initials) userAvatar.textContent = initials;
   }, 300);
+
+  // Strong guard: if any script mutates these nodes later, restore our values.
+  try {
+    const guard = new MutationObserver(() => {
+      if (userEmailDisplay && userEmailDisplay.dataset.identityBound === '1' && userEmailDisplay.textContent !== nameOrMasked) {
+        userEmailDisplay.textContent = nameOrMasked;
+      }
+      if (userEmailDropdown && userEmailDropdown.dataset.identityBound === '1' && userEmailDropdown.textContent !== nameOrMasked) {
+        userEmailDropdown.textContent = nameOrMasked;
+      }
+      if (userAvatar && userAvatar.dataset.identityBound === '1' && userAvatar.textContent !== initials) {
+        userAvatar.textContent = initials;
+      }
+    });
+    guard.observe(document.body, { subtree: true, childList: true, characterData: true });
+  } catch (_) {}
 }
 // =========================================================
 
@@ -136,15 +153,12 @@ function formatRelative(ts) {
   return days === 1 ? 'yesterday' : `${days} days ago`;
 }
 
-// Profile page navigation function that works for both PWA and native iOS
+// Profile navigation (GitHub Pages project path)
 function navigateToProfile() {
   const path = '/CEORater/profile.html';
   if (isIOSNative) {
     if (window.Capacitor?.Plugins?.Browser) {
-      window.Capacitor.Plugins.Browser.open({
-        url: window.location.origin + path,
-        windowName: '_self'
-      });
+      window.Capacitor.Plugins.Browser.open({ url: window.location.origin + path, windowName: '_self' });
     } else {
       window.location.href = path;
     }
@@ -365,8 +379,6 @@ function sortAndRender() {
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms) } }
 
 // ---------- Account Deletion Functions ----------
-// Uses provider *reauth* on the CURRENT user (popup on web, redirect on iOS) and
-// completes deletion after redirect if needed.
 async function handleAccountDeletion() {
   const user = currentUser;
   if (!user) {
@@ -374,40 +386,20 @@ async function handleAccountDeletion() {
     return;
   }
 
-  const doDelete = async () => {
-    try {
-      const db = firebase.firestore();
-      await db.collection('watchlists').doc(user.uid).delete().catch(() => {});
-    } catch (_) {}
-    await user.delete();
-    deleteAccountModal.classList.add('hidden');
-    alert('Your account has been permanently deleted.');
-    window.location.href = '/CEORater/';
-  };
-
+  const password = deletePasswordInput.value.trim();
+  
   try {
     const providers = user.providerData.map(p => p.providerId);
 
     if (providers.includes('google.com')) {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      if (isIOSNative) {
-        sessionStorage.setItem('pendingDelete', '1');
-        await user.reauthenticateWithRedirect(provider);
-        return; // resume after redirect
-      } else {
-        await user.reauthenticateWithPopup(provider);
-      }
+      sessionStorage.setItem('pendingDelete', '1');
+      await user.reauthenticateWithRedirect(new firebase.auth.GoogleAuthProvider());
+      return; // resume after redirect
     } else if (providers.includes('microsoft.com')) {
-      const provider = new firebase.auth.OAuthProvider('microsoft.com');
-      if (isIOSNative) {
-        sessionStorage.setItem('pendingDelete', '1');
-        await user.reauthenticateWithRedirect(provider);
-        return;
-      } else {
-        await user.reauthenticateWithPopup(provider);
-      }
+      sessionStorage.setItem('pendingDelete', '1');
+      await user.reauthenticateWithRedirect(new firebase.auth.OAuthProvider('microsoft.com'));
+      return;
     } else if (providers.includes('password')) {
-      const password = deletePasswordInput.value.trim();
       if (!password) {
         alert('Please enter your password to confirm deletion');
         return;
@@ -416,11 +408,33 @@ async function handleAccountDeletion() {
       await user.reauthenticateWithCredential(credential);
     }
 
-    await doDelete();
+    try {
+      const db = firebase.firestore();
+      await db.collection('watchlists').doc(user.uid).delete();
+    } catch (firestoreError) {
+      console.log('Watchlist deletion error (may not exist):', firestoreError);
+    }
+    
+    await user.delete();
+    
+    deleteAccountModal.classList.add('hidden');
+    alert('Your account has been permanently deleted.');
+    window.location.href = '/CEORater/';
+    
   } catch (error) {
     console.error('Account deletion error:', error);
-    if (error.code === 'auth/requires-recent-login') {
-      alert('For security, please sign in again and retry deleting your account.');
+    if (error.code === 'auth/wrong-password') {
+      alert('Incorrect password. Please try again.');
+    } else if (error.code === 'auth/popup-closed-by-user') {
+      alert('Sign-in popup was closed before completing. Please try again.');
+    } else if (error.code === 'auth/account-exists-with-different-credential') {
+      alert('This email is linked to a different sign-in method. Try that method.');
+    } else if (error.code === 'auth/credential-already-in-use') {
+      alert('Credential already in use.');
+    } else if (error.code === 'auth/unauthorized-domain') {
+      alert('Unauthorized domain. Check your Firebase auth settings.');
+    } else if (error.code === 'auth/requires-recent-login') {
+      alert('For security, please sign out and sign in again before deleting your account.');
     } else {
       alert('Failed to delete account: ' + (error.message || 'Unknown error'));
     }
@@ -640,8 +654,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle any pending redirect results from OAuth login
     firebase.auth().getRedirectResult().catch(() => {});
-
-    // If we just returned from a *reauth* redirect for deletion, finish deletion now
+    // If we just returned from a reauth redirect for deletion, finish deletion now
     (async () => {
       try {
         if (sessionStorage.getItem('pendingDelete') === '1') {
@@ -889,7 +902,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // After email sign-up, send verification email
   signUpEmail.addEventListener('click', async () => {
     const email = emailInput.value;
     const password = passwordInput.value;
@@ -897,9 +909,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       await auth.signUpWithEmail(email, password);
       const u = firebase.auth().currentUser;
-      if (u) {
-        try { await u.sendEmailVerification(); } catch (_) {}
-      }
+      if (u) { try { await u.sendEmailVerification(); } catch (e) { console.warn('sendEmailVerification failed', e); } }
       alert('Check your inbox to verify your email.');
       loginModal.classList.add('hidden');
     } catch (error) {
