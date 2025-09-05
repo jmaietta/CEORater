@@ -54,18 +54,43 @@ function maskEmail(email) {
   const stars = Math.max(1, u.length - shown.length);
   return `${shown}${'*'.repeat(stars)}@${d}`;
 }
+function computeInitials(user) {
+  // Prefer displayName "First Last" -> "FL"
+  if (user?.displayName) {
+    const parts = user.displayName.trim().split(/\s+/);
+    const first = (parts[0]?.[0] || '').toUpperCase();
+    const last  = (parts.length > 1 ? parts[parts.length - 1][0] : (parts[0]?.[1] || '')).toUpperCase();
+    const out = (first + last).replace(/[^A-Z]/g, '').slice(0, 2);
+    if (out) return out;
+  }
+  // Fallback: first two letters of email local-part (letters only)
+  if (user?.email) {
+    const local = user.email.split('@')[0] || '';
+    const letters = local.replace(/[^A-Za-z]/g, '');
+    const a = (letters[0] || local[0] || '').toUpperCase();
+    const b = (letters[1] || local[1] || '').toUpperCase();
+    const out = (a + b).replace(/[^A-Z]/g, '').slice(0, 2);
+    if (out) return out;
+  }
+  return '--';
+}
 function setIdentityUI(user) {
-  const localPart = (user?.email && user.email.split('@')[0]) || user?.displayName || '';
-  const initials = (localPart.slice(0, 2).toUpperCase()) || '--';
-  const nameOrMasked = user?.email ? maskEmail(user.email) : (user?.displayName || '');
+  const initials = computeInitials(user);
+  const nameOrMasked = user?.email ? maskEmail(user.email) : (user?.displayName || 'Signed in');
 
   const userEmailDisplay = document.getElementById('userEmailDisplay');
   const userEmailDropdown = document.getElementById('userEmailDropdown');
   const userAvatar = document.getElementById('userAvatar');
 
-  if (userEmailDisplay) userEmailDisplay.textContent = nameOrMasked;
-  if (userEmailDropdown) userEmailDropdown.textContent = nameOrMasked;
-  if (userAvatar) userAvatar.textContent = initials;
+  if (userEmailDisplay) { userEmailDisplay.textContent = nameOrMasked; userEmailDisplay.title = user?.email || ''; }
+  if (userEmailDropdown) { userEmailDropdown.textContent = nameOrMasked; userEmailDropdown.title = user?.email || ''; }
+  if (userAvatar) { userAvatar.textContent = initials; userAvatar.title = user?.displayName || user?.email || ''; }
+
+  // In case some other script overwrites the label later, enforce again once.
+  setTimeout(() => {
+    if (userEmailDisplay && userEmailDisplay.textContent !== nameOrMasked) userEmailDisplay.textContent = nameOrMasked;
+    if (userEmailDropdown && userEmailDropdown.textContent !== nameOrMasked) userEmailDropdown.textContent = nameOrMasked;
+  }, 300);
 }
 // =========================================================
 
@@ -113,17 +138,18 @@ function formatRelative(ts) {
 
 // Profile page navigation function that works for both PWA and native iOS
 function navigateToProfile() {
+  const path = '/CEORater/profile.html';
   if (isIOSNative) {
     if (window.Capacitor?.Plugins?.Browser) {
       window.Capacitor.Plugins.Browser.open({
-        url: window.location.origin + '/profile.html',
+        url: window.location.origin + path,
         windowName: '_self'
       });
     } else {
-      window.location.href = '/profile.html';
+      window.location.href = path;
     }
   } else {
-    window.location.href = '/profile.html';
+    window.location.href = path;
   }
 }
 
@@ -375,7 +401,7 @@ async function handleAccountDeletion() {
     
     deleteAccountModal.classList.add('hidden');
     alert('Your account has been permanently deleted.');
-    window.location.href = '/';
+    window.location.href = '/CEORater/';
     
   } catch (error) {
     console.error('Account deletion error:', error);
@@ -452,14 +478,29 @@ function initializeProfilePage() {
     firebase.auth().onAuthStateChanged((user) => {
       if (user) {
         const profileEmail = document.getElementById('profileEmail');
-        if (profileEmail) profileEmail.textContent = user.email;
+        if (profileEmail) profileEmail.textContent = user.email || user.displayName || 'Signed in';
 
         const expectedEmailEl = document.querySelector('.text-xs.text-gray-500');
         if (expectedEmailEl && expectedEmailEl.textContent.includes('Expected:')) {
-          expectedEmailEl.textContent = `Expected: ${user.email}`;
+          expectedEmailEl.textContent = `Expected: ${user.email || ''}`;
         }
 
-        const initials = user.email.split('@')[0].slice(0, 2).toUpperCase();
+        // Compute JM-style initials (prefer displayName; fallback to email)
+        let initials = '--';
+        if (user.displayName) {
+          const parts = user.displayName.trim().split(/\s+/);
+          const a = (parts[0]?.[0] || '').toUpperCase();
+          const b = (parts.length > 1 ? parts[parts.length - 1][0] : (parts[0]?.[1] || '')).toUpperCase();
+          initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
+        }
+        if (initials === '--' && user.email) {
+          const local = user.email.split('@')[0] || '';
+          const letters = local.replace(/[^A-Za-z]/g, '');
+          const a = (letters[0] || local[0] || '').toUpperCase();
+          const b = (letters[1] || local[1] || '').toUpperCase();
+          initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
+        }
+
         const avatars = document.querySelectorAll('[data-user-avatar]');
         avatars.forEach(avatar => {
           if (avatar) avatar.textContent = initials;
@@ -467,7 +508,7 @@ function initializeProfilePage() {
 
         setupProfileAccountDeletion(user);
       } else {
-        window.location.href = '/';
+        window.location.href = '/CEORater/';
       }
     });
   }
@@ -483,10 +524,10 @@ function initializeProfilePage() {
       deleteModal?.classList.remove('hidden');
       const expectedEmailEl = document.querySelector('.text-xs.text-gray-500');
       if (expectedEmailEl) {
-        expectedEmailEl.textContent = `Expected: ${user.email}`;
+        expectedEmailEl.textContent = `Expected: ${user.email || ''}`;
       }
       if (emailInput) {
-        emailInput.placeholder = user.email;
+        emailInput.placeholder = user.email || '';
         emailInput.value = '';
       }
       if (confirmBtn) {
@@ -502,7 +543,7 @@ function initializeProfilePage() {
 
     emailInput?.addEventListener('input', () => {
       if (confirmBtn) {
-        confirmBtn.disabled = emailInput.value !== user.email;
+        confirmBtn.disabled = emailInput.value !== (user.email || '');
       }
     });
 
@@ -524,19 +565,19 @@ function initializeProfilePage() {
     });
   }
 
+  // Legacy back link guard (if a plain "/" anchor exists)
   const backBtn = document.querySelector('a[href="/"]');
   if (backBtn) {
     backBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      
       if (isIOSNative) {
         if (window.history.length > 1) {
           window.history.back();
         } else {
-          window.location.href = '/';
+          window.location.href = '/CEORater/';
         }
       } else {
-        window.location.href = '/';
+        window.location.href = '/CEORater/';
       }
     });
   }
