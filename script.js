@@ -124,44 +124,31 @@ async function resolveBestEmail(user) {
 
 function setIdentityUI(user, effectiveEmail) {
   const initials = computeInitials(user);
-  const masked = effectiveEmail ? maskEmail(effectiveEmail) : (user?.displayName || 'Signed in');
-  const full = effectiveEmail || user?.email || '';
+  const nameOrMasked = effectiveEmail ? maskEmail(effectiveEmail) : (user?.displayName || 'Signed in');
 
   const userEmailDisplay = document.getElementById('userEmailDisplay');
   const userEmailDropdown = document.getElementById('userEmailDropdown');
   const userAvatar = document.getElementById('userAvatar');
 
-  if (userEmailDisplay) {
-    userEmailDisplay.textContent = masked;    // header = masked
-    userEmailDisplay.title = full;
-    userEmailDisplay.dataset.identityBound = '1';
-  }
-  if (userEmailDropdown) {
-    userEmailDropdown.textContent = full;     // dropdown = full
-    userEmailDropdown.title = full;
-    userEmailDropdown.dataset.identityBound = '1';
-  }
-  if (userAvatar) {
-    userAvatar.textContent = initials;        // single-letter avatar
-    userAvatar.title = full || user?.displayName || '';
-    userAvatar.dataset.identityBound = '1';
-  }
+  if (userEmailDisplay) { userEmailDisplay.textContent = nameOrMasked; userEmailDisplay.title = effectiveEmail || user?.email || ''; userEmailDisplay.dataset.identityBound = '1'; }
+  if (userEmailDropdown) { userEmailDropdown.textContent = nameOrMasked; userEmailDropdown.title = effectiveEmail || user?.email || ''; userEmailDropdown.dataset.identityBound = '1'; }
+  if (userAvatar) { userAvatar.textContent = initials; userAvatar.title = user?.displayName || effectiveEmail || user?.email || ''; userAvatar.dataset.identityBound = '1'; }
 
   // Enforce again once in case another script mutates them
   setTimeout(() => {
-    if (userEmailDisplay && userEmailDisplay.textContent !== masked) userEmailDisplay.textContent = masked;
-    if (userEmailDropdown && userEmailDropdown.textContent !== full) userEmailDropdown.textContent = full;
+    if (userEmailDisplay && userEmailDisplay.textContent !== nameOrMasked) userEmailDisplay.textContent = nameOrMasked;
+    if (userEmailDropdown && userEmailDropdown.textContent !== nameOrMasked) userEmailDropdown.textContent = nameOrMasked;
     if (userAvatar && userAvatar.textContent !== initials) userAvatar.textContent = initials;
   }, 300);
 
   // Strong guard: if any script mutates these nodes later, restore our values.
   try {
     const guard = new MutationObserver(() => {
-      if (userEmailDisplay && userEmailDisplay.dataset.identityBound === '1' && userEmailDisplay.textContent !== masked) {
-        userEmailDisplay.textContent = masked;
+      if (userEmailDisplay && userEmailDisplay.dataset.identityBound === '1' && userEmailDisplay.textContent !== nameOrMasked) {
+        userEmailDisplay.textContent = nameOrMasked;
       }
-      if (userEmailDropdown && userEmailDropdown.dataset.identityBound === '1' && userEmailDropdown.textContent !== full) {
-        userEmailDropdown.textContent = full;
+      if (userEmailDropdown && userEmailDropdown.dataset.identityBound === '1' && userEmailDropdown.textContent !== nameOrMasked) {
+        userEmailDropdown.textContent = nameOrMasked;
       }
       if (userAvatar && userAvatar.dataset.identityBound === '1' && userAvatar.textContent !== initials) {
         userAvatar.textContent = initials;
@@ -605,8 +592,22 @@ function initializeProfilePage() {
           const emailInput = document.getElementById('emailConfirmation');
           if (emailInput) { emailInput.placeholder = bestEmail || ''; }
 
-          // Compute single-letter initials consistently
-          const initials = computeInitials(user);
+          // Compute JM-style initials (prefer displayName; fallback to email)
+          let initials = '--';
+          if (user.displayName) {
+            const parts = user.displayName.trim().split(/\s+/);
+            const a = (parts[0]?.[0] || '').toUpperCase();
+            const b = (parts.length > 1 ? parts[parts.length - 1][0] : (parts[0]?.[1] || '')).toUpperCase();
+            initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
+          }
+          if (initials === '--' && (bestEmail || user.email)) {
+            const src = bestEmail || user.email;
+            const local = (src && src.split('@')[0]) || '';
+            const letters = local.replace(/[^A-Za-z]/g, '');
+            const a = (letters[0] || local[0] || '').toUpperCase();
+            const b = (letters[1] || local[1] || '').toUpperCase();
+            initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
+          }
 
           const avatars = document.querySelectorAll('[data-user-avatar]');
           avatars.forEach(avatar => { if (avatar) avatar.textContent = initials; });
@@ -841,11 +842,11 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch (_) {}
 
   // Set up ALL event listeners IMMEDIATELY - app is now interactive
-  searchInput?.addEventListener('input', debounce(applyFilters, 300));
-  industryFilter?.addEventListener('change', applyFilters);
-  sectorFilter?.addEventListener('change', applyFilters);
-  founderFilter?.addEventListener('change', applyFilters);
-  sortControl?.addEventListener('change', e => {
+  searchInput.addEventListener('input', debounce(applyFilters, 300));
+  industryFilter.addEventListener('change', applyFilters);
+  sectorFilter.addEventListener('change', applyFilters);
+  founderFilter.addEventListener('change', applyFilters);
+  sortControl.addEventListener('change', e => {
     const [k, d] = e.target.value.split('-');
     currentSort = { key: k, dir: d };
     sortAndRender();
@@ -1051,44 +1052,18 @@ if (!OAUTH_DISABLED && microsoftSignIn) {
       });
   });
   
-  signInEmail.addEventListener('click', async () => {
-  const rawEmail = emailInput.value || '';
-  const email = rawEmail.trim().toLowerCase();
-  const password = passwordInput.value;
-  if (!email || !password) return;
-
-  try {
-    await firebase.auth().signInWithEmailAndPassword(email, password);
-    loginModal.classList.add('hidden');
-  } catch (error) {
-    console.error('Email sign in error:', error);
-    let msg = 'Sign in failed.';
-    if (error && error.code) {
-      if (error.code === 'auth/user-not-found') {
-        msg = 'No account found for this email. If you previously used Google or Microsoft here, sign in with that provider once and set a password from the menu.';
-      } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        msg = 'Incorrect password. Try again or use “Forgot Password?”.';
-      } else if (error.code === 'auth/too-many-requests') {
-        msg = 'Too many attempts. Please wait a minute and try again.';
-      } else if (error.code === 'auth/invalid-email') {
-        msg = 'Please enter a valid email address.';
-      } else if (error.message) {
-        msg = error.message;
-      }
-    }
-    alert(msg);
-  }
-});
-  });
-
-  // Allow browsers/Keychain to save credentials via a real form submit
-  const signInForm = document.getElementById('signInForm');
-  if (signInForm && typeof signInForm.addEventListener === 'function') {
-    signInForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      if (typeof signInEmail?.click === 'function') signInEmail.click();
+  signInEmail.addEventListener('click', () => {
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    if (!email || !password) return;
+    
+    auth.signInWithEmailSmart(email, password).then(() => {
+      loginModal.classList.add('hidden');
+    }).catch(error => {
+      console.error('Email sign in error:', error);
+      alert('Sign in failed: ' + error.message);
     });
-  }
+  });
 
   // --- Updated: remove duplicate verification send (auth.js already sends it)
   signUpEmail.addEventListener('click', async () => {
@@ -1183,3 +1158,159 @@ if (!OAUTH_DISABLED && microsoftSignIn) {
     .catch(() => errorMessage.classList.remove('hidden'))
     .finally(() => loading.style.display = 'none');
 });
+
+
+
+
+
+
+// ==== CEORater post-patch overrides (safe, idempotent) ====
+(function(){
+  try {
+    if (firebase && firebase.auth && firebase.auth.Auth && firebase.auth.Auth.Persistence) {
+      firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+        .catch(function(){ return firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION); });
+    }
+  } catch (e) {}
+
+  // Override setIdentityUI so header shows masked email, dropdown shows full email, avatar uses single letter
+  try {
+    var _maskFn = (typeof maskEmail === 'function') ? maskEmail : function(e){ return e || ''; };
+    var _computeFn = (typeof computeInitials === 'function') ? computeInitials : function(user){
+      var initials = '--';
+      if (user && user.displayName && user.displayName.trim()) {
+        var ch = (user.displayName.trim()[0] || '').toUpperCase();
+        if (ch) return ch;
+      }
+      if (user && user.email) {
+        var local = (user.email.split('@')[0] || '');
+        var lettersFirst = ((local.replace(/[^A-Za-z]/g, '')[0]) || local[0] || '').toUpperCase();
+        if (lettersFirst) return lettersFirst;
+      }
+      return initials;
+    };
+
+    window.setIdentityUI = function(user, effectiveEmail) {
+      var initials = _computeFn(user);
+      var full = effectiveEmail || (user && user.email) || '';
+      var masked = full ? _maskFn(full) : ((user && user.displayName) || 'Signed in');
+
+      var userEmailDisplay = document.getElementById('userEmailDisplay'); // header
+      var userEmailDropdown = document.getElementById('userEmailDropdown'); // dropdown
+      var userAvatar = document.getElementById('userAvatar'); // avatar bubble
+
+      if (userEmailDisplay) {
+        userEmailDisplay.textContent = masked;
+        userEmailDisplay.title = full || '';
+        userEmailDisplay.dataset.identityBound = '1';
+      }
+      if (userEmailDropdown) {
+        userEmailDropdown.textContent = full || masked;
+        userEmailDropdown.title = full || '';
+        userEmailDropdown.dataset.identityBound = '1';
+      }
+      if (userAvatar) {
+        userAvatar.textContent = initials;
+        userAvatar.title = full || (user && user.displayName) || '';
+        userAvatar.dataset.identityBound = '1';
+      }
+
+      // Guard: keep values if other scripts mutate them
+      try {
+        var guard = new MutationObserver(function() {
+          if (userEmailDisplay && userEmailDisplay.dataset.identityBound === '1' && userEmailDisplay.textContent !== masked) {
+            userEmailDisplay.textContent = masked;
+          }
+          if (userEmailDropdown && userEmailDropdown.dataset.identityBound === '1' && userEmailDropdown.textContent !== (full || masked)) {
+            userEmailDropdown.textContent = full || masked;
+          }
+          if (userAvatar && userAvatar.dataset.identityBound === '1' && userAvatar.textContent !== initials) {
+            userAvatar.textContent = initials;
+          }
+        });
+        guard.observe(document.body, { subtree: true, childList: true, characterData: true });
+      } catch (_) {}
+    };
+  } catch(e) {}
+
+  // Rewire email auth handlers with clean implementations
+  function _cloneNoHandlers(el){
+    if (!el) return el;
+    var cl = el.cloneNode(true);
+    if (el.parentNode) el.parentNode.replaceChild(cl, el);
+    return cl;
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    try {
+      var emailInput = document.getElementById('emailInput');
+      var passwordInput = document.getElementById('passwordInput');
+      var signInEmail = document.getElementById('signInEmail');
+      var signUpEmail = document.getElementById('signUpEmail');
+      var loginModal = document.getElementById('loginModal');
+
+      // Strip any pre-existing listeners to avoid double-firing
+      signInEmail = _cloneNoHandlers(signInEmail);
+      signUpEmail = _cloneNoHandlers(signUpEmail);
+
+      // Encourage password managers by supporting form submit
+      var signInForm = document.getElementById('signInForm');
+      if (signInForm) {
+        signInForm.addEventListener('submit', function(e){
+          e.preventDefault();
+          if (signInEmail) signInEmail.click();
+        });
+      }
+
+      // Sign In handler
+      if (signInEmail) {
+        signInEmail.addEventListener('click', function(){
+          (async function(){
+            try {
+              var email = ((emailInput && emailInput.value) || '').trim().toLowerCase();
+              var password = (passwordInput && passwordInput.value) || '';
+              if (!email || !password) throw new Error('Enter email and password.');
+              await firebase.auth().signInWithEmailAndPassword(email, password);
+              if (loginModal) loginModal.classList.add('hidden');
+            } catch (err) {
+              var code = (err && err.code) || '';
+              var msg = 'Sign in failed.';
+              if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') msg = 'Incorrect password.';
+              else if (code === 'auth/user-not-found') msg = 'No account found for this email. Please sign up.';
+              else if (code === 'auth/invalid-email') msg = 'Invalid email address.';
+              else if (code === 'auth/too-many-requests') msg = 'Too many attempts. Try again later.';
+              alert(msg);
+              try { console.error('Email sign in error:', err); } catch(_) {}
+            }
+          })();
+        });
+      }
+
+      // Sign Up handler
+      if (signUpEmail) {
+        signUpEmail.addEventListener('click', function(){
+          (async function(){
+            try {
+              var email = ((emailInput && emailInput.value) || '').trim().toLowerCase();
+              var password = (passwordInput && passwordInput.value) || '';
+              if (!email || !password) throw new Error('Enter email and password.');
+              var cred = await firebase.auth().createUserWithEmailAndPassword(email, password);
+              try { await cred.user.sendEmailVerification(); } catch (_e) {}
+              alert('Check your inbox to verify your email. If you do not see it, check Spam.');
+              if (loginModal) loginModal.classList.add('hidden');
+            } catch (err) {
+              var code = (err && err.code) || '';
+              var msg = 'Sign up failed.';
+              if (code === 'auth/email-already-in-use') msg = 'Email already in use. Try signing in or resetting your password.';
+              else if (code === 'auth/invalid-email') msg = 'Invalid email address.';
+              else if (code === 'auth/weak-password') msg = 'Choose a stronger password.';
+              alert(msg);
+              try { console.error('Email sign up error:', err); } catch(_) {}
+            }
+          })();
+        });
+      }
+    } catch (e) { try { console.error('Auth patch failed:', e); } catch(_) {} }
+  });
+})();
+// ==== end post-patch overrides ====
