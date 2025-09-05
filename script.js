@@ -1062,7 +1062,7 @@ if (!OAUTH_DISABLED && microsoftSignIn) {
       console.error('Email sign in error:', error);
       alert('Sign in failed: ' + error.message);
     });
-  }
+  });
 
   // Allow browsers/Keychain to save credentials via a real form submit
   const signInForm = document.getElementById('signInForm');
@@ -1072,7 +1072,6 @@ if (!OAUTH_DISABLED && microsoftSignIn) {
       if (typeof signInEmail?.click === 'function') signInEmail.click();
     });
   }
-);
 
   // --- Updated: remove duplicate verification send (auth.js already sends it)
   signUpEmail.addEventListener('click', async () => {
