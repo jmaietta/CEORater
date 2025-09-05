@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Account Settings - CEORater</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet"/>
   <style>
     .font-orbitron { font-family: 'Orbitron', monospace; }
     .font-inter { font-family: 'Inter', sans-serif; }
@@ -46,13 +46,13 @@
       </div>
       <div class="p-6">
         <div class="flex items-center space-x-6 mb-6">
-          <div id="profileAvatar" class="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold text-xl">
+          <div id="profileAvatar" class="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold text-xl" data-user-avatar>
             --
           </div>
           <div>
             <h3 id="profileEmail" class="text-lg font-medium text-gray-900">Loading...</h3>
             <p id="profileMemberSince" class="text-sm text-gray-600">Loading...</p>
-            <p id="verificationLabel" class="text-sm text-green-600 mt-1">Signed in</p>
+            <p id="verificationLabel" class="text-sm mt-1"></p>
           </div>
         </div>
       </div>
@@ -137,9 +137,9 @@
         <p class="text-gray-700 mb-4">
           To confirm deletion, please type your email address below:
         </p>
-        <input
-          id="emailConfirmation"
-          type="email"
+        <input 
+          id="emailConfirmation" 
+          type="email" 
           placeholder="Enter your email"
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
         >
@@ -157,7 +157,7 @@
     </div>
   </div>
 
-  <!-- Firebase and Auth Scripts -->
+  <!-- Firebase -->
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
@@ -166,153 +166,130 @@
   <script>
     let currentUser = null;
 
-    function waitForFirebaseAuth(cb, tries = 120) {
-      if (window.firebase && firebase.auth && window.firebaseConfig) {
-        try { if (firebase.apps?.length === 0) firebase.initializeApp(window.firebaseConfig); } catch (_) {}
-        return cb();
+    function computeInitials(user) {
+      if (user && user.displayName) {
+        const parts = user.displayName.trim().split(/\s+/);
+        const a = (parts[0]?.[0] || '').toUpperCase();
+        const b = (parts.length > 1 ? parts[parts.length - 1][0] : (parts[0]?.[1] || '')).toUpperCase();
+        const out = (a + b).replace(/[^A-Z]/g, '').slice(0, 2);
+        if (out) return out;
       }
-      if (tries <= 0) return;
-      setTimeout(() => waitForFirebaseAuth(cb, tries - 1), 100);
+      if (user && user.email) {
+        const local = user.email.split('@')[0] || '';
+        const letters = local.replace(/[^A-Za-z]/g, '');
+        const a = (letters[0] || local[0] || '').toUpperCase();
+        const b = (letters[1] || local[1] || '').toUpperCase();
+        const out = (a + b).replace(/[^A-Z]/g, '').slice(0, 2);
+        if (out) return out;
+      }
+      return '--';
     }
 
-    function setVerificationLabel(user) {
-      const el = document.getElementById('verificationLabel');
-      if (!el || !user) return;
-      const providers = (user.providerData || []).map(p => p.providerId);
-      el.classList.remove('text-green-600','text-yellow-600');
-      if (providers.includes('google.com')) {
-        el.textContent = 'Signed in with Google';
-        el.classList.add('text-green-600');
-      } else if (providers.includes('microsoft.com')) {
-        el.textContent = 'Signed in with Microsoft';
-        el.classList.add('text-green-600');
-      } else if (providers.includes('password')) {
-        if (user.emailVerified) {
-          el.textContent = '✓ Email verified';
-          el.classList.add('text-green-600');
-        } else {
-          el.textContent = 'Email not verified';
-          el.classList.add('text-yellow-600');
-        }
-      } else {
-        el.textContent = 'Signed in';
-        el.classList.add('text-green-600');
-      }
-    }
-
-    function fillProfile(user) {
-      // Email (real email on profile page)
-      const emailEl = document.getElementById('profileEmail');
-      if (emailEl) emailEl.textContent = user.email || user.displayName || 'Signed in';
-
-      // Initials: first letter of first + first letter of last (fallback to email local-part)
-      const avatarEl = document.getElementById('profileAvatar');
-      if (avatarEl) {
-        let initials = '--';
-        if (user.displayName) {
-          const parts = user.displayName.trim().split(/\s+/);
-          const a = (parts[0]?.[0] || '').toUpperCase();
-          const b = (parts.length > 1 ? parts[parts.length - 1][0] : (parts[0]?.[1] || '')).toUpperCase();
-          initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
-        }
-        if (initials === '--' && user.email) {
-          const local = user.email.split('@')[0] || '';
-          const letters = local.replace(/[^A-Za-z]/g, '');
-          const a = (letters[0] || local[0] || '').toUpperCase();
-          const b = (letters[1] || local[1] || '').toUpperCase();
-          initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
-        }
-        avatarEl.textContent = initials;
-      }
-
-      // Member since
-      const sinceEl = document.getElementById('profileMemberSince');
-      if (sinceEl) {
-        const t = user.metadata?.creationTime ? new Date(user.metadata.creationTime) : null;
-        sinceEl.textContent = t
-          ? `Member since ${t.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
-          : 'Member since 2025';
-      }
-
-      // Modal helpers
-      const expectedEl = document.getElementById('expectedEmailText');
-      if (expectedEl) expectedEl.textContent = `Expected: ${user.email || ''}`;
-      const input = document.getElementById('emailConfirmation');
-      if (input) input.placeholder = user.email || '';
-
-      // Verification
-      setVerificationLabel(user);
-    }
-
-    function setupDeleteModal() {
-      const openBtn = document.getElementById('deleteAccountBtn');
-      const modal   = document.getElementById('deleteConfirmModal');
-      const cancel  = document.getElementById('cancelDelete');
-      const confirm = document.getElementById('confirmDelete');
-      const input   = document.getElementById('emailConfirmation');
-
-      openBtn?.addEventListener('click', () => {
-        modal?.classList.remove('hidden');
-        if (input) { input.value = ''; input.placeholder = currentUser?.email || ''; }
-        if (confirm) confirm.disabled = true;
-      });
-
-      cancel?.addEventListener('click', () => {
-        modal?.classList.add('hidden');
-        if (input) input.value = '';
-        if (confirm) confirm.disabled = true;
-      });
-
-      input?.addEventListener('input', () => {
-        if (!confirm) return;
-        confirm.disabled = !(currentUser && input.value === currentUser.email);
-      });
-
-      confirm?.addEventListener('click', async () => {
-        try {
-          if (!currentUser) return;
-          try { await firebase.firestore().collection('watchlists').doc(currentUser.uid).delete(); } catch (_) {}
-          await currentUser.delete();
-          alert('Your account has been permanently deleted.');
-          window.location.href = '/CEORater/';
-        } catch (err) {
-          console.error('Account deletion failed:', err);
-          alert('Failed to delete account: ' + (err?.message || 'Unknown error'));
-        }
-      });
-
-      modal?.addEventListener('click', (e) => {
-        if (e.target === modal) {
-          modal.classList.add('hidden');
-          if (input) input.value = '';
-          if (confirm) confirm.disabled = true;
-        }
-      });
-    }
-
-    function boot() {
-      const u = firebase.auth().currentUser;
-      if (u) { currentUser = u; fillProfile(u); }
+    function initializeProfile() {
+      if (!window.firebaseConfig) { setTimeout(initializeProfile, 100); return; }
+      try { firebase.initializeApp(window.firebaseConfig); } catch(e) {}
 
       firebase.auth().onAuthStateChanged((user) => {
-        if (user) {
-          currentUser = user;
-          fillProfile(user);
+        if (!user) { window.location.href = '/CEORater/'; return; }
+        currentUser = user;
+
+        // Fill basic info
+        const emailEl = document.getElementById('profileEmail');
+        const sinceEl = document.getElementById('profileMemberSince');
+        const avatarEl = document.getElementById('profileAvatar');
+        const labelEl = document.getElementById('verificationLabel');
+
+        if (emailEl) emailEl.textContent = user.email || user.displayName || 'Signed in';
+        if (sinceEl) {
+          const t = user.metadata?.creationTime ? new Date(user.metadata.creationTime) : new Date();
+          sinceEl.textContent = 'Member since ' + t.toLocaleDateString('en-US', {month:'long', year:'numeric'});
+        }
+        if (avatarEl) avatarEl.textContent = computeInitials(user);
+
+        const providers = (user.providerData || []).map(p => p.providerId);
+        if (providers.includes('google.com')) {
+          labelEl.textContent = 'Signed in with Google';
+          labelEl.className = 'text-sm text-green-600 mt-1';
+        } else if (providers.includes('microsoft.com')) {
+          labelEl.textContent = 'Signed in with Microsoft';
+          labelEl.className = 'text-sm text-green-600 mt-1';
+        } else if (providers.includes('password')) {
+          labelEl.textContent = user.emailVerified ? '✓ Email verified' : 'Email not verified';
+          labelEl.className = user.emailVerified ? 'text-sm text-green-600 mt-1' : 'text-sm text-yellow-600 mt-1';
         } else {
-          window.location.href = '/CEORater/';
+          labelEl.textContent = 'Signed in';
+          labelEl.className = 'text-sm text-gray-600 mt-1';
+        }
+
+        // Set expected email & modal interactions
+        const expected = document.getElementById('expectedEmailText');
+        if (expected) expected.textContent = `Expected: ${user.email || ''}`;
+
+        document.getElementById('deleteAccountBtn').onclick = () => {
+          document.getElementById('deleteConfirmModal').classList.remove('hidden');
+        };
+        document.getElementById('cancelDelete').onclick = () => {
+          document.getElementById('deleteConfirmModal').classList.add('hidden');
+          document.getElementById('emailConfirmation').value = '';
+          document.getElementById('confirmDelete').disabled = true;
+        };
+        document.getElementById('emailConfirmation').oninput = (e) => {
+          document.getElementById('confirmDelete').disabled = e.target.value !== (user.email || '');
+        };
+
+        // Delete confirm: ALWAYS reauth with redirect for Google/Microsoft (iOS-safe)
+        document.getElementById('confirmDelete').onclick = async () => {
+          const typed = document.getElementById('emailConfirmation').value || '';
+          if (typed !== (user.email || '')) { alert('Please type your email exactly to confirm.'); return; }
+
+          const provs = (user.providerData || []).map(p => p.providerId);
+          try {
+            if (provs.includes('google.com')) {
+              sessionStorage.setItem('pendingDelete', '1');
+              await user.reauthenticateWithRedirect(new firebase.auth.GoogleAuthProvider());
+              return;
+            }
+            if (provs.includes('microsoft.com')) {
+              sessionStorage.setItem('pendingDelete', '1');
+              await user.reauthenticateWithRedirect(new firebase.auth.OAuthProvider('microsoft.com'));
+              return;
+            }
+
+            // email/password (reauth handled by main page modal)
+            try { await firebase.firestore().collection('watchlists').doc(user.uid).delete(); } catch(_) {}
+            await user.delete();
+            alert('Your account has been permanently deleted.');
+            window.location.href = '/CEORater/';
+          } catch (e) {
+            alert('Failed to delete account: ' + (e?.message || 'Unknown error'));
+          }
+        };
+
+        // Finish pending delete after redirect
+        if (sessionStorage.getItem('pendingDelete') === '1') {
+          sessionStorage.removeItem('pendingDelete');
+          (async () => {
+            try { await firebase.firestore().collection('watchlists').doc(user.uid).delete(); } catch(_) {}
+            try {
+              await user.delete();
+              alert('Your account has been permanently deleted.');
+              window.location.href = '/CEORater/';
+            } catch (e) {
+              if (e?.code === 'auth/requires-recent-login') {
+                alert('Please try deleting again; re-authentication did not complete.');
+              } else {
+                alert('Failed to delete account: ' + (e?.message || 'Unknown error'));
+              }
+            }
+          })();
         }
       });
-
-      setTimeout(() => { const u = firebase.auth().currentUser; if (u) fillProfile(u); }, 400);
-      setTimeout(() => { const u = firebase.auth().currentUser; if (u) fillProfile(u); }, 1200);
-
-      setupDeleteModal();
     }
 
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => waitForFirebaseAuth(boot));
+      document.addEventListener('DOMContentLoaded', initializeProfile);
     } else {
-      waitForFirebaseAuth(boot);
+      initializeProfile();
     }
   </script>
 </body>
