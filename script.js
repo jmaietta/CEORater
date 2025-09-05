@@ -478,14 +478,16 @@ async function handleAccountDeletion(user) {
       const provider = new firebase.auth.OAuthProvider('microsoft.com');
       await user.reauthenticateWithRedirect(provider);
       return;
-    } else if (providers.includes('password')) {
-      if (!password) {
-        alert('Please enter your password to confirm deletion');
-        return;
-      }
-      const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
-      await user.reauthenticateWithCredential(credential);
     }
+    // Removed password check as requested
+    // else if (providers.includes('password')) {
+    //   if (!password) {
+    //     alert('Please enter your password to confirm deletion');
+    //     return;
+    //   }
+    //   const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
+    //   await user.reauthenticateWithCredential(credential);
+    // }
 
     try {
       const db = firebase.firestore();
@@ -1358,4 +1360,3 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 })();
 // ==== end post-patch overrides ====
-
