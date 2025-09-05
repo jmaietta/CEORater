@@ -181,7 +181,7 @@ function showAuthError(err) {
     return;
   }
   if (code === 'auth/cancelled-popup-request' || code === 'auth/popup-closed-by-user') {
-    return; // user canceled—don’t show scary error
+    return; // user canceled—don't show scary error
   }
   alert(msg);
 }
@@ -314,8 +314,8 @@ function handleAuthStateChange(user) {
   currentUser = user;
   if (user) {
     // Show logged in state
-    loggedInState.classList.remove('hidden');
-    loggedOutState.classList.add('hidden');
+    if (loggedInState) loggedInState.classList.remove('hidden');
+    if (loggedOutState) loggedOutState.classList.add('hidden');
 
     // Update header identity (masked email + initials)
     resolveBestEmail(user).then(email => setIdentityUI(user, email));
@@ -327,8 +327,8 @@ function handleAuthStateChange(user) {
     });
   } else {
     // Show logged out state
-    loggedInState.classList.add('hidden');
-    loggedOutState.classList.remove('hidden');
+    if (loggedInState) loggedInState.classList.add('hidden');
+    if (loggedOutState) loggedOutState.classList.remove('hidden');
     
     userWatchlist.clear();
     comparisonSet.clear();
@@ -385,19 +385,19 @@ function updateWatchlistCount() {
 
 function switchToAllView() {
   currentView = 'all';
-  allCeosTab.classList.add('active');
-  watchlistTab.classList.remove('active');
+  if (allCeosTab) allCeosTab.classList.add('active');
+  if (watchlistTab) watchlistTab.classList.remove('active');
   applyFilters();
 }
 
 function switchToWatchlistView() {
   if (!currentUser) {
-    loginModal.classList.remove('hidden');
+    if (loginModal) loginModal.classList.remove('hidden');
     return;
   }
   currentView = 'watchlist';
-  watchlistTab.classList.add('active');
-  allCeosTab.classList.remove('active');
+  if (watchlistTab) watchlistTab.classList.add('active');
+  if (allCeosTab) allCeosTab.classList.remove('active');
   applyFilters();
 }
 
@@ -406,10 +406,10 @@ function refreshView() {
 }
 
 function applyFilters() {
-  const term = searchInput.value.trim().toLowerCase();
-  const ind = industryFilter.value;
-  const sec = sectorFilter.value;
-  const founder = founderFilter.value;
+  const term = searchInput?.value?.trim()?.toLowerCase() || '';
+  const ind = industryFilter?.value || '';
+  const sec = sectorFilter?.value || '';
+  const founder = founderFilter?.value || '';
   
   let filteredData = master.filter(c => {
     const matchTerm = (c.ceo + c.company + c.ticker).toLowerCase().includes(term);
@@ -441,10 +441,12 @@ function sortAndRender() {
     return currentSort.dir === 'asc' ? cmp : -cmp;
   });
   
-  if (view.length === 0 && currentView !== 'watchlist') {
-    noResults.classList.remove('hidden');
-  } else {
-    noResults.classList.add('hidden');
+  if (noResults) {
+    if (view.length === 0 && currentView !== 'watchlist') {
+      noResults.classList.remove('hidden');
+    } else {
+      noResults.classList.add('hidden');
+    }
   }
   
   ui.renderCards(view, userWatchlist, comparisonSet, currentView);
@@ -461,7 +463,7 @@ async function handleAccountDeletion() {
     return;
   }
 
-  const password = deletePasswordInput.value.trim();
+  const password = deletePasswordInput?.value?.trim() || '';
   
   try {
     const providers = user.providerData.map(p => p.providerId);
@@ -495,7 +497,7 @@ async function handleAccountDeletion() {
     
     await user.delete();
     
-    deleteAccountModal.classList.add('hidden');
+    if (deleteAccountModal) deleteAccountModal.classList.add('hidden');
     alert('Your account has been permanently deleted.');
     window.location.href = '/CEORater/';
     
@@ -522,19 +524,19 @@ async function handleAccountDeletion() {
 function showDeleteModal() {
   if (!currentUser) return;
   
-  deletePasswordInput.value = '';
-  deletePasswordSection.classList.add('hidden');
-  deleteOAuthSection.classList.add('hidden');
+  if (deletePasswordInput) deletePasswordInput.value = '';
+  if (deletePasswordSection) deletePasswordSection.classList.add('hidden');
+  if (deleteOAuthSection) deleteOAuthSection.classList.add('hidden');
   
   const providers = currentUser.providerData.map(p => p.providerId);
   
   if (providers.includes('password')) {
-    deletePasswordSection.classList.remove('hidden');
+    if (deletePasswordSection) deletePasswordSection.classList.remove('hidden');
   } else if (providers.includes('google.com') || providers.includes('microsoft.com')) {
-    deleteOAuthSection.classList.remove('hidden');
+    if (deleteOAuthSection) deleteOAuthSection.classList.remove('hidden');
   }
   
-  deleteAccountModal.classList.remove('hidden');
+  if (deleteAccountModal) deleteAccountModal.classList.remove('hidden');
 }
 
 // ---------- Profile Page Integration ----------
@@ -578,45 +580,94 @@ function initializeProfilePage() {
     });
   });
 
-  if (typeof firebase !== 'undefined' && firebase.auth) {
+  // Show loading state initially
+  const profileEmail = document.getElementById('profileEmail');
+  if (profileEmail) profileEmail.textContent = 'Loading...';
+  
+  const avatars = document.querySelectorAll('[data-user-avatar]');
+  avatars.forEach(avatar => { if (avatar) avatar.textContent = '--'; });
+
+  // Wait for Firebase to be ready before setting up auth listener
+  waitForFirebaseAuth(() => {
+    // Ensure Firebase is initialized
+    try {
+      if (firebase.apps?.length === 0 && window.firebaseConfig) {
+        firebase.initializeApp(window.firebaseConfig);
+      }
+    } catch (_) {}
+
+    // Set up auth state listener
     firebase.auth().onAuthStateChanged((user) => {
       if (user) {
+        // User is signed in - update UI
         resolveBestEmail(user).then((bestEmail) => {
           const profileEmail = document.getElementById('profileEmail');
           if (profileEmail) profileEmail.textContent = bestEmail || user.displayName || 'Signed in';
 
           const expectedById = document.getElementById('expectedEmailText');
           const expectedEmailEl = expectedById || document.querySelector('.text-xs.text-gray-500');
-          if (expectedEmailEl) { expectedEmailEl.textContent = `Expected: ${bestEmail || ''}`; }
+          if (expectedEmailEl) { 
+            const isOAuth = (user.providerData || []).some(p =>
+              p.providerId === 'google.com' || p.providerId === 'microsoft.com'
+            );
+            expectedEmailEl.textContent = isOAuth 
+              ? 'Using Google/Microsoft re-authentication'
+              : `Expected: ${bestEmail || ''}`;
+          }
 
           const emailInput = document.getElementById('emailConfirmation');
           if (emailInput) { emailInput.placeholder = bestEmail || ''; }
 
-          // Compute single-letter avatar initials consistently
-const initials = (typeof computeInitials === 'function') ? computeInitials(user) : (function(){
-  let ch = '--';
-  if (user && user.displayName && user.displayName.trim()) {
-    ch = (user.displayName.trim()[0] || '').toUpperCase() || ch;
-  } else if (user && (bestEmail || user.email)) {
-    const src = bestEmail || user.email || '';
-    const local = (src.split('@')[0] || '');
-    const first = (local.replace(/[^A-Za-z]/g,'')[0] || local[0] || '').toUpperCase();
-    if (first) ch = first;
-  }
-  return ch;
-})();
+          // Compute JM-style initials (prefer displayName; fallback to email)
+          let initials = '--';
+          if (user.displayName) {
+            const parts = user.displayName.trim().split(/\s+/);
+            const a = (parts[0]?.[0] || '').toUpperCase();
+            const b = (parts.length > 1 ? parts[parts.length - 1][0] : (parts[0]?.[1] || '')).toUpperCase();
+            initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
+          }
+          if (initials === '--' && (bestEmail || user.email)) {
+            const src = bestEmail || user.email;
+            const local = (src && src.split('@')[0]) || '';
+            const letters = local.replace(/[^A-Za-z]/g, '');
+            const a = (letters[0] || local[0] || '').toUpperCase();
+            const b = (letters[1] || local[1] || '').toUpperCase();
+            initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
+          }
 
-const avatars = document.querySelectorAll('[data-user-avatar]');
-avatars.forEach(avatar => { if (avatar) avatar.textContent = initials; });
-
+          const avatars = document.querySelectorAll('[data-user-avatar]');
+          avatars.forEach(avatar => { if (avatar) avatar.textContent = initials; });
 
           setupProfileAccountDeletion(user, bestEmail);
         });
       } else {
-        window.location.href = '/CEORater/';
+        // No user signed in - redirect to main page after a short delay
+        setTimeout(() => {
+          window.location.href = '/CEORater/';
+        }, 100);
       }
     });
-  }
+
+    // Check if user is already signed in (for faster initial load)
+    const currentUser = firebase.auth().currentUser;
+    if (currentUser) {
+      // Trigger the auth state handler immediately with current user
+      resolveBestEmail(currentUser).then((bestEmail) => {
+        const profileEmail = document.getElementById('profileEmail');
+        if (profileEmail) profileEmail.textContent = bestEmail || currentUser.displayName || 'Signed in';
+        
+        // Update initials immediately
+        let initials = '--';
+        if (currentUser.displayName) {
+          const parts = currentUser.displayName.trim().split(/\s+/);
+          const a = (parts[0]?.[0] || '').toUpperCase();
+          initials = a || initials;
+        }
+        const avatars = document.querySelectorAll('[data-user-avatar]');
+        avatars.forEach(avatar => { if (avatar) avatar.textContent = initials; });
+      });
+    }
+  });
 
   function setupProfileAccountDeletion(user, bestEmail) {
     const deleteBtn = document.getElementById('deleteAccountBtn');
@@ -727,6 +778,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize profile page if we're on it
   initializeProfilePage();
 
+  // Only continue with main app initialization if NOT on profile page
+  if (window.location.pathname.includes('profile.html')) {
+    // Profile page has its own initialization, so return early
+    return;
+  }
+
   // Initialize Firebase auth listener only after Firebase is ready
   waitForFirebaseAuth(() => {
     try {
@@ -790,7 +847,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // -----------------------------------------------------------------------
 
           } catch(_) {}
-          loginModal?.classList.add('hidden');
+          if (loginModal) loginModal.classList.add('hidden');
         } else if (res && res.error) {
           showAuthError(res.error);
         }
@@ -840,11 +897,11 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch (_) {}
 
   // Set up ALL event listeners IMMEDIATELY - app is now interactive
-  searchInput.addEventListener('input', debounce(applyFilters, 300));
-  industryFilter.addEventListener('change', applyFilters);
-  sectorFilter.addEventListener('change', applyFilters);
-  founderFilter.addEventListener('change', applyFilters);
-  sortControl.addEventListener('change', e => {
+  if (searchInput) searchInput.addEventListener('input', debounce(applyFilters, 300));
+  if (industryFilter) industryFilter.addEventListener('change', applyFilters);
+  if (sectorFilter) sectorFilter.addEventListener('change', applyFilters);
+  if (founderFilter) founderFilter.addEventListener('change', applyFilters);
+  if (sortControl) sortControl.addEventListener('change', e => {
     const [k, d] = e.target.value.split('-');
     currentSort = { key: k, dir: d };
     sortAndRender();
@@ -869,33 +926,34 @@ document.addEventListener('DOMContentLoaded', () => {
   })();
 
   // Mobile filter toggle listener
-  toggleFiltersBtn.addEventListener('click', () => {
+  if (toggleFiltersBtn) toggleFiltersBtn.addEventListener('click', () => {
     const isHidden = mobileFilterControls.classList.toggle('hidden');
-    toggleFiltersIcon.classList.toggle('rotate-180');
+    if (toggleFiltersIcon) toggleFiltersIcon.classList.toggle('rotate-180');
     const buttonText = toggleFiltersBtn.querySelector('span');
-    buttonText.textContent = isHidden ? 'Show Filters & Options' : 'Hide Filters & Options';
+    if (buttonText) buttonText.textContent = isHidden ? 'Show Filters & Options' : 'Hide Filters & Options';
   });
 
-  allCeosTab.addEventListener('click', switchToAllView);
-  watchlistTab.addEventListener('click', switchToWatchlistView);
+  if (allCeosTab) allCeosTab.addEventListener('click', switchToAllView);
+  if (watchlistTab) watchlistTab.addEventListener('click', switchToWatchlistView);
 
-  loginBtn.addEventListener('click', () => loginModal.classList.remove('hidden'));
-  closeLoginModalBtn.addEventListener('click', () => loginModal.classList.add('hidden'));
-  loginModal.addEventListener('click', e => {
+  if (loginBtn) loginBtn.addEventListener('click', () => loginModal && loginModal.classList.remove('hidden'));
+  if (closeLoginModalBtn) closeLoginModalBtn.addEventListener('click', () => loginModal && loginModal.classList.add('hidden'));
+  if (loginModal) loginModal.addEventListener('click', e => {
     if (e.target === loginModal) loginModal.classList.add('hidden');
   });
 
   // User dropdown functionality
   userMenuButton?.addEventListener('click', (e) => {
     e.stopPropagation();
+    if (!userDropdown) return;
     const isOpen = !userDropdown.classList.contains('hidden');
     
     if (isOpen) {
       userDropdown.classList.add('hidden');
-      dropdownIcon.style.transform = 'rotate(0deg)';
+      if (dropdownIcon) dropdownIcon.style.transform = 'rotate(0deg)';
     } else {
       userDropdown.classList.remove('hidden');
-      dropdownIcon.style.transform = 'rotate(180deg)';
+      if (dropdownIcon) dropdownIcon.style.transform = 'rotate(180deg)';
     }
   });
 
@@ -907,21 +965,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Close dropdown when clicking outside
   document.addEventListener('click', (e) => {
-    if (!userDropdown.classList.contains('hidden') && 
-        !userMenuButton.contains(e.target) && 
+    if (userDropdown && !userDropdown.classList.contains('hidden') && 
+        !userMenuButton?.contains(e.target) && 
         !userDropdown.contains(e.target)) {
       userDropdown.classList.add('hidden');
-      dropdownIcon.style.transform = 'rotate(0deg)';
+      if (dropdownIcon) dropdownIcon.style.transform = 'rotate(0deg)';
     }
   });
 
   // Account Deletion Event Listeners
   closeDeleteModalBtn?.addEventListener('click', () => {
-    deleteAccountModal.classList.add('hidden');
+    if (deleteAccountModal) deleteAccountModal.classList.add('hidden');
   });
   
   cancelDeleteBtn?.addEventListener('click', () => {
-    deleteAccountModal.classList.add('hidden');
+    if (deleteAccountModal) deleteAccountModal.classList.add('hidden');
   });
   
   deleteAccountModal?.addEventListener('click', e => {
@@ -932,7 +990,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   confirmDeleteBtn?.addEventListener('click', handleAccountDeletion);
 
-  ceoCardView.addEventListener('click', (e) => {
+  if (ceoCardView) ceoCardView.addEventListener('click', (e) => {
       const star = e.target.closest('.watchlist-star');
       if (star) {
           e.stopPropagation();
@@ -952,7 +1010,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const ticker = card.dataset.ticker;
           const ceoName = card.dataset.ceoName;
           const ceoData = master.find(c => c.ticker === ticker && c.ceo === ceoName);
-          if (ceoData) {
+          if (ceoData && ceoDetailModal) {
               ui.renderDetailModal(ceoData);
               ceoDetailModal.classList.remove('hidden');
           }
@@ -960,7 +1018,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Listener for the entire comparison tray (handles "x" and "Clear All")
-  comparisonTray.addEventListener('click', e => {
+  if (comparisonTray) comparisonTray.addEventListener('click', e => {
     if (e.target.id === 'clearCompareBtn') {
         comparisonSet.clear();
         sortAndRender();
@@ -976,62 +1034,62 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  closeDetailModal.addEventListener('click', () => ceoDetailModal.classList.add('hidden'));
-  ceoDetailModal.addEventListener('click', e => {
+  if (closeDetailModal) closeDetailModal.addEventListener('click', () => ceoDetailModal && ceoDetailModal.classList.add('hidden'));
+  if (ceoDetailModal) ceoDetailModal.addEventListener('click', e => {
       if (e.target === ceoDetailModal) {
           ceoDetailModal.classList.add('hidden');
       }
   });
   
-  compareNowBtn.addEventListener('click', () => {
+  if (compareNowBtn) compareNowBtn.addEventListener('click', () => {
       ui.renderComparisonModal(master, comparisonSet);
-      comparisonModal.classList.remove('hidden');
+      if (comparisonModal) comparisonModal.classList.remove('hidden');
   });
-  closeComparisonModalBtn.addEventListener('click', () => comparisonModal.classList.add('hidden'));
-  comparisonModal.addEventListener('click', e => {
+  if (closeComparisonModalBtn) closeComparisonModalBtn.addEventListener('click', () => comparisonModal && comparisonModal.classList.add('hidden'));
+  if (comparisonModal) comparisonModal.addEventListener('click', e => {
     if (e.target === comparisonModal) {
       comparisonModal.classList.add('hidden');
     }
   });
 
-  logoutBtn.addEventListener('click', () => auth.signOut());
+  if (logoutBtn) logoutBtn.addEventListener('click', () => auth.signOut());
   
   // ******** IMPORTANT CHANGE: Google sign-in always via redirect ********
-if (!OAUTH_DISABLED && googleSignIn) {
-  googleSignIn.addEventListener('click', async () => {
-    try {
-      if (preferRedirect) {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        try { provider.addScope('email'); provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
-        await firebase.auth().signInWithRedirect(provider);
-      } else {
-        await auth.signInWithGoogle();
+  if (!OAUTH_DISABLED && googleSignIn) {
+    googleSignIn.addEventListener('click', async () => {
+      try {
+        if (preferRedirect) {
+          const provider = new firebase.auth.GoogleAuthProvider();
+          try { provider.addScope('email'); provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
+          await firebase.auth().signInWithRedirect(provider);
+        } else {
+          await auth.signInWithGoogle();
+        }
+        if (loginModal) loginModal.classList.add('hidden');
+      } catch (error) {
+        console.error('Google sign in error:', error);
+        const msg =
+          error?.code === 'auth/unauthorized-domain'
+            ? 'Sign-in blocked: unauthorized domain. Add your GitHub Pages domain in Firebase Auth settings.'
+            : (error?.message || 'Sign in failed. Please try again.');
+        alert(msg);
       }
-      loginModal.classList.add('hidden');
-    } catch (error) {
-      console.error('Google sign in error:', error);
-      const msg =
-        error?.code === 'auth/unauthorized-domain'
-          ? 'Sign-in blocked: unauthorized domain. Add your GitHub Pages domain in Firebase Auth settings.'
-          : (error?.message || 'Sign in failed. Please try again.');
-      alert(msg);
-    }
-  });
-}
-if (!OAUTH_DISABLED && microsoftSignIn) {
-  microsoftSignIn.addEventListener('click', () => {
-    auth.signInWithMicrosoft().then(() => {
-      loginModal.classList.add('hidden');
-    }).catch(error => {
-      console.error('Microsoft sign in error:', error);
-      alert('Sign in failed: ' + error.message);
     });
-  });
-}
+  }
+  if (!OAUTH_DISABLED && microsoftSignIn) {
+    microsoftSignIn.addEventListener('click', () => {
+      auth.signInWithMicrosoft().then(() => {
+        if (loginModal) loginModal.classList.add('hidden');
+      }).catch(error => {
+        console.error('Microsoft sign in error:', error);
+        alert('Sign in failed: ' + error.message);
+      });
+    });
+  }
   
-  forgotPasswordLink.addEventListener('click', (e) => {
+  if (forgotPasswordLink) forgotPasswordLink.addEventListener('click', (e) => {
     e.preventDefault();
-    const email = emailInput.value;
+    const email = emailInput?.value;
     if (!email) {
       alert('Please enter your email address to reset your password.');
       return;
@@ -1050,13 +1108,13 @@ if (!OAUTH_DISABLED && microsoftSignIn) {
       });
   });
   
-  signInEmail.addEventListener('click', () => {
-    const email = emailInput.value;
-    const password = passwordInput.value;
+  if (signInEmail) signInEmail.addEventListener('click', () => {
+    const email = emailInput?.value;
+    const password = passwordInput?.value;
     if (!email || !password) return;
     
     auth.signInWithEmailSmart(email, password).then(() => {
-      loginModal.classList.add('hidden');
+      if (loginModal) loginModal.classList.add('hidden');
     }).catch(error => {
       console.error('Email sign in error:', error);
       alert('Sign in failed: ' + error.message);
@@ -1064,14 +1122,14 @@ if (!OAUTH_DISABLED && microsoftSignIn) {
   });
 
   // --- Updated: remove duplicate verification send (auth.js already sends it)
-  signUpEmail.addEventListener('click', async () => {
-    const email = emailInput.value;
-    const password = passwordInput.value;
+  if (signUpEmail) signUpEmail.addEventListener('click', async () => {
+    const email = emailInput?.value;
+    const password = passwordInput?.value;
     if (!email || !password) return;
     try {
       await auth.signUpWithEmail(email, password); // single send inside auth.js
       alert('Check your inbox to verify your email. (If not there, check Spam/Promotions.)');
-      loginModal.classList.add('hidden');
+      if (loginModal) loginModal.classList.add('hidden');
     } catch (error) {
       console.error('Email sign up error:', error);
       alert('Sign up failed: ' + error.message);
@@ -1079,7 +1137,8 @@ if (!OAUTH_DISABLED && microsoftSignIn) {
   });
 
   // Enhanced CSV export with CEORaterScore
-  $("downloadExcelButton").addEventListener('click', () => {
+  const downloadBtn = $("downloadExcelButton");
+  if (downloadBtn) downloadBtn.addEventListener('click', () => {
     if (view.length === 0) {
       alert('No data to export');
       return;
@@ -1124,24 +1183,24 @@ if (!OAUTH_DISABLED && microsoftSignIn) {
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      if (!loginModal.classList.contains('hidden')) {
+      if (loginModal && !loginModal.classList.contains('hidden')) {
         loginModal.classList.add('hidden');
-      } else if (!deleteAccountModal.classList.contains('hidden')) {
+      } else if (deleteAccountModal && !deleteAccountModal.classList.contains('hidden')) {
         deleteAccountModal.classList.add('hidden');
-      } else if (!ceoDetailModal.classList.contains('hidden')) {
+      } else if (ceoDetailModal && !ceoDetailModal.classList.contains('hidden')) {
         ceoDetailModal.classList.add('hidden');
-      } else if (!comparisonModal.classList.contains('hidden')) {
+      } else if (comparisonModal && !comparisonModal.classList.contains('hidden')) {
         comparisonModal.classList.add('hidden');
       }
     }
   });
 
-  emailInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') signInEmail.click();
+  if (emailInput) emailInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && signInEmail) signInEmail.click();
   });
   
-  passwordInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') signInEmail.click();
+  if (passwordInput) passwordInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && signInEmail) signInEmail.click();
   });
 
   // NOW load data asynchronously in the background (non-blocking)
@@ -1151,8 +1210,163 @@ if (!OAUTH_DISABLED && microsoftSignIn) {
       ui.refreshFilters(master);
       ui.updateStatCards(master);
       applyFilters();
-      lastUpdated.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+      if (lastUpdated) lastUpdated.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
     })
-    .catch(() => errorMessage.classList.remove('hidden'))
-    .finally(() => loading.style.display = 'none');
+    .catch(() => {
+      if (errorMessage) errorMessage.classList.remove('hidden');
+    })
+    .finally(() => {
+      if (loading) loading.style.display = 'none';
+    });
 });
+
+// ==== CEORater post-patch overrides (safe, idempotent) ====
+(function(){
+  try {
+    if (firebase && firebase.auth && firebase.auth.Auth && firebase.auth.Auth.Persistence) {
+      firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+        .catch(function(){ return firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION); });
+    }
+  } catch (e) {}
+
+  // Override setIdentityUI so header shows masked email, dropdown shows full email, avatar uses single letter
+  try {
+    var _maskFn = (typeof maskEmail === 'function') ? maskEmail : function(e){ return e || ''; };
+    var _computeFn = (typeof computeInitials === 'function') ? computeInitials : function(user){
+      var initials = '--';
+      if (user && user.displayName && user.displayName.trim()) {
+        var ch = (user.displayName.trim()[0] || '').toUpperCase();
+        if (ch) return ch;
+      }
+      if (user && user.email) {
+        var local = (user.email.split('@')[0] || '');
+        var lettersFirst = ((local.replace(/[^A-Za-z]/g, '')[0]) || local[0] || '').toUpperCase();
+        if (lettersFirst) return lettersFirst;
+      }
+      return initials;
+    };
+
+    window.setIdentityUI = function(user, effectiveEmail) {
+      var initials = _computeFn(user);
+      var full = effectiveEmail || (user && user.email) || '';
+      var masked = full ? _maskFn(full) : ((user && user.displayName) || 'Signed in');
+
+      var userEmailDisplay = document.getElementById('userEmailDisplay'); // header
+      var userEmailDropdown = document.getElementById('userEmailDropdown'); // dropdown
+      var userAvatar = document.getElementById('userAvatar'); // avatar bubble
+
+      if (userEmailDisplay) {
+        userEmailDisplay.textContent = masked;
+        userEmailDisplay.title = full || '';
+        userEmailDisplay.dataset.identityBound = '1';
+      }
+      if (userEmailDropdown) {
+        userEmailDropdown.textContent = full || masked;
+        userEmailDropdown.title = full || '';
+        userEmailDropdown.dataset.identityBound = '1';
+      }
+      if (userAvatar) {
+        userAvatar.textContent = initials;
+        userAvatar.title = full || (user && user.displayName) || '';
+        userAvatar.dataset.identityBound = '1';
+      }
+
+      // Guard: keep values if other scripts mutate them
+      try {
+        var guard = new MutationObserver(function() {
+          if (userEmailDisplay && userEmailDisplay.dataset.identityBound === '1' && userEmailDisplay.textContent !== masked) {
+            userEmailDisplay.textContent = masked;
+          }
+          if (userEmailDropdown && userEmailDropdown.dataset.identityBound === '1' && userEmailDropdown.textContent !== (full || masked)) {
+            userEmailDropdown.textContent = full || masked;
+          }
+          if (userAvatar && userAvatar.dataset.identityBound === '1' && userAvatar.textContent !== initials) {
+            userAvatar.textContent = initials;
+          }
+        });
+        guard.observe(document.body, { subtree: true, childList: true, characterData: true });
+      } catch (_) {}
+    };
+  } catch(e) {}
+
+  // Rewire email auth handlers with clean implementations
+  function _cloneNoHandlers(el){
+    if (!el) return el;
+    var cl = el.cloneNode(true);
+    if (el.parentNode) el.parentNode.replaceChild(cl, el);
+    return cl;
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    try {
+      var emailInput = document.getElementById('emailInput');
+      var passwordInput = document.getElementById('passwordInput');
+      var signInEmail = document.getElementById('signInEmail');
+      var signUpEmail = document.getElementById('signUpEmail');
+      var loginModal = document.getElementById('loginModal');
+
+      // Strip any pre-existing listeners to avoid double-firing
+      signInEmail = _cloneNoHandlers(signInEmail);
+      signUpEmail = _cloneNoHandlers(signUpEmail);
+
+      // Encourage password managers by supporting form submit
+      var signInForm = document.getElementById('signInForm');
+      if (signInForm) {
+        signInForm.addEventListener('submit', function(e){
+          e.preventDefault();
+          if (signInEmail) signInEmail.click();
+        });
+      }
+
+      // Sign In handler
+      if (signInEmail) {
+        signInEmail.addEventListener('click', function(){
+          (async function(){
+            try {
+              var email = ((emailInput && emailInput.value) || '').trim().toLowerCase();
+              var password = (passwordInput && passwordInput.value) || '';
+              if (!email || !password) throw new Error('Enter email and password.');
+              await firebase.auth().signInWithEmailAndPassword(email, password);
+              if (loginModal) loginModal.classList.add('hidden');
+            } catch (err) {
+              var code = (err && err.code) || '';
+              var msg = 'Sign in failed.';
+              if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') msg = 'Incorrect password.';
+              else if (code === 'auth/user-not-found') msg = 'No account found for this email. Please sign up.';
+              else if (code === 'auth/invalid-email') msg = 'Invalid email address.';
+              else if (code === 'auth/too-many-requests') msg = 'Too many attempts. Try again later.';
+              alert(msg);
+              try { console.error('Email sign in error:', err); } catch(_) {}
+            }
+          })();
+        });
+      }
+
+      // Sign Up handler
+      if (signUpEmail) {
+        signUpEmail.addEventListener('click', function(){
+          (async function(){
+            try {
+              var email = ((emailInput && emailInput.value) || '').trim().toLowerCase();
+              var password = (passwordInput && passwordInput.value) || '';
+              if (!email || !password) throw new Error('Enter email and password.');
+              var cred = await firebase.auth().createUserWithEmailAndPassword(email, password);
+              try { await cred.user.sendEmailVerification(); } catch (_e) {}
+              alert('Check your inbox to verify your email. If you do not see it, check Spam.');
+              if (loginModal) loginModal.classList.add('hidden');
+            } catch (err) {
+              var code = (err && err.code) || '';
+              var msg = 'Sign up failed.';
+              if (code === 'auth/email-already-in-use') msg = 'Email already in use. Try signing in or resetting your password.';
+              else if (code === 'auth/invalid-email') msg = 'Invalid email address.';
+              else if (code === 'auth/weak-password') msg = 'Choose a stronger password.';
+              alert(msg);
+              try { console.error('Email sign up error:', err); } catch(_) {}
+            }
+          })();
+        });
+      }
+    } catch (e) { try { console.error('Auth patch failed:', e); } catch(_) {} }
+  });
+})();
+// ==== end post-patch overrides ====
