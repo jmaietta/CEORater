@@ -170,32 +170,6 @@ function setIdentityUI(user, effectiveEmail) {
     guard.observe(document.body, { subtree: true, childList: true, characterData: true });
   } catch (_) {}
 }
-if (userEmailDropdown) { userEmailDropdown.textContent = nameOrMasked; userEmailDropdown.title = effectiveEmail || user?.email || ''; userEmailDropdown.dataset.identityBound = '1'; }
-  if (userAvatar) { userAvatar.textContent = initials; userAvatar.title = user?.displayName || effectiveEmail || user?.email || ''; userAvatar.dataset.identityBound = '1'; }
-
-  // Enforce again once in case another script mutates them
-  setTimeout(() => {
-    if (userEmailDisplay && userEmailDisplay.textContent !== nameOrMasked) userEmailDisplay.textContent = nameOrMasked;
-    if (userEmailDropdown && userEmailDropdown.textContent !== nameOrMasked) userEmailDropdown.textContent = nameOrMasked;
-    if (userAvatar && userAvatar.textContent !== initials) userAvatar.textContent = initials;
-  }, 300);
-
-  // Strong guard: if any script mutates these nodes later, restore our values.
-  try {
-    const guard = new MutationObserver(() => {
-      if (userEmailDisplay && userEmailDisplay.dataset.identityBound === '1' && userEmailDisplay.textContent !== nameOrMasked) {
-        userEmailDisplay.textContent = nameOrMasked;
-      }
-      if (userEmailDropdown && userEmailDropdown.dataset.identityBound === '1' && userEmailDropdown.textContent !== nameOrMasked) {
-        userEmailDropdown.textContent = nameOrMasked;
-      }
-      if (userAvatar && userAvatar.dataset.identityBound === '1' && userAvatar.textContent !== initials) {
-        userAvatar.textContent = initials;
-      }
-    });
-    guard.observe(document.body, { subtree: true, childList: true, characterData: true });
-  } catch (_) {}
-}
 // =========================================================
 
 // ---------- Central auth error helper (shows exact codes, falls back to redirect) ----------
