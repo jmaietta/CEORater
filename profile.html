@@ -197,19 +197,15 @@
           if (profileAvatar) {
             let initials = '--';
             if (user.displayName) {
-              const parts = user.displayName.trim().split(/\s+/);
-              const a = (parts[0]?.[0] || '').toUpperCase();
-              const b = (parts.length > 1 ? parts[parts.length - 1][0] : (parts[0]?.[1] || '')).toUpperCase();
-              initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
+              const ch = (user.displayName.trim()[0] || '').toUpperCase();
+              initials = ch || initials;
             } else if (email) {
               const local = email.split('@')[0] || '';
-              const letters = local.replace(/[^A-Za-z]/g, '');
-              const a = (letters[0] || local[0] || '').toUpperCase();
-              const b = (letters[1] || local[1] || '').toUpperCase();
-              initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
+              const lettersFirst = (local.replace(/[^A-Za-z]/g, '')[0] || local[0] || '').toUpperCase();
+              initials = lettersFirst || initials;
             }
             profileAvatar.textContent = initials;
-          }
+
 
           // Delete modal wiring (email-only)
           const deleteBtn = document.getElementById('deleteAccountBtn');
