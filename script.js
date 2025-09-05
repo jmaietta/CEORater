@@ -21,15 +21,14 @@ if (isIOSNative) {
   nullify('microsoftSignIn');
 }
 
-// --- New: robust platform detection (kept for reference)
-const ua = (typeof navigator !== 'undefined' ? navigator.userAgent || '' : '');
+// --- New: robust platform detection for redirects vs popups (improves Google sign-in on iOS/Safari)
+const ua = (typeof navigator !== 'undefined' ? 
+navigator.userAgent || '' : '');
 const isLikelyIOSWeb =
   /iPad|iPhone|iPod/.test(ua) ||
   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS desktop mode
 const isSafari = /Safari/.test(ua) && !/Chrome|CriOS|FxiOS/.test(ua);
-
-// ******** IMPORTANT CHANGE: force redirect everywhere (Windows-friendly) ********
-const preferRedirect = true;
+const preferRedirect = isIOSNative || isLikelyIOSWeb || isSafari;
 
 import { fetchData } from './GoogleSheet.js';
 import * as ui from './ui.js';
@@ -84,19 +83,50 @@ function computeInitials(user) {
   }
   return '--';
 }
-function setIdentityUI(user) {
+
+// Best-effort resolver for user's email (handles rare cases where user.email is null)
+let lastKnownEmail = (function(){ try { return localStorage.getItem('lastKnownEmail') || null; } catch(_) { return null; } })();
+
+async function resolveBestEmail(user) {
+  try {
+    if (!user) return lastKnownEmail;
+    // direct
+    if (user.email) { lastKnownEmail = user.email; try { localStorage.setItem('lastKnownEmail', lastKnownEmail); } catch(_) {} ; return lastKnownEmail; }
+    // providerData
+    const pd = (user.providerData || []).map(p => p && p.email).find(Boolean);
+    if (pd) { lastKnownEmail = pd; try { localStorage.setItem('lastKnownEmail', lastKnownEmail); } catch(_) {} ; return lastKnownEmail; }
+    // ID token claims
+    try {
+      const t = await user.getIdTokenResult();
+      const cl = t && t.claims;
+      if (cl && cl.email) { lastKnownEmail = cl.email; try { localStorage.setItem('lastKnownEmail', lastKnownEmail); } catch(_) {} ; return lastKnownEmail; }
+    } catch(_) {}
+    // Reload and retry direct
+    try {
+      await user.reload();
+      const refreshed = firebase.auth().currentUser;
+      if (refreshed && refreshed.email) { lastKnownEmail = refreshed.email; try { localStorage.setItem('lastKnownEmail', lastKnownEmail); } catch(_) {} ; return lastKnownEmail; }
+    } catch(_) {}
+    // Fallback to storage
+    return lastKnownEmail;
+  } catch(_) {
+    return lastKnownEmail;
+  }
+}
+
+function setIdentityUI(user, effectiveEmail) {
   const initials = computeInitials(user);
-  const nameOrMasked = user?.email ? maskEmail(user.email) : (user?.displayName || 'Signed in');
+  const nameOrMasked = effectiveEmail ? maskEmail(effectiveEmail) : (user?.displayName || 'Signed in');
 
   const userEmailDisplay = document.getElementById('userEmailDisplay');
   const userEmailDropdown = document.getElementById('userEmailDropdown');
   const userAvatar = document.getElementById('userAvatar');
 
-  if (userEmailDisplay) { userEmailDisplay.textContent = nameOrMasked; userEmailDisplay.title = user?.email || ''; userEmailDisplay.dataset.identityBound = '1'; }
-  if (userEmailDropdown) { userEmailDropdown.textContent = nameOrMasked; userEmailDropdown.title = user?.email || ''; userEmailDropdown.dataset.identityBound = '1'; }
-  if (userAvatar) { userAvatar.textContent = initials; userAvatar.title = user?.displayName || user?.email || ''; userAvatar.dataset.identityBound = '1'; }
+  if (userEmailDisplay) { userEmailDisplay.textContent = nameOrMasked; userEmailDisplay.title = effectiveEmail || user?.email || ''; userEmailDisplay.dataset.identityBound = '1'; }
+  if (userEmailDropdown) { userEmailDropdown.textContent = nameOrMasked; userEmailDropdown.title = effectiveEmail || user?.email || ''; userEmailDropdown.dataset.identityBound = '1'; }
+  if (userAvatar) { userAvatar.textContent = initials; userAvatar.title = user?.displayName || effectiveEmail || user?.email || ''; userAvatar.dataset.identityBound = '1'; }
 
-  // In case some other script overwrites the label later, enforce again once.
+  // Enforce again once in case another script mutates them
   setTimeout(() => {
     if (userEmailDisplay && userEmailDisplay.textContent !== nameOrMasked) userEmailDisplay.textContent = nameOrMasked;
     if (userEmailDropdown && userEmailDropdown.textContent !== nameOrMasked) userEmailDropdown.textContent = nameOrMasked;
@@ -121,14 +151,13 @@ function setIdentityUI(user) {
 }
 // =========================================================
 
-// ---------- Central auth error helper ----------
+// ---------- Central auth error helper (shows exact codes, falls back to redirect) ----------
 function showAuthError(err) {
-  console.error('Auth error:', err);
-  const code = err?.code || '';
-  const msg = err?.message || 'Sign-in failed. Please try again.';
-
+  try { console.error('Auth error:', err); } catch(_) {}
+  const code = err && err.code ? String(err.code) : '';
+  const msg = err && err.message ? String(err.message) : 'Sign-in failed. Please try again.';
   if (code === 'auth/unauthorized-domain') {
-    alert('Sign-in blocked: unauthorized domain.\n\nIf this appears despite authorizing jmaietta.github.io, confirm this page is using the same Firebase project as your console (check firebase-config.js).');
+    alert('Sign-in blocked: unauthorized domain. If this appears and your domain is authorized, double-check firebase-config.js points to the same Firebase project.');
     return;
   }
   if (code === 'auth/popup-blocked') {
@@ -136,15 +165,15 @@ function showAuthError(err) {
     try {
       const provider = new firebase.auth.GoogleAuthProvider();
       return firebase.auth().signInWithRedirect(provider);
-    } catch (e) { console.error(e); }
+    } catch (e) {}
     return;
   }
   if (code === 'auth/web-storage-unsupported') {
-    alert('Your browser blocked sign-in storage. Redirect flow should still work; please try again.');
+    alert('Your browser blocked sign-in storage. Redirect should still work; please try again.');
     return;
   }
   if (code === 'auth/cancelled-popup-request' || code === 'auth/popup-closed-by-user') {
-    return; // user canceled—no scary alert
+    return; // user canceled—don’t show scary error
   }
   alert(msg);
 }
@@ -280,13 +309,8 @@ function handleAuthStateChange(user) {
     loggedInState.classList.remove('hidden');
     loggedOutState.classList.add('hidden');
 
-    // Close modal proactively on sign-in
-    if (loginModal && !loginModal.classList.contains('hidden')) {
-      loginModal.classList.add('hidden');
-    }
-
     // Update header identity (masked email + initials)
-    setIdentityUI(user);
+    resolveBestEmail(user).then(email => setIdentityUI(user, email));
 
     auth.loadUserWatchlist(user.uid).then(watchlist => {
       userWatchlist = watchlist;
@@ -546,43 +570,46 @@ function initializeProfilePage() {
   if (typeof firebase !== 'undefined' && firebase.auth) {
     firebase.auth().onAuthStateChanged((user) => {
       if (user) {
-        const profileEmail = document.getElementById('profileEmail');
-        if (profileEmail) profileEmail.textContent = user.email || user.displayName || 'Signed in';
+        resolveBestEmail(user).then((bestEmail) => {
+          const profileEmail = document.getElementById('profileEmail');
+          if (profileEmail) profileEmail.textContent = bestEmail || user.displayName || 'Signed in';
 
-        const expectedEmailEl = document.querySelector('.text-xs.text-gray-500');
-        if (expectedEmailEl && expectedEmailEl.textContent.includes('Expected:')) {
-          expectedEmailEl.textContent = `Expected: ${user.email || ''}`;
-        }
+          const expectedById = document.getElementById('expectedEmailText');
+          const expectedEmailEl = expectedById || document.querySelector('.text-xs.text-gray-500');
+          if (expectedEmailEl) { expectedEmailEl.textContent = `Expected: ${bestEmail || ''}`; }
 
-        // Compute JM-style initials (prefer displayName; fallback to email)
-        let initials = '--';
-        if (user.displayName) {
-          const parts = user.displayName.trim().split(/\s+/);
-          const a = (parts[0]?.[0] || '').toUpperCase();
-          const b = (parts.length > 1 ? parts[parts.length - 1][0] : (parts[0]?.[1] || '')).toUpperCase();
-          initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
-        }
-        if (initials === '--' && user.email) {
-          const local = user.email.split('@')[0] || '';
-          const letters = local.replace(/[^A-Za-z]/g, '');
-          const a = (letters[0] || local[0] || '').toUpperCase();
-          const b = (letters[1] || local[1] || '').toUpperCase();
-          initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
-        }
+          const emailInput = document.getElementById('emailConfirmation');
+          if (emailInput) { emailInput.placeholder = bestEmail || ''; }
 
-        const avatars = document.querySelectorAll('[data-user-avatar]');
-        avatars.forEach(avatar => {
-          if (avatar) avatar.textContent = initials;
+          // Compute JM-style initials (prefer displayName; fallback to email)
+          let initials = '--';
+          if (user.displayName) {
+            const parts = user.displayName.trim().split(/\s+/);
+            const a = (parts[0]?.[0] || '').toUpperCase();
+            const b = (parts.length > 1 ? parts[parts.length - 1][0] : (parts[0]?.[1] || '')).toUpperCase();
+            initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
+          }
+          if (initials === '--' && (bestEmail || user.email)) {
+            const src = bestEmail || user.email;
+            const local = (src && src.split('@')[0]) || '';
+            const letters = local.replace(/[^A-Za-z]/g, '');
+            const a = (letters[0] || local[0] || '').toUpperCase();
+            const b = (letters[1] || local[1] || '').toUpperCase();
+            initials = (a + b).replace(/[^A-Z]/g, '').slice(0, 2) || initials;
+          }
+
+          const avatars = document.querySelectorAll('[data-user-avatar]');
+          avatars.forEach(avatar => { if (avatar) avatar.textContent = initials; });
+
+          setupProfileAccountDeletion(user, bestEmail);
         });
-
-        setupProfileAccountDeletion(user);
       } else {
         window.location.href = '/CEORater/';
       }
     });
   }
 
-  function setupProfileAccountDeletion(user) {
+  function setupProfileAccountDeletion(user, bestEmail) {
     const deleteBtn = document.getElementById('deleteAccountBtn');
     const deleteModal = document.getElementById('deleteConfirmModal');
     const cancelBtn = document.getElementById('cancelDelete');
@@ -591,16 +618,17 @@ function initializeProfilePage() {
 
     deleteBtn?.addEventListener('click', () => {
       deleteModal?.classList.remove('hidden');
-      const expectedEmailEl = document.querySelector('.text-xs.text-gray-500');
+      const expectedById = document.getElementById('expectedEmailText');
+      const expectedEmailEl = expectedById || document.querySelector('.text-xs.text-gray-500');
       if (expectedEmailEl) {
-        expectedEmailEl.textContent = `Expected: ${user.email || ''}`;
+        expectedEmailEl.textContent = `Expected: ${bestEmail || ''}`;
       }
       if (emailInput) {
-        emailInput.placeholder = user.email || '';
+        emailInput.placeholder = bestEmail || '';
         emailInput.value = '';
       }
       if (confirmBtn) {
-        confirmBtn.disabled = true;
+        confirmBtn.disabled = !!(bestEmail) ? true : false;
       }
     });
 
@@ -611,8 +639,12 @@ function initializeProfilePage() {
     });
 
     emailInput?.addEventListener('input', () => {
-      if (confirmBtn) {
-        confirmBtn.disabled = emailInput.value !== (user.email || '');
+      if (!confirmBtn) return;
+      if (bestEmail) {
+        confirmBtn.disabled = emailInput.value !== bestEmail;
+      } else {
+        // If we don't have an email on record (rare), don't block deletion on text match
+        confirmBtn.disabled = false;
       }
     });
 
@@ -683,10 +715,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (_) {}
 
-    // ******** IMPORTANT CHANGE: always use SESSION persistence for redirect flow ********
+    
+    // Use SESSION persistence so redirect sign-in works reliably on Windows/Safari
     firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
-
-    // Helpful debug (checks you’re on the project you think you are)
+    
+    // Debug: ensure we are pointing at expected project
     try {
       const opts = firebase.app().options || {};
       console.log('Firebase project:', opts.projectId, 'authDomain:', opts.authDomain, 'origin:', location.origin);
@@ -706,9 +739,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle any pending redirect results from OAuth login
     firebase.auth().getRedirectResult()
-      .then(res => {
-        // If returned from Google/Microsoft redirect and user is present: close login modal
+      .then(async (res) => {
+        // If returned from Google/Microsoft redirect and user is present
         if (res && res.user) {
+          try {
+            const email = await resolveBestEmail(res.user);
+            setIdentityUI(res.user, email);
+
+            // --- Tiny write: persist a minimal user profile on first OAuth return ---
+            try {
+              const providerId =
+                (res.additionalUserInfo && res.additionalUserInfo.providerId) ||
+                (res.user.providerData && res.user.providerData[0] && res.user.providerData[0].providerId) ||
+                null;
+
+              await firebase.firestore()
+                .collection('users')
+                .doc(res.user.uid)
+                .set({
+                  email: email || null,
+                  displayName: res.user.displayName || null,
+                  provider: providerId,
+                  createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                }, { merge: true });
+            } catch (persistErr) {
+              console.warn('Profile persist failed (non-fatal):', persistErr);
+            }
+            // -----------------------------------------------------------------------
+
+          } catch(_) {}
           loginModal?.classList.add('hidden');
         } else if (res && res.error) {
           showAuthError(res.error);
@@ -773,7 +832,11 @@ document.addEventListener('DOMContentLoaded', () => {
   (function ensureSpinnerStops() {
     const grid = document.getElementById('ceoCardView');
     if (!grid) return;
-    if (grid.children.length > 0) { hideSpinner(); return; }
+    if (grid.children.length > 0) {
+      hideSpinner();
+      const obs = new MutationObserver(()=>{});
+      return;
+    }
     const obs = new MutationObserver(() => {
       if (grid.children.length > 0) {
         hideSpinner();
@@ -914,11 +977,21 @@ document.addEventListener('DOMContentLoaded', () => {
   // ******** IMPORTANT CHANGE: Google sign-in always via redirect ********
   googleSignIn.addEventListener('click', async () => {
     try {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      await firebase.auth().signInWithRedirect(provider);
+      if (preferRedirect) {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        try { provider.addScope('email'); provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
+        await firebase.auth().signInWithRedirect(provider);
+      } else {
+        await auth.signInWithGoogle();
+      }
       loginModal.classList.add('hidden');
     } catch (error) {
-      showAuthError(error);
+      console.error('Google sign in error:', error);
+      const msg =
+        error?.code === 'auth/unauthorized-domain'
+          ? 'Sign-in blocked: unauthorized domain. Add your GitHub Pages domain in Firebase Auth settings.'
+          : (error?.message || 'Sign in failed. Please try again.');
+      alert(msg);
     }
   });
 
