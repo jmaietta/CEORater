@@ -656,13 +656,12 @@ function initializeProfilePage() {
         const profileEmail = document.getElementById('profileEmail');
         if (profileEmail) profileEmail.textContent = bestEmail || currentUser.displayName || 'Signed in';
         
-        // Update initials immediately - single letter only
+        // Update initials immediately - single letter ONLY
         let initials = '--';
         if (currentUser.displayName) {
           const ch = (currentUser.displayName.trim()[0] || '').toUpperCase();
           if (ch && /[A-Z]/.test(ch)) initials = ch;
-        }
-        if (initials === '--' && bestEmail) {
+        } else if (bestEmail) {
           const local = (bestEmail.split('@')[0] || '');
           const ch = (local.replace(/[^A-Za-z]/g, '')[0] || local[0] || '').toUpperCase();
           if (ch) initials = ch;
