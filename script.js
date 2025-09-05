@@ -84,33 +84,65 @@ function computeInitials(user) {
   return '--';
 }
 
-// Best-effort resolver for user's email (handles rare cases where user.email is null)
-let lastKnownEmail = (function(){ try { return localStorage.getItem('lastKnownEmail') || null; } catch(_) { return null; } })();
-
+// IMPROVED: Best-effort resolver for user's email (handles OAuth providers better)
 async function resolveBestEmail(user) {
   try {
-    if (!user) return lastKnownEmail;
-    // direct
-    if (user.email) { lastKnownEmail = user.email; try { localStorage.setItem('lastKnownEmail', lastKnownEmail); } catch(_) {} ; return lastKnownEmail; }
-    // providerData
-    const pd = (user.providerData || []).map(p => p && p.email).find(Boolean);
-    if (pd) { lastKnownEmail = pd; try { localStorage.setItem('lastKnownEmail', lastKnownEmail); } catch(_) {} ; return lastKnownEmail; }
-    // ID token claims
+    if (!user) return null;
+    
+    // Method 1: Direct email field
+    if (user.email) {
+      return user.email;
+    }
+    
+    // Method 2: Provider data (Google/Microsoft OAuth often stores email here)
+    if (user.providerData && user.providerData.length > 0) {
+      for (const provider of user.providerData) {
+        if (provider.email) {
+          return provider.email;
+        }
+      }
+    }
+    
+    // Method 3: Get from ID token
     try {
-      const t = await user.getIdTokenResult();
-      const cl = t && t.claims;
-      if (cl && cl.email) { lastKnownEmail = cl.email; try { localStorage.setItem('lastKnownEmail', lastKnownEmail); } catch(_) {} ; return lastKnownEmail; }
-    } catch(_) {}
-    // Reload and retry direct
+      const idTokenResult = await user.getIdTokenResult();
+      if (idTokenResult.claims.email) {
+        return idTokenResult.claims.email;
+      }
+    } catch (e) {
+      console.log('Could not get ID token:', e);
+    }
+    
+    // Method 4: Try reloading the user
     try {
       await user.reload();
-      const refreshed = firebase.auth().currentUser;
-      if (refreshed && refreshed.email) { lastKnownEmail = refreshed.email; try { localStorage.setItem('lastKnownEmail', lastKnownEmail); } catch(_) {} ; return lastKnownEmail; }
-    } catch(_) {}
-    // Fallback to storage
-    return lastKnownEmail;
-  } catch(_) {
-    return lastKnownEmail;
+      const refreshedUser = firebase.auth().currentUser;
+      if (refreshedUser && refreshedUser.email) {
+        return refreshedUser.email;
+      }
+      // Check refreshed user's provider data too
+      if (refreshedUser && refreshedUser.providerData) {
+        for (const provider of refreshedUser.providerData) {
+          if (provider.email) {
+            return provider.email;
+          }
+        }
+      }
+    } catch (e) {
+      console.log('Could not reload user:', e);
+    }
+    
+    // Method 5: Try localStorage as last resort
+    try {
+      const stored = localStorage.getItem('lastKnownEmail');
+      if (stored) return stored;
+    } catch (e) {}
+    
+    // Return null if no email found
+    return null;
+  } catch (error) {
+    console.error('Error resolving email:', error);
+    return null;
   }
 }
 
@@ -310,7 +342,15 @@ function handleAuthStateChange(user) {
     loggedOutState.classList.add('hidden');
 
     // Update header identity (masked email + initials)
-    resolveBestEmail(user).then(email => setIdentityUI(user, email));
+    resolveBestEmail(user).then(email => {
+      setIdentityUI(user, email);
+      // Store email if found for later use
+      if (email) {
+        try {
+          localStorage.setItem('lastKnownEmail', email);
+        } catch (e) {}
+      }
+    });
 
     auth.loadUserWatchlist(user.uid).then(watchlist => {
       userWatchlist = watchlist;
@@ -708,10 +748,26 @@ function initializeProfilePage() {
 
           const expectedById = document.getElementById('expectedEmailText');
           const expectedEmailEl = expectedById || document.querySelector('.text-xs.text-gray-500');
-          if (expectedEmailEl) { expectedEmailEl.textContent = `Expected: ${bestEmail || ''}`; }
+          
+          // Check if OAuth user
+          const isOAuth = (user.providerData || []).some(p => 
+            p.providerId === 'google.com' || p.providerId === 'microsoft.com'
+          );
+          
+          if (isOAuth) {
+            if (expectedEmailEl) expectedEmailEl.textContent = 'Using Google/Microsoft re-authentication';
+          } else if (expectedEmailEl && bestEmail) {
+            expectedEmailEl.textContent = `Expected: ${bestEmail}`;
+          }
 
           const emailInput = document.getElementById('emailConfirmation');
-          if (emailInput) { emailInput.placeholder = bestEmail || ''; }
+          if (emailInput) {
+            if (isOAuth) {
+              emailInput.placeholder = 'Not required for Google/Microsoft accounts';
+            } else {
+              emailInput.placeholder = bestEmail || '';
+            }
+          }
 
           // Compute JM-style initials (prefer displayName; fallback to email)
           let initials = '--';
@@ -741,28 +797,6 @@ function initializeProfilePage() {
     });
   }
 
+  // IMPROVED: Updated setupProfileAccountDeletion function for OAuth users
   function setupProfileAccountDeletion(user, bestEmail) {
-    const deleteBtn = document.getElementById('deleteAccountBtn');
-    const deleteModal = document.getElementById('deleteConfirmModal');
-    const cancelBtn = document.getElementById('cancelDelete');
-    const confirmBtn = document.getElementById('confirmDelete');
-    const emailInput = document.getElementById('emailConfirmation');
-
-    deleteBtn?.addEventListener('click', () => {
-      deleteModal?.classList.remove('hidden');
-      const expectedById = document.getElementById('expectedEmailText');
-      const expectedEmailEl = expectedById || document.querySelector('.text-xs.text-gray-500');
-      if (expectedEmailEl) {
-        expectedEmailEl.textContent = `Expected: ${bestEmail || ''}`;
-      }
-      if (emailInput) {
-        emailInput.placeholder = bestEmail || '';
-        emailInput.value = '';
-      }
-      if (confirmBtn) {
-        confirmBtn.disabled = !!(bestEmail) ? true : false;
-      }
-    });
-
-    cancelBtn?.addEventListener('click', () => {
-      deleteModal?.classList.add('hidden');
+    const
