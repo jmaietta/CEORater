@@ -195,17 +195,22 @@
           if (profileProvider) profileProvider.textContent = 'Email/Password account';
 
           if (profileAvatar) {
-            let initials = '--';
-            if (user.displayName) {
-              const ch = (user.displayName.trim()[0] || '').toUpperCase();
-              initials = ch || initials;
-            } else if (email) {
-              const local = email.split('@')[0] || '';
-              const lettersFirst = (local.replace(/[^A-Za-z]/g, '')[0] || local[0] || '').toUpperCase();
-              initials = lettersFirst || initials;
-            }
-            profileAvatar.textContent = initials;
-          }
+  let email = user.email || '';
+  let initials = '--';
+  try {
+    if (typeof computeInitials === 'function') {
+      initials = computeInitials(user) || initials;
+    } else if (user.displayName) {
+      const ch = (user.displayName.trim()[0] || '').toUpperCase();
+      if (ch) initials = ch;
+    } else if (email) {
+      const local = email.split('@')[0] || '';
+      const ch = (local.replace(/[^A-Za-z]/g, '')[0] || local[0] || '').toUpperCase();
+      if (ch) initials = ch;
+    }
+  } catch (e) {}
+  profileAvatar.textContent = initials;
+}
 
           // Delete modal wiring (email-only)
           const deleteBtn = document.getElementById('deleteAccountBtn');
