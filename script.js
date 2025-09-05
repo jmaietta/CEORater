@@ -79,26 +79,19 @@ function maskEmail(email) {
   return `${shown}${'*'.repeat(stars)}@${d}`;
 }
 function computeInitials(user) {
-  // Prefer displayName "First Last" -> "FL"
+  // One-letter avatar
   if (user?.displayName) {
-    const parts = user.displayName.trim().split(/\s+/);
-    const first = (parts[0]?.[0] || '').toUpperCase();
-    const last  = (parts.length > 1 ? parts[parts.length - 1][0] : (parts[0]?.[1] || '')).toUpperCase();
-    const out = (first + last).replace(/[^A-Z]/g, '').slice(0, 2);
-    if (out) return out;
+    const ch = (user.displayName.trim()[0] || '').toUpperCase();
+    if (ch && /[A-Z]/.test(ch)) return ch;
   }
-  // Fallback: first two letters of email local-part (letters only)
   if (user?.email) {
     const local = user.email.split('@')[0] || '';
-    const letters = local.replace(/[^A-Za-z]/g, '');
-    const a = (letters[0] || local[0] || '').toUpperCase();
-    const b = (letters[1] || local[1] || '').toUpperCase();
-    const out = (a + b).replace(/[^A-Z]/g, '').slice(0, 2);
-    if (out) return out;
+    const ch = (local.replace(/[^A-Za-z]/g, '')[0] || local[0] || '').toUpperCase();
+    if (ch) return ch;
   }
   return '--';
 }
-
+  
 // Best-effort resolver for user's email (handles rare cases where user.email is null)
 let lastKnownEmail = (function(){ try { return localStorage.getItem('lastKnownEmail') || null; } catch(_) { return null; } })();
 
@@ -1163,3 +1156,4 @@ if (!OAUTH_DISABLED && microsoftSignIn) {
     .catch(() => errorMessage.classList.remove('hidden'))
     .finally(() => loading.style.display = 'none');
 });
+
