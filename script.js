@@ -459,12 +459,15 @@ async function handleAccountDeletion() {
     const providers = user.providerData.map(p => p.providerId);
 
     if (providers.includes('google.com')) {
-      sessionStorage.setItem('pendingDelete', '1');
-      await user.reauthenticateWithRedirect(new firebase.auth.GoogleAuthProvider());
+      try { sessionStorage.setItem('pendingDelete', '1'); localStorage.setItem('pendingDelete', '1'); } catch(_) {}
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try { provider.addScope('email'); provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
+      await user.reauthenticateWithRedirect(provider);
       return; // resume after redirect
     } else if (providers.includes('microsoft.com')) {
-      sessionStorage.setItem('pendingDelete', '1');
-      await user.reauthenticateWithRedirect(new firebase.auth.OAuthProvider('microsoft.com'));
+      try { sessionStorage.setItem('pendingDelete', '1'); localStorage.setItem('pendingDelete', '1'); } catch(_) {}
+      const provider = new firebase.auth.OAuthProvider('microsoft.com');
+      await user.reauthenticateWithRedirect(provider);
       return;
     } else if (providers.includes('password')) {
       if (!password) {
@@ -616,14 +619,13 @@ function initializeProfilePage() {
     const confirmBtn = document.getElementById('confirmDelete');
     const emailInput = document.getElementById('emailConfirmation');
 
-    // 🔧 NEW: detect OAuth users (Google/Microsoft)
-    const isOAuth = (user.providerData || []).some(p =>
-      p.providerId === 'google.com' || p.providerId === 'microsoft.com'
+    // Detect OAuth users (Google or Microsoft)
+    const isOAuth = (user && user.providerData || []).some(p =>
+      p && (p.providerId === 'google.com' || p.providerId === 'microsoft.com')
     );
 
     deleteBtn?.addEventListener('click', () => {
       deleteModal?.classList.remove('hidden');
-
       const expectedById = document.getElementById('expectedEmailText');
       const expectedEmailEl = expectedById || document.querySelector('.text-xs.text-gray-500');
       if (expectedEmailEl) {
@@ -631,13 +633,11 @@ function initializeProfilePage() {
           ? 'Using Google/Microsoft re-authentication'
           : `Expected: ${bestEmail || ''}`;
       }
-
       if (emailInput) {
         emailInput.placeholder = bestEmail || '';
         emailInput.value = '';
       }
-
-      // ✅ OAuth users do NOT need to type their email
+      // OAuth users do NOT need to type their email
       if (confirmBtn) {
         confirmBtn.disabled = isOAuth ? false : !!bestEmail;
       }
@@ -751,6 +751,33 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle any pending redirect results from OAuth login
     firebase.auth().getRedirectResult()
       .then(async (res) => {
+        // Handle pending account deletion immediately after OAuth reauth redirect
+        try {
+          const pd = (typeof localStorage !== 'undefined' && localStorage.getItem('pendingDelete') === '1') ||
+                     (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('pendingDelete') === '1');
+          if (pd) {
+            try { localStorage.removeItem('pendingDelete'); } catch(_) {}
+            try { sessionStorage.removeItem('pendingDelete'); } catch(_) {}
+            const delUser = firebase.auth().currentUser || (res && res.user);
+            if (delUser) {
+              try { await firebase.firestore().collection('watchlists').doc(delUser.uid).delete(); } catch(_){}
+              try {
+                await delUser.delete();
+                alert('Your account has been permanently deleted.');
+                window.location.href = '/CEORater/';
+                return;
+              } catch (e) {
+                if (e && e.code === 'auth/requires-recent-login') {
+                  alert('Re-authentication did not complete. Please try again.');
+                } else {
+                  alert('Failed to delete account: ' + (e?.message || 'Unknown error'));
+                }
+                // Continue into normal flow
+              }
+            }
+          }
+        } catch (e) { console.error('Pending delete immediate handler error:', e); }
+
         // If returned from Google/Microsoft redirect and user is present
         if (res && res.user) {
           try {
@@ -788,8 +815,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // If we just returned from a reauth redirect for deletion, finish deletion now
     (async () => {
       try {
-        if (sessionStorage.getItem('pendingDelete') === '1') {
-          sessionStorage.removeItem('pendingDelete');
+        if ((typeof sessionStorage !== 'undefined' && sessionStorage.getItem('pendingDelete') === '1') || (typeof localStorage !== 'undefined' && localStorage.getItem('pendingDelete') === '1')) {
+          try { sessionStorage.removeItem('pendingDelete'); } catch(_) {}
+          try { localStorage.removeItem('pendingDelete'); } catch(_) {}
           const u2 = firebase.auth().currentUser;
           if (u2) {
             try { await firebase.firestore().collection('watchlists').doc(u2.uid).delete(); } catch (_) {}
