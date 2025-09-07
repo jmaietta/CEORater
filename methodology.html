@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- added viewport-fit=cover so the safe-area insets are honored -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Methodology - CEORater</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,9 +22,31 @@
         }
     </script>
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
+        body { font-family: 'Inter', sans-serif; }
+
+        /* Opaque white strip inside the top safe-area (prevents see-through) */
+        body::before{
+          content:"";
+          position:fixed;
+          top:0; left:0; right:0;
+          height: env(safe-area-inset-top);
+          background:#fff;
+          z-index: 9998;
+          pointer-events:none;
         }
+
+        /* Make the page header stick below the safe-area and stay opaque */
+        header:first-of-type{
+          position: sticky;
+          top: env(safe-area-inset-top);
+          z-index: 9999;
+          background:#fff;             /* opaque */
+          border-bottom:1px solid #e5e7eb;
+          backdrop-filter: none;
+        }
+
+        /* Small cushion so first content never sits under the sticky header */
+        main{ padding-top: 8px; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -132,5 +155,3 @@
     </footer>
 </body>
 </html>
-
-
