@@ -20,7 +20,7 @@ const isIOSNative =
      window.Capacitor.getPlatform() === 'ios');
 
 // If we're inside the iOS app: hide Google/Microsoft buttons
-if (isIOSNative) {
+if (isIOSNative && OAUTH_DISABLED) {
   const hide = id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
@@ -44,8 +44,6 @@ const isLikelyIOSWeb =
   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS desktop mode
 const isSafari = /Safari/.test(ua) && !/Chrome|CriOS|FxiOS/.test(ua);
 const preferRedirect = isIOSNative || isLikelyIOSWeb || isSafari;
-
-import { Browser } from '@capacitor/browser';
 import { fetchData } from './GoogleSheet.js';
 import * as ui from './ui.js';
 import * as auth from './auth.js';
@@ -232,7 +230,7 @@ function formatRelative(ts) {
 // Profile navigation (GitHub Pages project path)
 function navigateToProfile() {
   const path = '/CEORater/profile.html';
-  if (isIOSNative) {
+  if (isIOSNative && OAUTH_DISABLED) {
     if (window.Capacitor?.Plugins?.Browser) {
       window.Capacitor.Plugins.Browser.open({ url: window.location.origin + path, windowName: '_self' });
     } else {
@@ -742,7 +740,7 @@ function initializeProfilePage() {
   if (backBtn) {
     backBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      if (isIOSNative) {
+      if (isIOSNative && OAUTH_DISABLED) {
         if (window.history.length > 1) {
           window.history.back();
         } else {
