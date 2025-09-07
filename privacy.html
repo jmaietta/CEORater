@@ -17,12 +17,24 @@
     .font-inter { font-family: 'Inter', sans-serif; }
     /* extra cushion so the first lines never sit under the sticky header */
     .under-header { padding-top: calc(env(safe-area-inset-top) + 8px); }
+
+    /* === Opaque safe-area strip + solid header (this page) === */
+    body::before{
+      content:"";
+      position:fixed;
+      top:0; left:0; right:0;
+      height: env(safe-area-inset-top);
+      background:#fff;       /* opaque */
+      z-index:9998;
+      pointer-events:none;
+    }
+    .header-solid{ background:#fff; backdrop-filter:none; }
   </style>
 </head>
 <body class="bg-gray-50 font-inter">
 
-  <!-- Sticky, safe-area-aware header with back link -->
-  <header class="header-sticky border-b border-gray-200">
+  <!-- Sticky, safe-area-aware header with back link (now solid/opaque) -->
+  <header class="header-sticky header-solid border-b border-gray-200">
     <div class="px-4 py-4 md:px-8 flex items-center justify-between">
       <a href="./" class="text-blue-600 hover:text-blue-700 flex items-center gap-2">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,16 +108,29 @@
     <a href="./support.html">Contact Us</a>
   </footer>
 
-  <!-- Optional: mailto fallback for Simulator -->
+  <!-- Mailto behavior: Capacitor openUrl if available; Simulator copies email -->
   <script>
-    document.addEventListener('click', (e) => {
-      const a = e.target.closest('a[href]');
+    document.addEventListener('click', async (e) => {
+      const a = e.target.closest('a[href^="mailto:"]');
       if (!a) return;
-      const href = a.getAttribute('href') || '';
-      if (/^mailto:/i.test(href) && !/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+
+      const url = a.getAttribute('href') || '';
+      const email = url.replace(/^mailto:/i,'');
+
+      // Capacitor (new + legacy namespaces)
+      const openUrl =
+        (window.Capacitor && window.Capacitor.App && window.Capacitor.App.openUrl) ||
+        (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App && window.Capacitor.Plugins.App.openUrl);
+
+      try {
+        if (openUrl) { e.preventDefault(); await openUrl({ url }); return; }
+      } catch {}
+
+      // iOS Simulator fallback (no Mail app)
+      if (!/iPhone|iPad|iPod/.test(navigator.userAgent)) {
         e.preventDefault();
-        try { navigator.clipboard.writeText(href.replace(/^mailto:/i,'')); } catch {}
-        alert('Email copied: ' + href.replace(/^mailto:/i,''));
+        try { await navigator.clipboard.writeText(email); } catch {}
+        alert('Email copied: ' + email);
       }
     });
   </script>
