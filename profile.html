@@ -15,15 +15,30 @@
     .font-orbitron { font-family: 'Orbitron', monospace; }
     .font-inter { font-family: 'Inter', sans-serif; }
     html, body { height: 100%; }
+
     /* extra cushion so first paragraph never sits under the sticky header */
     .under-header { padding-top: calc(env(safe-area-inset-top) + 12px); }
+
     #profileAvatar { width: 4rem; height: 4rem; border-radius: 9999px; }
     @media (min-width: 768px) { #profileAvatar { width: 5rem; height: 5rem; } }
+
+    /* === Opaque safe-area strip + solid header (this page only) === */
+    body::before{
+      content:"";
+      position:fixed;
+      top:0; left:0; right:0;
+      height: env(safe-area-inset-top);
+      background:#fff;        /* opaque */
+      z-index:9998;
+      pointer-events:none;
+    }
+    .header-solid{ background:#fff; backdrop-filter:none; }
   </style>
 </head>
 <body class="bg-gray-50 font-inter">
   <div class="app-shell">
-    <header class="header-sticky border-b border-gray-200">
+    <!-- add header-solid to make it opaque -->
+    <header class="header-sticky header-solid border-b border-gray-200">
       <div class="px-4 py-4 md:px-8">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-4">
@@ -72,7 +87,7 @@
           <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div class="flex items-start space-x-3">
               <svg class="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a 9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
               <div>
                 <h4 class="font-medium text-blue-900">Our Policies</h4>
