@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Account Settings - CEORater</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -10,18 +10,21 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <style>
+    /*
+      The following inline styles were kept for avatar and font rules,
+      but the incorrect padding-top rule has been removed.
+    */
     .font-orbitron { font-family: 'Orbitron', monospace; }
     .font-inter { font-family: 'Inter', sans-serif; }
-    /* Ensure the avatar is a perfect circle */
     #profileAvatar {
-      width: 4rem; /* 64px */
-      height: 4rem; /* 64px */
-      border-radius: 9999px; /* Tailwind's rounded-full */
+      width: 4rem;
+      height: 4rem;
+      border-radius: 9999px;
     }
     @media (min-width: 768px) {
       #profileAvatar {
-        width: 5rem; /* 80px */
-        height: 5rem; /* 80px */
+        width: 5rem;
+        height: 5rem;
       }
     }
   </style>
