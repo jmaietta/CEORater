@@ -30,8 +30,7 @@
     <header class="bg-white shadow-md">
         <div class="container mx-auto max-w-4xl px-4">
             <div class="flex justify-between items-center py-4">
-                <a href="../" class="text-2xl md:text-3xl font-orbitron italic font-bold text-blue-600">CEORater</a>
-                <a href="#" class="text-sm font-semibold text-blue-600 hover:underline" onclick="event.preventDefault(); window.history.back();">← Back to CEORater</a>
+                <a href="/" class="text-2xl md:text-3xl font-orbitron italic font-bold text-blue-600">CEORater</a>
             </div>
         </div>
     </header>
@@ -42,36 +41,37 @@
                 <span class="font-orbitron italic text-blue-600">CEORater</span> Privacy Policy
             </h1>
             <p class="text-sm text-gray-500 mb-8"><strong>Last Updated:</strong> September 5, 2025</p>
-            <div class="space-y-6 text-gray-700 leading-relaxed">
-                <h2 class="text-2xl font-bold text-gray-800">1. Introduction</h2>
-                <p>This Privacy Policy describes how CEORater ("we," "us," or "our") collects, uses, and discloses your information in connection with your use of our website and application (the "Service"). By using the Service, you agree to the collection and use of information in accordance with this policy.</p>
-                <h2 class="text-2xl font-bold text-gray-800">2. Information We Collect</h2>
-                <p>We collect information to provide and improve our Service. The types of information we collect include:</p>
-                <ul class="list-disc list-inside space-y-2">
-                    <li><strong>Personal Information:</strong> When you create an account, we collect your email address. This is the only personal information we collect directly.</li>
-                    <li><strong>Watchlist Data:</strong> We store a list of CEOs you add to your watchlist. This data is associated with your account but is not personally identifiable on its own.</li>
-                    <li><strong>Usage Data:</strong> We may collect data on how the Service is accessed and used ("Usage Data"). This may include your IP address, browser type, pages visited, time spent on pages, and other diagnostic data.</li>
+
+            <div class="prose max-w-none text-gray-700 space-y-4">
+                <p>
+                    Your privacy is important to us. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our CEORater mobile application (the "Service").
+                </p>
+                <p>
+                    By accessing or using the Service, you agree to this Privacy Policy. If you do not agree, please do not use our Service.
+                </p>
+
+                <h3 class="text-2xl font-bold text-gray-800 pt-4 border-t mt-6">1. Information We Collect</h3>
+                <p>We may collect personal information that you voluntarily provide to us when you register for the Service, such as your name and email address. We also collect information about your use of the Service, such as your watchlist selections and account preferences.</p>
+
+                <h3 class="text-2xl font-bold text-gray-800 pt-4 border-t mt-6">2. Use of Your Information</h3>
+                <p>We use the information we collect to:</p>
+                <ul class="list-disc list-inside space-y-1">
+                    <li>Provide and maintain the Service.</li>
+                    <li>Personalize your experience.</li>
+                    <li>Communicate with you about your account.</li>
+                    <li>Improve our Service and develop new features.</li>
                 </ul>
-                <h2 class="text-2xl font-bold text-gray-800">3. How We Use Your Information</h2>
-                <p>We use the collected information for various purposes:</p>
-                <ul class="list-disc list-inside space-y-2">
-                    <li>To provide and maintain the Service.</li>
-                    <li>To personalize your experience, such as saving your watchlist.</li>
-                    <li>To monitor the usage of the Service and analyze trends.</li>
-                    <li>To detect, prevent, and address technical issues.</li>
-                    <li>To communicate with you about your account.</li>
-                </ul>
-                <h2 class="text-2xl font-bold text-gray-800">4. Data Storage and Security</h2>
-                <p>Your data is stored in Firebase, a service provided by Google. We implement industry-standard security measures to protect your information, but remember that no method of transmission over the Internet or method of electronic storage is 100% secure. While we strive to use commercially acceptable means to protect your Personal Information, we cannot guarantee its absolute security.</p>
-                <h2 class="text-2xl font-bold text-gray-800">5. Disclosure of Data</h2>
-                <p>We will not sell, rent, or trade your email address or personal information to third parties. We may disclose your information in the good faith belief that such action is necessary to:</p>
-                <ul class="list-disc list-inside space-y-2">
-                    <li>Comply with a legal obligation.</li>
-                    <li>Protect and defend our rights or property.</li>
-                    <li>Prevent or investigate possible wrongdoing in connection with the Service.</li>
-                    <li>Protect the personal safety of users of the Service or the public.</li>
-                </ul>
-                <h2 class="text-2xl font-bold text-gray-800">6. Children's Privacy</h2>
+
+                <h3 class="text-2xl font-bold text-gray-800 pt-4 border-t mt-6">3. Disclosure of Your Information</h3>
+                <p>We do not sell, trade, or otherwise transfer your personal information to outside parties without your consent, except as required by law.</p>
+
+                <h3 class="text-2xl font-bold text-gray-800 pt-4 border-t mt-6">4. Data Security</h3>
+                <p>We implement a variety of security measures to maintain the safety of your personal information. However, no method of transmission over the Internet or electronic storage is 100% secure.</p>
+
+                <h3 class="text-2xl font-bold text-gray-800 pt-4 border-t mt-6">5. Third-Party Services</h3>
+                <p>We use third-party services like Firebase Authentication and Firestore to manage user data. These services have their own privacy policies.</p>
+
+                <h3 class="text-2xl font-bold text-gray-800 pt-4 border-t mt-6">6. Children's Privacy</h3>
                 <p>Our Service is not intended for use by children under the age of 13. We do not knowingly collect personally identifiable information from children under 13. If we become aware that we have collected personal information from a child under 13, we will take steps to delete that information.</p>
 
                 <h3 class="text-2xl font-bold text-gray-800 pt-4 border-t mt-6">7. Changes to This Privacy Policy</h3>
@@ -86,12 +86,11 @@
 
     <footer class="text-center mt-8 py-8 border-t text-sm text-gray-500">
         <p class="mb-2">
-            <a href="../" class="text-blue-600 hover:underline">Home</a> | 
+            <a href="/" class="text-blue-600 hover:underline">Home</a> | 
             <a href="/methodology.html" class="text-blue-600 hover:underline">Our Methodology</a> |
-            <a href="/support.html" class="text-blue-600 hover:underline">Support</a>
+            <a href="/support.html" class="text-blue-600 hover:underline">Contact Us</a>
         </p>
-        <p>&copy; 2025 CEORater. All rights reserved.</p>
+        <p>&copy; 2024 CEORater. All rights reserved.</p>
     </footer>
-
 </body>
 </html>
