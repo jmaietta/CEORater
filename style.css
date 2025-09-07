@@ -1,4 +1,7 @@
-/* ===================================================================
+# Compose the updated style.css by appending the safe-area helpers
+from pathlib import Path
+
+original = r"""/* ===================================================================
    CEORater – style.css (safe-area hardened, no stretch on iOS)
    - Cards & auth respect safe areas (top/bottom/left/right)
    - No global utility overrides that inflate heights
@@ -615,4 +618,41 @@ img, svg, video, canvas, audio, iframe, embed, object {
 /* Optional: tiny cushion inside header so scroll bounce looks nice */
 #appHeader .container > .flex {
   padding-bottom: 4px;
+}"""
+
+appendix = r"""
+/* ===== APPEND BELOW THIS LINE (safe-area helpers for all pages) ===== */
+
+/* Fallback: if a page does NOT use .app-shell, still respect safe areas */
+body {
+  padding: env(safe-area-inset-top)
+           env(safe-area-inset-right)
+           env(safe-area-inset-bottom)
+           env(safe-area-inset-left);
 }
+/* If .app-shell is present, remove body padding to avoid double spacing */
+body:has(.app-shell) { padding: 0; }
+
+/* Sticky header that clears the notch/Dynamic Island */
+.header-sticky {
+  position: sticky;
+  top: env(safe-area-inset-top);
+  z-index: 50;
+  background: rgba(255,255,255,0.9);
+  backdrop-filter: saturate(180%) blur(8px);
+}
+
+/* Main content area that won’t slide under the notch */
+.main-scroll {
+  min-height: calc(100dvh - env(safe-area-inset-top));
+}
+
+/* Footers and bottom trays stay tappable above the home indicator */
+.footer-safe {
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+}
+"""
+
+out = Path("/mnt/data/style.css")
+out.write_text(original + appendix, encoding="utf-8")
+out.as_posix()
