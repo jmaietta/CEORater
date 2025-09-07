@@ -45,6 +45,7 @@ const isLikelyIOSWeb =
 const isSafari = /Safari/.test(ua) && !/Chrome|CriOS|FxiOS/.test(ua);
 const preferRedirect = isIOSNative || isLikelyIOSWeb || isSafari;
 
+import { Browser } from '@capacitor/browser';
 import { fetchData } from './GoogleSheet.js';
 import * as ui from './ui.js';
 import * as auth from './auth.js';
@@ -300,14 +301,15 @@ const toggleFiltersBtn = $("toggleFiltersBtn");
 const mobileFilterControls = $("mobileFilterControls");
 const toggleFiltersIcon = $("toggleFiltersIcon");
 
-// ---------- State ----------
-let master = [];
-let view = [];
-let currentSort = { key: 'ceoRaterScore', dir: 'desc' }; // Changed default to CEORaterScore
-let currentUser = null;
-let userWatchlist = new Set();
-let comparisonSet = new Set();
-let currentView = 'all';
+/**
+ * A reusable helper function that opens a given URL path in the Capacitor
+ * in-app browser. It automatically adds the full domain.
+ * @param {string} urlPath - The path of the URL to open (e.g., '/privacy.html').
+ */
+const openLinkInBrowser = async (urlPath) => {
+  const domain = 'https://www.ceorater.com';
+  await Browser.open({ url: domain + urlPath });
+};
 
 // ---------- App Logic ----------
 function handleAuthStateChange(user) {
@@ -339,6 +341,15 @@ function handleAuthStateChange(user) {
     }
   }
 }
+
+// ---------- State ----------
+let master = [];
+let view = [];
+let currentSort = { key: 'ceoRaterScore', dir: 'desc' }; // Changed default to CEORaterScore
+let currentUser = null;
+let userWatchlist = new Set();
+let comparisonSet = new Set();
+let currentView = 'all';
 
 function toggleCompare(ticker) {
   if (comparisonSet.has(ticker)) {
@@ -764,6 +775,72 @@ function initializeProfilePage() {
 
 // ---------- Event Listeners ----------
 document.addEventListener('DOMContentLoaded', () => {
+  // --- Listeners for links that should open in the in-app browser ---
+  
+  // Listener for the link in profile.html
+  const profilePrivacyLink = document.getElementById('profile-privacy-link');
+  if (profilePrivacyLink) {
+    profilePrivacyLink.addEventListener('click', () => openLinkInBrowser('/privacy.html'));
+  }
+
+  // Listeners for the footer links in privacy.html
+  const privacyFooterHome = document.getElementById('footer-home-link');
+  if (privacyFooterHome) {
+    privacyFooterHome.addEventListener('click', () => openLinkInBrowser('/'));
+  }
+  const privacyFooterMethodology = document.getElementById('footer-methodology-link');
+  if (privacyFooterMethodology) {
+    privacyFooterMethodology.addEventListener('click', () => openLinkInBrowser('/methodology.html'));
+  }
+  const privacyFooterSupport = document.getElementById('footer-support-link');
+  if (privacyFooterSupport) {
+    privacyFooterSupport.addEventListener('click', () => openLinkInBrowser('/support.html'));
+  }
+  
+  // Listeners for the links in support.html
+  const supportLogo = document.getElementById('support-header-logo');
+  if (supportLogo) {
+    supportLogo.addEventListener('click', () => openLinkInBrowser('/'));
+  }
+  const supportBack = document.getElementById('support-back-to-app');
+  if (supportBack) {
+    supportBack.addEventListener('click', () => openLinkInBrowser('/'));
+  }
+  const supportBodyMethodology = document.getElementById('support-body-methodology');
+  if (supportBodyMethodology) {
+    supportBodyMethodology.addEventListener('click', () => openLinkInBrowser('/methodology.html'));
+  }
+  const supportBodyPrivacy = document.getElementById('support-body-privacy');
+  if (supportBodyPrivacy) {
+    supportBodyPrivacy.addEventListener('click', () => openLinkInBrowser('/privacy.html'));
+  }
+  const supportFooterHome = document.getElementById('support-footer-home');
+  if (supportFooterHome) {
+    supportFooterHome.addEventListener('click', () => openLinkInBrowser('/'));
+  }
+  const supportFooterMethodology = document.getElementById('support-footer-methodology');
+  if (supportFooterMethodology) {
+    supportFooterMethodology.addEventListener('click', () => openLinkInBrowser('/methodology.html'));
+  }
+  const supportFooterPrivacy = document.getElementById('support-footer-privacy');
+  if (supportFooterPrivacy) {
+    supportFooterPrivacy.addEventListener('click', () => openLinkInBrowser('/privacy.html'));
+  }
+
+  // Listeners for the footer links in index.html
+  const indexMethodology = document.getElementById('index-footer-methodology');
+  if (indexMethodology) {
+    indexMethodology.addEventListener('click', () => openLinkInBrowser('/methodology.html'));
+  }
+  const indexPrivacy = document.getElementById('index-footer-privacy');
+  if (indexPrivacy) {
+    indexPrivacy.addEventListener('click', () => openLinkInBrowser('/privacy.html'));
+  }
+  const indexSupport = document.getElementById('index-footer-support');
+  if (indexSupport) {
+    indexSupport.addEventListener('click', () => openLinkInBrowser('/support.html'));
+  }
+  
   // Initialize profile page if we're on it
   initializeProfilePage();
 
@@ -1353,5 +1430,3 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 })();
 // ==== end post-patch overrides ====
-
-
