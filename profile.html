@@ -153,11 +153,9 @@
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
   <script defer src="/CEORater/firebase-config.js"></script>
   <script defer src="/CEORater/auth.js" type="module"></script>
-  <script defer src="/CEORater/script.js" type="module"></script>
   
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // Wait for Firebase
       const waitForFirebase = (cb, tries = 50) => {
         if (typeof firebase !== 'undefined' && firebase.auth) return cb();
         if (tries <= 0) return;
@@ -171,14 +169,11 @@
             return;
           }
           
-          // Get email
           const email = user.email || (user.providerData && user.providerData[0] && user.providerData[0].email) || '';
           
-          // Set email display
           const emailEl = document.getElementById('profileEmail');
           if (emailEl) emailEl.textContent = email || 'User';
           
-          // SINGLE LETTER for avatar
           let initial = '--';
           if (user.displayName) {
             const firstChar = user.displayName.trim()[0];
@@ -189,11 +184,9 @@
             if (firstChar) initial = firstChar.toUpperCase();
           }
           
-          // Set avatar to SINGLE LETTER
           const avatar = document.getElementById('profileAvatar');
           if (avatar) avatar.textContent = initial;
           
-          // Set expected email text for deletion modal
           const expectedText = document.getElementById('expectedEmailText');
           if (expectedText) expectedText.textContent = 'Expected: ' + email;
         });
