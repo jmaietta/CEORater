@@ -8,11 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
   <style>
-    /* Fix for iPhone Safe Area */
-    body, html {
-      padding-top: env(safe-area-inset-top);
-    }
     .font-orbitron { font-family: 'Orbitron', monospace; }
     .font-inter { font-family: 'Inter', sans-serif; }
     /* Ensure the avatar is a perfect circle */
@@ -30,7 +27,7 @@
   </style>
 </head>
 <body class="bg-gray-50 font-inter">
-  <header class="bg-white shadow-sm border-b border-gray-200">
+  <header id="appHeader" class="bg-white shadow-sm border-b border-gray-200">
     <div class="px-4 py-4 md:px-8">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
