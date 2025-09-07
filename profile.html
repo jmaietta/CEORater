@@ -9,6 +9,22 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <style>
+    .font-orbitron { font-family: 'Orbitron', monospace; }
+    .font-inter { font-family: 'Inter', sans-serif; }
+    /* Ensure the avatar is a perfect circle */
+    #profileAvatar {
+      width: 4rem; /* 64px */
+      height: 4rem; /* 64px */
+      border-radius: 9999px; /* Tailwind's rounded-full */
+    }
+    @media (min-width: 768px) {
+      #profileAvatar {
+        width: 5rem; /* 80px */
+        height: 5rem; /* 80px */
+      }
+    }
+  </style>
 </head>
 <body class="bg-gray-50 font-inter">
   <div class="app-shell">
@@ -153,6 +169,7 @@
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
   <script defer src="/CEORater/firebase-config.js"></script>
   <script defer src="/CEORater/auth.js" type="module"></script>
+  <script defer src="/CEORater/script.js" type="module"></script>
   
   <script>
     document.addEventListener('DOMContentLoaded', function() {
