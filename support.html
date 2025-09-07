@@ -15,7 +15,7 @@
   <style>
     .font-orbitron { font-family: 'Orbitron', monospace; }
     .font-inter { font-family: 'Inter', sans-serif; }
-    /* small cushion so first content never sits under the sticky header */
+    /* small cushion so first text never hides under sticky header */
     .under-header { padding-top: calc(env(safe-area-inset-top) + 8px); }
   </style>
 </head>
@@ -41,38 +41,44 @@
       <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
         <span class="font-orbitron italic text-blue-600">CEORater</span> Support
       </h1>
-      <p class="text-lg text-gray-600 mb-8">We're here to help! Find answers or get in touch with our team.</p>
+      <p class="text-lg text-gray-600 mb-8">We're here to help! Find answers to common questions or get in touch with our support team.</p>
 
       <div class="space-y-8 text-gray-700 leading-relaxed">
         <!-- Quick Contact -->
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
           <h2 class="text-xl font-bold text-blue-800 mb-3">Need Help? Contact Us</h2>
-          <p class="text-blue-700 mb-3">For support, feature requests, or feedback:</p>
+          <p class="text-blue-700 mb-3">For app support, technical issues, feature requests, or general feedback:</p>
           <a href="mailto:support@ceorater.com" class="inline-flex items-center text-blue-600 font-semibold hover:underline text-lg">
             📧 support@ceorater.com
           </a>
           <p class="text-sm text-blue-600 mt-2">We typically respond within 24 hours.</p>
         </div>
 
-        <!-- FAQ -->
+        <!-- FAQ Section -->
         <h2 class="text-2xl font-bold text-gray-800 pt-4 border-t mt-6">Frequently Asked Questions</h2>
+
+        <h3 class="text-lg font-semibold text-gray-800">How do I add CEOs to my watchlist?</h3>
+        <p>Search for a CEO in the app, then tap “Add to Watchlist” on their profile. Your watchlist saves to your account.</p>
+
+        <h3 class="text-lg font-semibold text-gray-800">How do I remove CEOs from my watchlist?</h3>
+        <p>Open your watchlist, find the CEO, and tap “Remove”.</p>
 
         <h3 class="text-lg font-semibold text-gray-800">How are CEO ratings calculated?</h3>
         <p>
-          Our methodology combines multiple metrics. See our
+          Our rating methodology combines multiple metrics. See our
           <a id="support-body-methodology" href="./methodology.html" class="text-blue-600 hover:underline">Methodology page</a>.
         </p>
 
         <h3 class="text-lg font-semibold text-gray-800">Is my data secure?</h3>
         <p>
-          Yes. Read our
+          Yes. For details, read our
           <a id="support-body-privacy" href="./privacy.html" class="text-blue-600 hover:underline">Privacy Policy</a>.
         </p>
 
         <!-- More help -->
         <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 mt-8">
           <h2 class="text-xl font-bold text-gray-800 mb-3">Still Need Help?</h2>
-          <p class="text-gray-700 mb-3">We’re happy to assist with any questions or technical issues.</p>
+          <p class="text-gray-700 mb-3">We’re happy to assist with any questions, feedback, or technical issues.</p>
           <a href="mailto:support@ceorater.com" class="text-blue-600 hover:underline font-semibold">
             Contact Support: support@ceorater.com
           </a>
@@ -88,31 +94,26 @@
     <a id="support-footer-privacy" href="./privacy.html">Privacy Policy</a>
   </footer>
 
-  <!-- Make mailto work nicely:
-       - On device: mailto opens Mail
-       - On Simulator (no Mail): copy address so user gets feedback -->
+  <!-- Make mailto work (Capacitor openUrl) + Simulator fallback -->
   <script>
-  document.addEventListener('click', async (e) => {
-    const a = e.target.closest('a[href^="mailto:"]');
-    if (!a) return;
-    const url = a.getAttribute('href') || '';
-    const email = url.replace(/^mailto:/i,'');
+  document.querySelectorAll('a[href^="mailto:"]').forEach(a=>{
+    a.addEventListener('click', async (e)=>{
+      const url = a.getAttribute('href') || '';
+      const openUrl =
+        (window.Capacitor && window.Capacitor.App && window.Capacitor.App.openUrl) ||
+        (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App && window.Capacitor.Plugins.App.openUrl);
 
-    // Try Capacitor App.openUrl if present (older/newer namespaces)
-    const openUrl =
-      (window.Capacitor && window.Capacitor.App && window.Capacitor.App.openUrl) ||
-      (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App && window.Capacitor.Plugins.App.openUrl);
+      try {
+        if (openUrl) { e.preventDefault(); await openUrl({ url }); return; }
+      } catch {}
 
-    try {
-      if (openUrl) { e.preventDefault(); await openUrl({ url }); return; }
-    } catch {}
-
-    // Simulator fallback (no Mail app)
-    if (!/iPhone|iPad|iPod/.test(navigator.userAgent)) {
-      e.preventDefault();
-      try { await navigator.clipboard.writeText(email); } catch {}
-      alert('Email copied: ' + email);
-    }
+      // Simulator (no Mail app): copy address and notify
+      if (!/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+        e.preventDefault();
+        try { await navigator.clipboard.writeText(url.replace(/^mailto:/i,'')); } catch {}
+        alert('Email copied: ' + url.replace(/^mailto:/i,''));
+      }
+    });
   });
   </script>
 </body>
