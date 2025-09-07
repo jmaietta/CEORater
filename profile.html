@@ -1,22 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Account Settings - CEORater</title>
 
   <!-- Tailwind + fonts -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
 
   <style>
     .font-orbitron { font-family: 'Orbitron', monospace; }
     .font-inter { font-family: 'Inter', sans-serif; }
 
     /* Safe areas */
+    html, body { height: 100%; }
     body {
       padding-left: env(safe-area-inset-left);
       padding-right: env(safe-area-inset-right);
@@ -96,7 +97,8 @@
               <div>
                 <h4 class="font-medium text-blue-900">Our Policies</h4>
                 <p class="text-sm text-blue-700 mt-1">
-                  Review our <a id="privacy-link" href="./privacy.html" class="underline hover:no-underline">Privacy Policy</a>
+                  Review our
+                  <a id="privacy-link" href="./privacy.html" class="underline hover:no-underline">Privacy Policy</a>
                   to understand how we collect, use, and protect your data.
                 </p>
               </div>
@@ -107,7 +109,7 @@
 
       <div class="bg-white rounded-lg shadow-sm border border-red-200 overflow-hidden">
         <div class="px-6 py-4 border-b border-red-200 bg-red-50">
-          <h2 class="text-lg md:text-xl font-semibold text-red-900">Danger Zone</h2>
+          <h2 class="text-lg md:text-XL font-semibold text-red-900">Danger Zone</h2>
           <p class="text-sm text-red-700">Irreversible and destructive actions.</p>
         </div>
         <div class="p-6">
@@ -140,7 +142,7 @@
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
 
-  <!-- Your files — RELATIVE paths, non-module -->
+  <!-- Your files — relative paths, non-module -->
   <script defer src="./firebase-config.js"></script>
   <script defer src="./auth.js"></script>
   <script defer src="./script.js"></script>
@@ -155,6 +157,11 @@
       };
 
       waitForFirebase(() => {
+        // Ensure app is initialized on this page
+        if (window.firebaseConfig && (!firebase.apps || !firebase.apps.length)) {
+          firebase.initializeApp(window.firebaseConfig);
+        }
+
         firebase.auth().onAuthStateChanged((user) => {
           if (!user) { window.location.href = './'; return; }
 
@@ -177,7 +184,7 @@
         });
       });
 
-      // Ensure privacy link stays in-app
+      // Keep the Privacy link in-app even if other handlers run
       document.getElementById('privacy-link')?.addEventListener('click', (e) => {
         e.preventDefault();
         window.location.href = './privacy.html';
