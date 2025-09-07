@@ -35,11 +35,9 @@
       min-height: calc(100vh - env(safe-area-inset-top));
     }
 
-    /* Ensure the avatar is a perfect circle */
+    /* Avatar circle */
     #profileAvatar { width: 4rem; height: 4rem; border-radius: 9999px; }
-    @media (min-width: 768px) {
-      #profileAvatar { width: 5rem; height: 5rem; }
-    }
+    @media (min-width: 768px) { #profileAvatar { width: 5rem; height: 5rem; } }
   </style>
 </head>
 <body class="bg-gray-50 font-inter">
@@ -98,7 +96,7 @@
               <div>
                 <h4 class="font-medium text-blue-900">Our Policies</h4>
                 <p class="text-sm text-blue-700 mt-1">
-                  Review our <a id="privacy-link" class="underline hover:no-underline" style="cursor:pointer;">Privacy Policy</a>
+                  Review our <a id="privacy-link" href="./privacy.html" class="underline hover:no-underline">Privacy Policy</a>
                   to understand how we collect, use, and protect your data.
                 </p>
               </div>
@@ -137,17 +135,17 @@
     </main>
   </div>
 
-  <!-- Firebase libs (compat) -->
+  <!-- Firebase (compat) -->
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
 
-  <!-- Your project config & app scripts (RELATIVE paths so they work in the iOS bundle) -->
+  <!-- Your files — RELATIVE paths, non-module -->
   <script defer src="./firebase-config.js"></script>
   <script defer src="./auth.js"></script>
   <script defer src="./script.js"></script>
 
-  <!-- Inline: guard to redirect if not signed-in, and fill profile UI -->
+  <!-- Inline: auth guard + profile fill -->
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       const waitForFirebase = (cb, tries = 50) => {
@@ -179,7 +177,7 @@
         });
       });
 
-      // Open privacy policy inside the app
+      // Ensure privacy link stays in-app
       document.getElementById('privacy-link')?.addEventListener('click', (e) => {
         e.preventDefault();
         window.location.href = './privacy.html';
