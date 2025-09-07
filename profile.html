@@ -9,6 +9,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
   <style>
+    /* Fix for iPhone Safe Area */
+    body, html {
+      padding-top: env(safe-area-inset-top);
+    }
     .font-orbitron { font-family: 'Orbitron', monospace; }
     .font-inter { font-family: 'Inter', sans-serif; }
     /* Ensure the avatar is a perfect circle */
@@ -168,5 +172,50 @@
   <script defer src="/CEORater/auth.js" type="module"></script>
   <script defer src="/CEORater/script.js" type="module"></script>
   
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Wait for Firebase
+      const waitForFirebase = (cb, tries = 50) => {
+        if (typeof firebase !== 'undefined' && firebase.auth) return cb();
+        if (tries <= 0) return;
+        setTimeout(() => waitForFirebase(cb, tries - 1), 100);
+      };
+
+      waitForFirebase(() => {
+        firebase.auth().onAuthStateChanged((user) => {
+          if (!user) {
+            window.location.href = '/CEORater/';
+            return;
+          }
+          
+          // Get email
+          const email = user.email || (user.providerData && user.providerData[0] && user.providerData[0].email) || '';
+          
+          // Set email display
+          const emailEl = document.getElementById('profileEmail');
+          if (emailEl) emailEl.textContent = email || 'User';
+          
+          // SINGLE LETTER for avatar
+          let initial = '--';
+          if (user.displayName) {
+            const firstChar = user.displayName.trim()[0];
+            if (firstChar) initial = firstChar.toUpperCase();
+          } else if (email) {
+            const localPart = email.split('@')[0] || '';
+            const firstChar = localPart[0];
+            if (firstChar) initial = firstChar.toUpperCase();
+          }
+          
+          // Set avatar to SINGLE LETTER
+          const avatar = document.getElementById('profileAvatar');
+          if (avatar) avatar.textContent = initial;
+          
+          // Set expected email text for deletion modal
+          const expectedText = document.getElementById('expectedEmailText');
+          if (expectedText) expectedText.textContent = 'Expected: ' + email;
+        });
+      });
+    });
+  </script>
 </body>
 </html>
