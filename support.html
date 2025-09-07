@@ -1,104 +1,149 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Support - CEORater</title>
+    <meta charset="UTF-8">
+    <!-- added viewport-fit=cover so safe-area works -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Support - CEORater</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+          theme: {
+            extend: {
+              fontFamily: {
+                'sans': ['Inter', 'sans-serif'],
+                'orbitron': ['Orbitron', 'sans-serif'],
+              },
+            }
+          }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
 
-  <!-- Tailwind + fonts -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css" />
-
-  <style>
-    .font-orbitron { font-family: 'Orbitron', monospace; }
-    .font-inter { font-family: 'Inter', sans-serif; }
-    /* small cushion so first text never hides under sticky header */
-    .under-header { padding-top: calc(env(safe-area-inset-top) + 8px); }
-  </style>
+        /* Opaque white top strip inside the safe area (prevents see-through) */
+        body::before{
+          content:"";
+          position:fixed;
+          top:0; left:0; right:0;
+          height: env(safe-area-inset-top);
+          background:#fff;
+          z-index: 9998;
+          pointer-events:none;
+        }
+    </style>
 </head>
-<body class="bg-gray-50 font-inter">
-
-  <!-- Solid, safe-area-aware header (opaque white) -->
-  <header class="header-sticky border-b border-gray-200" style="background:#fff;backdrop-filter:none">
-    <div class="px-4 py-4 md:px-8 flex items-center justify-between">
-      <a id="support-back-to-app" href="./" class="text-blue-600 hover:text-blue-700 flex items-center gap-2">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-        </svg>
-        <span class="text-sm">Back to CEORater</span>
-      </a>
-      <a id="support-header-logo" href="./" class="font-orbitron text-blue-600 text-xl md:text-2xl">CEORater</a>
-      <span></span>
-    </div>
-  </header>
-
-  <!-- Main -->
-  <main class="main-scroll under-header container mx-auto max-w-4xl px-4 py-8 md:py-12">
-    <div class="bg-white rounded-lg shadow-md p-6 md:p-10">
-      <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-        <span class="font-orbitron italic text-blue-600">CEORater</span> Support
-      </h1>
-      <p class="text-lg text-gray-600 mb-8">We're here to help! Find answers to common questions or get in touch with our support team.</p>
-
-      <div class="space-y-8 text-gray-700 leading-relaxed">
-        <!-- Quick Contact -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h2 class="text-xl font-bold text-blue-800 mb-3">Need Help? Contact Us</h2>
-          <p class="text-blue-700 mb-3">For app support, technical issues, feature requests, or general feedback:</p>
-          <a href="mailto:support@ceorater.com" class="inline-flex items-center text-blue-600 font-semibold hover:underline text-lg">
-            📧 support@ceorater.com
-          </a>
-          <p class="text-sm text-blue-600 mt-2">We typically respond within 24 hours.</p>
+<body class="bg-gray-100 text-gray-800">
+    <!-- Header (made sticky + opaque, IDs preserved) -->
+    <header class="bg-white shadow-md"
+            style="position:sticky; top: env(safe-area-inset-top); z-index:9999; background:#fff; border-bottom:1px solid #e5e7eb;">
+        <div class="container mx-auto max-w-4xl px-4">
+            <div class="flex justify-between items-center py-4">
+                <a id="support-header-logo" href="./" class="text-2xl md:text-3xl font-orbitron italic font-bold text-blue-600" style="cursor: pointer;">CEORater</a>
+                <a id="support-back-to-app" href="./" class="text-sm font-semibold text-blue-600 hover:underline" style="cursor: pointer;">← Back to App</a>
+            </div>
         </div>
+    </header>
 
-        <!-- FAQ Section -->
-        <h2 class="text-2xl font-bold text-gray-800 pt-4 border-t mt-6">Frequently Asked Questions</h2>
+    <!-- Main Content -->
+    <main class="container mx-auto max-w-4xl px-4 py-8 md:py-12">
+        <div class="bg-white rounded-lg shadow-md p-6 md:p-10">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                <span class="font-orbitron italic text-blue-600">CEORater</span> Support
+            </h1>
+            <p class="text-lg text-gray-600 mb-8">We're here to help! Find answers to common questions or get in touch with our support team.</p>
 
-        <h3 class="text-lg font-semibold text-gray-800">How do I add CEOs to my watchlist?</h3>
-        <p>Search for a CEO in the app, then tap “Add to Watchlist” on their profile. Your watchlist saves to your account.</p>
+            <div class="space-y-8 text-gray-700 leading-relaxed">
+                <!-- Quick Contact -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                    <h2 class="text-xl font-bold text-blue-800 mb-3">Need Help? Contact Us</h2>
+                    <p class="text-blue-700 mb-3">For app support, technical issues, feature requests, or general feedback:</p>
+                    <a href="mailto:support@ceorater.com" class="inline-flex items-center text-blue-600 font-semibold hover:underline text-lg">
+                        📧 support@ceorater.com
+                    </a>
+                    <p class="text-sm text-blue-600 mt-2">We typically respond within 24 hours.</p>
+                </div>
 
-        <h3 class="text-lg font-semibold text-gray-800">How do I remove CEOs from my watchlist?</h3>
-        <p>Open your watchlist, find the CEO, and tap “Remove”.</p>
+                <!-- FAQ Section -->
+                <h2 class="text-2xl font-bold text-gray-800 pt-4 border-t mt-6">Frequently Asked Questions</h2>
+                
+                <h3 class="text-lg font-semibold text-gray-800">How do I add CEOs to my watchlist?</h3>
+                <p>Simply search for a CEO using the search function in the app, then tap the "Add to Watchlist" button on their profile page. Your watchlist is automatically saved to your account.</p>
 
-        <h3 class="text-lg font-semibold text-gray-800">How are CEO ratings calculated?</h3>
-        <p>
-          Our rating methodology combines multiple metrics. See our
-          <a id="support-body-methodology" href="./methodology.html" class="text-blue-600 hover:underline">Methodology page</a>.
-        </p>
+                <h3 class="text-lg font-semibold text-gray-800">How do I remove CEOs from my watchlist?</h3>
+                <p>Go to your watchlist, find the CEO you want to remove, and tap the "Remove" button next to their name. The change will be saved automatically.</p>
 
-        <h3 class="text-lg font-semibold text-gray-800">Is my data secure?</h3>
-        <p>
-          Yes. For details, read our
-          <a id="support-body-privacy" href="./privacy.html" class="text-blue-600 hover:underline">Privacy Policy</a>.
-        </p>
+                <h3 class="text-lg font-semibold text-gray-800">How are CEO ratings calculated?</h3>
+                <p>Our rating methodology combines multiple data sources and metrics. For detailed information about how we calculate ratings, please visit our
+                   <a id="support-body-methodology" href="./methodology.html" class="text-blue-600 hover:underline" style="cursor: pointer;">Methodology page</a>.
+                </p>
 
-        <!-- More help -->
-        <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 mt-8">
-          <h2 class="text-xl font-bold text-gray-800 mb-3">Still Need Help?</h2>
-          <p class="text-gray-700 mb-3">We’re happy to assist with any questions, feedback, or technical issues.</p>
-          <a href="mailto:support@ceorater.com" class="text-blue-600 hover:underline font-semibold">
-            Contact Support: support@ceorater.com
-          </a>
+                <h3 class="text-lg font-semibold text-gray-800">Why can't I find a specific CEO?</h3>
+                <p>CEORater is focused on NASDAQ 100 company CEOs.</p>
+
+                <h3 class="text-lg font-semibold text-gray-800">Is my data secure?</h3>
+                <p>Yes, we take data security seriously. Your personal information and watchlist data are protected using industry-standard security measures. For more details, see our
+                   <a id="support-body-privacy" href="./privacy.html" class="text-blue-600 hover:underline" style="cursor: pointer;">Privacy Policy</a>.
+                </p>
+
+                <h3 class="text-lg font-semibold text-gray-800">How do I delete my account?</h3>
+                <p>You can manage your account settings within the app. If you need assistance with account deletion, please contact us at the email address above.</p>
+
+                <!-- Technical Issues -->
+                <h2 class="text-2xl font-bold text-gray-800 pt-4 border-t mt-6">Technical Issues</h2>
+                <p>If you're experiencing technical problems with the app, please try these steps:</p>
+                <ul class="list-disc list-inside space-y-2 pl-4">
+                    <li>Close and restart the app</li>
+                    <li>Check that you have the latest version installed</li>
+                    <li>Ensure you have a stable internet connection</li>
+                    <li>Restart your device if the issue persists</li>
+                </ul>
+                <p class="mt-4">If these steps don't resolve the issue, please contact us with details about the problem, including your device model and iOS version.</p>
+
+                <!-- Feature Requests -->
+                <h2 class="text-2xl font-bold text-gray-800 pt-4 border-t mt-6">Feature Requests</h2>
+                <p>We love hearing from our users! If you have ideas for new features or improvements, please send them our way. While we can't implement every suggestion, we carefully consider all feedback to make CEORater better.</p>
+
+                <!-- App Updates -->
+                <h2 class="text-2xl font-bold text-gray-800 pt-4 border-t mt-6">App Updates</h2>
+                <p>We regularly update CEORater with new features, improvements, and bug fixes. Make sure you have automatic updates enabled in your App Store settings to get the latest version.</p>
+
+                <!-- Contact Info Repeated -->
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 mt-8">
+                    <h2 class="text-xl font-bold text-gray-800 mb-3">Still Need Help?</h2>
+                    <p class="text-gray-700 mb-3">Can't find what you're looking for? We're here to help with any questions, feedback, or technical issues.</p>
+                    <a href="mailto:support@ceorater.com" class="text-blue-600 hover:underline font-semibold">
+                        Contact Support: support@ceorater.com
+                    </a>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  </main>
+    </main>
 
-  <!-- Footer -->
-  <footer class="footer-safe text-center text-sm text-blue-700 p-4 space-x-4">
-    <a id="support-footer-home" href="./">Home</a>
-    <a id="support-footer-methodology" href="./methodology.html">Our Methodology</a>
-    <a id="support-footer-privacy" href="./privacy.html">Privacy Policy</a>
-  </footer>
+    <!-- Footer -->
+    <footer class="text-center mt-8 py-8 border-t text-sm text-gray-500">
+        <p class="mb-2">
+            <a id="support-footer-home" href="./" class="text-blue-600 hover:underline" style="cursor: pointer;">Home</a> | 
+            <a id="support-footer-methodology" href="./methodology.html" class="text-blue-600 hover:underline" style="cursor: pointer;">Our Methodology</a> |
+            <a id="support-footer-privacy" href="./privacy.html" class="text-blue-600 hover:underline" style="cursor: pointer;">Privacy Policy</a>
+        </p>
+        <p>CEORater 2025. A TEK2day Holdings company.</p>
+    </footer>
 
-  <!-- Make mailto work (Capacitor openUrl) + Simulator fallback -->
-  <script>
-  document.querySelectorAll('a[href^="mailto:"]').forEach(a=>{
-    a.addEventListener('click', async (e)=>{
+    <!-- Mailto helper:
+         - On device: mailto opens Mail
+         - On Simulator (no Mail): copy address so user gets feedback -->
+    <script>
+    document.addEventListener('click', async (e) => {
+      const a = e.target.closest('a[href^="mailto:"]');
+      if (!a) return;
       const url = a.getAttribute('href') || '';
+      const email = url.replace(/^mailto:/i,'');
+
+      // Try Capacitor App.openUrl if present (new or legacy namespace)
       const openUrl =
         (window.Capacitor && window.Capacitor.App && window.Capacitor.App.openUrl) ||
         (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App && window.Capacitor.Plugins.App.openUrl);
@@ -107,14 +152,13 @@
         if (openUrl) { e.preventDefault(); await openUrl({ url }); return; }
       } catch {}
 
-      // Simulator (no Mail app): copy address and notify
+      // Simulator fallback (no Mail app installed)
       if (!/iPhone|iPad|iPod/.test(navigator.userAgent)) {
         e.preventDefault();
-        try { await navigator.clipboard.writeText(url.replace(/^mailto:/i,'')); } catch {}
-        alert('Email copied: ' + url.replace(/^mailto:/i,''));
+        try { await navigator.clipboard.writeText(email); } catch {}
+        alert('Email copied: ' + email);
       }
     });
-  });
-  </script>
+    </script>
 </body>
 </html>
