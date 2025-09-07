@@ -767,12 +767,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize profile page if we're on it
   initializeProfilePage();
 
-  // Only continue with main app initialization if NOT on profile page
-  if (window.location.pathname.includes('profile.html')) {
-    // Profile page has its own initialization, so return early
-    return;
-  }
-
   // Initialize Firebase auth listener only after Firebase is ready
   waitForFirebaseAuth(() => {
     try {
@@ -1359,4 +1353,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 })();
 // ==== end post-patch overrides ====
+
 
