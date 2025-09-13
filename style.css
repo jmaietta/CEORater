@@ -617,9 +617,11 @@ img, svg, video, canvas, audio, iframe, embed, object {
   padding-bottom: 4px;
 }
 
-/* ===== Wide-screen grid auto-fit for CEO cards ===== */
-#ceoCardView {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem; /* aligns with Tailwind's gap-6 */
+/* ===== Wide-screen grid auto-fit for CEO cards (safe, XL+ only) ===== */
+@media (min-width: 1280px) {
+  #ceoCardView {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+  /* Prevent content from forcing overflow in grid items */
+  #ceoCardView > * { min-width: 0; }
 }
