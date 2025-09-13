@@ -617,11 +617,22 @@ img, svg, video, canvas, audio, iframe, embed, object {
   padding-bottom: 4px;
 }
 
-/* ===== Wide-screen grid auto-fit for CEO cards (safe, XL+ only) ===== */
+/* ===== Revert ceoCardView grid & widen layout (safe for XL+) ===== */
 @media (min-width: 1280px) {
-  #ceoCardView {
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  /* Revert to Tailwind's original columns if .xl:grid-cols-* is present */
+  #ceoCardView.xl\:grid-cols-3,
+  .xl\:grid-cols-3#ceoCardView {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
-  /* Prevent content from forcing overflow in grid items */
+  /* If other xl:grid-cols-* are used, don't fight them */
+
+  /* Use more of the screen without touching grid column counts */
+  header > .container,
+  main > section > .container,
+  footer > .container {
+    max-width: 1600px !important; /* expand cap on large screens */
+  }
+
+  /* Ensure children don't overflow cards when widening */
   #ceoCardView > * { min-width: 0; }
 }
