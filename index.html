@@ -95,6 +95,13 @@
       gap: 1rem;
     }
 
+    #statCardContainer .stat-card {
+      background: white;
+      box-shadow: 0 8px 20px rgba(0,0,0,.06);
+      border-radius: 0.75rem;
+      min-height: 110px;
+    }
+
     /* Desktop layout for the stat card section */
     @media (min-width: 1024px) {
       #statCardContainer {
@@ -115,7 +122,7 @@
       #statCardContainer .center-hero {
         order: 2;
         flex-shrink: 0;
-        width: 400px;
+        width: clamp(420px, 28vw, 560px);
       }
 
       #statCardContainer .right-stats {
@@ -140,261 +147,215 @@
   <!-- App shell applies safe-area padding globally to main screens -->
   <div class="app-shell">
     <header id="appHeader" class="bg-white shadow-md sticky top-0 z-30">
-      <div class="container mx-auto px-4">
+      <div class="mx-auto max-w-[1600px] px-4">
         <div class="flex justify-between items-center flex-wrap gap-y-3 py-3">
           <div class="flex items-center gap-x-3">
             <a href="/" class="flex-shrink-0">
               <img src="favicon-32x32.png" alt="CEORater Logo" class="block md:hidden h-8 w-8" />
-              <h1 class="hidden md:block text-xl sm:text-2xl md:text-3xl font-orbitron italic font-bold text-blue-600">CEORater</h1>
+              <h1 class="hidden md:block text-xl sm:text-2xl md:...-3xl font-orbitron italic font-bold text-blue-600">CEORater</h1>
             </a>
 
             <div class="flex bg-gray-100 rounded-lg p-1 shadow-inner">
-              <button id="allCeosTab" class="watchlist-tab px-2 py-1 md:px-4 md:py-1.5 rounded-md text-sm font-medium active">All CEOs</button>
-              <button id="watchlistTab" class="watchlist-tab px-2 py-1 md:px-4 md:py-1.5 rounded-md text-sm font-medium flex items-center">
+              <button id="allCeosTab" class="watchlist-tab px-2 ...:py-1.5 rounded-md text-sm font-medium active">All CEOs</button>
+              <button id="watchlistTab" class="watchlist-tab px-...x-4 md:py-1.5 rounded-md text-sm font-medium flex items-center">
                 <span>My Watchlist</span>
-                <span id="watchlistCount" class="ml-2 text-xs bg-gray-400 text-white rounded-full px-1.5 py-0.5 hidden">0</span>
+                <span id="watchlistCount" class="ml-2 text-xs bg...-gray-400 text-white rounded-full px-1.5 py-0.5 hidden">0</span>
               </button>
             </div>
           </div>
 
-          <nav class="flex items-center gap-2 sm:gap-3">
-            <span id="userEmail" class="hidden md:inline-block text-sm text-gray-600 px-3 py-1"></span>
-            <button id="loginBtn" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">Log in</button>
-            <button id="logoutBtn" class="hidden px-3 py-1.5 border rounded-lg hover:bg-gray-100 transition text-sm">Log out</button>
-          </nav>
+          <div class="flex items-center gap-2">
+            <a href="#" class="text-sm text-gray-500 hover:text-gray-700 hidden sm:inline">jmaietta@ceorater.com</a>
+            <button id="logoutButton" class="text-sm px-3 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50">Log out</button>
+          </div>
         </div>
       </div>
 
-      <div class="container mx-auto px-4 border-t border-gray-200">
-        <div class="py-2 lg:hidden">
-          <button id="toggleFiltersBtn" class="w-full px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 flex justify-between items-center">
-            <span>Show Filters & Options</span>
-            <svg id="toggleFiltersIcon" class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </button>
-        </div>
+      <!-- Filters row -->
+      <div class="mx-auto max-w-[1600px] px-4 border-t border-gray-200">
+        <div class="py-3 flex flex-wrap gap-3 items-center">
+          <div class="relative">
+            <input id="globalSearch" type="text" placeholder="Search: CEO, Ticker, or Co." class="w-64 md:w-80 rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div id="searchDropdown" class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-64 overflow-auto"></div>
+          </div>
 
-        <div id="mobileFilterControls" class="hidden lg:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 py-4 items-center">
-          <input id="searchInput" type="text" placeholder="Search: CEO, Ticker, or Co." class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow sm:col-span-2 lg:col-span-1" />
-          <select id="founderFilter" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
-            <option value="">All CEOs</option>
-            <option value="Y">Founder CEOs</option>
-            <option value="N">Non-Founder CEOs</option>
+          <select id="ceoFilterSelect" class="rounded-lg border border-gray-300 px-3 py-2">
+            <option>All CEOs</option>
           </select>
-          <select id="sortControl" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
-            <option value="ceoRaterScore-desc">Sort: CEORaterScore ↓</option>
-            <option value="ceoRaterScore-asc">Sort: CEORaterScore ↑</option>
-            <option value="alphaScore-desc">Sort: AlphaScore ↓</option>
-            <option value="alphaScore-asc">Sort: AlphaScore ↑</option>
-            <option value="compensationScore-asc">Compensation Score A-F</option>
-            <option value="compensationScore-desc">Compensation Score F-A</option>
-            <option value="tsrAlpha-desc">TSR Alpha ↓</option>
-            <option value="tsrAlpha-asc">TSR Alpha ↑</option>
-            <option value="avgAnnualTsrAlpha-desc">Avg Annual TSR Alpha ↓</option>
-            <option value="avgAnnualTsrAlpha-asc">Avg Annual TSR Alpha ↑</option>
-            <option value="tsrValue-desc">TSR ↓</option>
-            <option value="tsrValue-asc">TSR ↑</option>
-            <option value="avgAnnualTsr-desc">Avg Annual TSR ↓</option>
-            <option value="avgAnnualTsr-asc">Avg Annual TSR ↑</option>
-            <option value="compensation-desc">Compensation ↓</option>
-            <option value="compensation-asc">Compensation ↑</option>
-            <option value="tenure-desc">Tenure ↓</option>
-            <option value="tenure-asc">Tenure ↑</option>
-            <option value="ceo-asc">CEO A—Z</option>
-            <option value="ceo-desc">CEO Z—A</option>
-            <option value="company-asc">Company A—Z</option>
-            <option value="company-desc">Company Z—A</option>
+
+          <select id="sortSelect" class="rounded-lg border border-gray-300 px-3 py-2">
+            <option>Sort: CEORaterScore</option>
+            <option>Sort: AlphaScore</option>
+            <option>Sort: Compensation</option>
           </select>
-          <select id="industryFilter" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
-            <option value="">All Industries</option>
+
+          <select id="industrySelect" class="rounded-lg border border-gray-300 px-3 py-2">
+            <option>All Industries</option>
           </select>
-          <select id="sectorFilter" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
-            <option value="">All Sectors</option>
+
+          <select id="sectorSelect" class="rounded-lg border border-gray-300 px-3 py-2">
+            <option>All Sectors</option>
           </select>
-          <button id="downloadExcelButton" class="w-full px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition">Export to Excel</button>
+
+          <button id="exportButton" class="ml-auto bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg px-4 py-2">
+            Export to Excel
+          </button>
         </div>
       </div>
     </header>
 
-    <div class="container mx-auto p-4 md:p-8">
-      <div id="statCardContainer" class="mb-6">
-        <div class="left-stats">
-          <div class="bg-white p-4 rounded-lg shadow text-center stat-card">
-            <h3 class="text-sm font-medium text-gray-500">Avg. Founder CEORaterScore</h3>
-            <p id="medianTsrStat" class="text-2xl font-bold mt-1 font-orbitron text-blue-600">--</p>
-          </div>
+    <!-- Page -->
+    <main>
+      <!-- KPI/Stat Section -->
+      <section class="bg-white/0">
+        <div class="mx-auto max-w-[1600px] p-4 md:p-8">
+          <div id="statCardContainer">
+            <!-- Left stats -->
+            <div class="left-stats">
+              <div class="stat-card p-6">
+                <p class="text-sm text-gray-500">Avg. Founder CEORaterScore</p>
+                <p class="text-3xl font-bold">83</p>
+              </div>
+              <div class="stat-card p-6">
+                <p class="text-sm text-gray-500">Avg. Founder AlphaScore</p>
+                <p class="text-3xl font-bold">82</p>
+              </div>
+            </div>
 
-          <div class="bg-white p-4 rounded-lg shadow text-center stat-card">
-            <h3 class="text-sm font-medium text-gray-500">Avg. Founder AlphaScore</h3>
-            <p id="avgFounderAlphaScoreStat" class="text-2xl font-bold mt-1 font-orbitron text-blue-600">--</p>
+            <!-- Hero CEORaterScore Card -->
+            <div class="center-hero mb-4 lg:mb-0">
+              <div class="ceorater-stat-card rounded-xl p-6 text-center bg-white shadow-md h-full flex flex-col items-center justify-center">
+                <p class="text-sm text-gray-500">MEDIAN CEORATERSCORE</p>
+                <p class="font-orbitron text-6xl md:text-7xl font-bold text-gray-800 leading-tight">52</p>
+                <p class="mt-2 text-sm text-gray-600">60% Alpha • 40% Comp</p>
+                <p class="mt-1 text-xs text-gray-500">Comprehensive CEO Performance Rating</p>
+              </div>
+            </div>
+
+            <!-- Right stats -->
+            <div class="right-stats">
+              <div class="stat-card p-6">
+                <p class="text-sm text-gray-500">Median Total Stock Return</p>
+                <p class="text-3xl font-bold">137%</p>
+              </div>
+              <div class="stat-card p-6">
+                <p class="text-sm text-gray-500">Median CEO Compensation</p>
+                <p class="text-3xl font-bold">$18.3M</p>
+              </div>
+            </div>
           </div>
         </div>
+      </section>
 
-        <!-- Hero CEORaterScore Card -->
-        <div class="center-hero mb-4 lg:mb-0">
-          <div class="ceorater-stat-card rounded-xl p-6 text-center shadow-lg max-w-md mx-auto lg:max-w-none h-full flex flex-col justify-center">
-            <h3 class="text-lg font-semibold text-slate-700 uppercase tracking-wider mb-2">Median CEORaterScore</h3>
-            <p id="medianCeoRaterScoreStat" class="text-5xl font-orbitron font-black text-slate-800 mb-2">--</p>
-            <div class="text-sm text-slate-600 font-medium">60% Alpha • 40% Comp</div>
-            <div class="text-xs text-slate-500 mt-1">Comprehensive CEO Performance Rating</div>
+      <!-- CEO cards + list -->
+      <section class="pb-20">
+        <div class="mx-auto max-w-[1600px] p-4 md:p-8">
+          <div class="relative">
+            <div id="marketStatus" class="hidden text-xs text-gray-500 italic"></div>
+            <div class="w-full flex items-center justify-center">
+              <div class="w-10 h-10 relative">
+                <svg class="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+              </div>
+            </div>
+
+            <div id="market-data-status" class="hidden text-center h-64"><div id="loading-spinner"></div></div>
+            <div id="error-message" class="hidden text-center text-red-500 py-8">Unable to load market data.</div>
+
+            <div>
+              <div id="ceoCardView" class="grid gap-6"></div>
+              <p id="noResults" class="hidden text-center text-gray-500 py-8">No results found.</p>
+              <div id="watchlistEmpty" class="hidden text-center text-gray-500 py-12">
+                <div class="text-4xl mb-2">👀</div>
+                <p class="mb-2">Your watchlist is empty.</p>
+                <p class="text-sm text-gray-500">Add CEOs from the list to see them here.</p>
+              </div>
+              <div id="watchlist-view" class="hidden"></div>
+            </div>
+          </div>
+
+          <!-- Pagination -->
+          <div id="pagination" class="hidden mt-8 flex justify-center items-center gap-2">
+            <button id="prevPage" class="px-3 py-1.5 rounded-md border border-gray-300 disabled:opacity-50">Prev</button>
+            <span id="pageIndicator" class="text-sm text-gray-600">Page 1</span>
+            <button id="nextPage" class="px-3 py-1.5 rounded-md border border-gray-300 disabled:opacity-50">Next</button>
           </div>
         </div>
+      </section>
+    </main>
 
-        <div class="right-stats">
-          <div class="bg-white p-4 rounded-lg shadow text-center stat-card">
-            <h3 class="text-sm font-medium text-gray-500">Median Total Stock Return</h3>
-            <p id="founderCeoStat" class="text-2xl font-bold text-gray-900 mt-1">--</p>
-          </div>
-
-          <div class="bg-white p-4 rounded-lg shadow text-center stat-card">
-            <h3 class="text-sm font-medium text-gray-500">Median CEO Compensation</h3>
-            <p id="medianCompStat" class="text-2xl font-bold text-gray-900 mt-1">--</p>
-          </div>
+    <!-- Footer -->
+    <footer class="bg-white border-t">
+      <div class="mx-auto max-w-[1600px] p-3 text-center sm:p-4 sm:text-left sm:flex sm:justify-between sm:items-center">
+        <p class="text-sm text-gray-500">© <span id="footerYear"></span> CEORater</p>
+        <div class="text-sm text-gray-500">
+          <a href="#" class="hover:text-gray-700">Privacy</a>
+          <span class="px-2">·</span>
+          <a href="#" class="hover:text-gray-700">Terms</a>
         </div>
       </div>
-
-      <main class="bg-white rounded-xl shadow-lg p-4 sm:p-6" role="main">
-        <div id="lastUpdated" class="text-xs text-gray-500 text-right mb-4 h-4"></div>
-        <div id="loading" class="flex justify-center items-center h-64"><div id="loading-spinner"></div></div>
-        <div id="error-message" class="hidden text-center text-red-500 py-8">Unable to load market data.</div>
-
-        <div>
-          <div id="ceoCardView" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
-          <p id="noResults" class="hidden text-center text-gray-500 py-8">No results found.</p>
-          <div id="watchlistEmpty" class="hidden text-center text-gray-500 py-12">
-            <div class="text-4xl mb-4">⭐</div>
-            <h3 class="text-lg font-semibold mb-2">Your watchlist is empty</h3>
-            <p>Click the star icon on any CEO card to add them to your watchlist.</p>
-          </div>
-        </div>
-      </main>
-
-      <footer class="text-center mt-8 py-8 border-t text-sm text-gray-500">
-        <p class="mb-2">
-          <a href="/methodology.html" class="text-blue-600 hover:underline">Our Methodology</a> |
-          <a href="/privacy.html" class="text-blue-600 hover:underline">Privacy Policy</a> |
-          <a href="/support.html" class="text-blue-600 hover:underline">Support</a>
-        </p>
-        <p>CEORater 2025. A TEK2day Holdings company.</p>
-      </footer>
-    </div>
-  </div> <!-- /.app-shell -->
-
-  <!-- LOGIN MODAL (respects safe-area via CSS bottom padding) -->
-  <div id="loginModal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-lg p-6 w-full max-w-md relative">
-      <h2 class="text-xl font-bold mb-4">Sign In to CEORater</h2>
-      <p class="text-gray-600 mb-6">Sign in to save your CEO watchlist and track performance over time.</p>
-      <div class="space-y-4">
-        <button id="googleSignIn" class="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-          <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-          Continue with Google
-        </button>
-
-        <button id="microsoftSignIn" class="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-          <svg class="w-5 h-5" viewBox="0 0 21 21"><path fill="#f25022" d="M1 1h9v9H1z"/><path fill="#00a4ef" d="M1 11h9v9H1z"/><path fill="#7fba00" d="M11 1h9v9h-9z"/><path fill="#ffb900" d="M11 11h9v9h-9z"/></svg>
-          Continue with Microsoft
-        </button>
-
-        <div class="relative">
-          <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-300"></div></div>
-          <div class="relative flex justify-center text-sm"><span class="px-2 bg-white text-gray-500">or</span></div>
-        </div>
-
-        <input id="emailInput" type="email" placeholder="Enter your email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <input id="passwordInput" type="password" placeholder="Password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-
-        <div class="text-right text-sm">
-          <a href="#" id="forgotPasswordLink" class="font-medium text-blue-600 hover:text-blue-500">Forgot Password?</a>
-        </div>
-
-        <div class="flex gap-2">
-          <button id="signInEmail" class="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Sign In</button>
-          <button id="signUpEmail" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition">Sign Up</button>
-        </div>
-      </div>
-
-      <button id="closeLoginModalBtn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-        </svg>
-      </button>
-    </div>
+    </footer>
   </div>
 
-  <!-- CEO DETAIL MODAL -->
-  <div id="ceoDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg relative max-h-full overflow-y-auto">
-      <div id="modalHeader" class="pb-4 border-b"></div>
-      <div id="modalBody" class="py-4"></div>
-      <div id="modalFooter" class="pt-4 border-t"></div>
-      <button id="closeDetailModal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-        </svg>
-      </button>
-    </div>
-  </div>
-
-  <!-- COMPARISON TRAY (fixed bottom; CSS adds safe bottom padding) -->
-  <div id="comparisonTray" class="hidden fixed bottom-0 left-0 right-0 bg-white shadow-2xl border-t border-gray-200 z-40">
-    <div class="container mx-auto p-3 text-center sm:p-4 sm:text-left sm:flex sm:justify-between sm:items-center">
-      <div class="flex items-center justify-center sm:justify-start space-x-3">
-        <span id="comparisonTitle" class="font-semibold text-gray-700">Compare (0/3):</span>
-        <div id="trayTickers" class="flex items-center space-x-2"></div>
-      </div>
-      <button id="compareNowBtn" class="w-full mt-2 sm:w-auto sm:mt-0 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition">Compare Now →</button>
-    </div>
-  </div>
-
-  <!-- COMPARISON MODAL -->
-  <div id="comparisonModal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col">
-      <div class="p-4 border-b flex justify-between items-center flex-shrink-0">
-        <div class="flex items-center gap-x-3">
-          <h1 class="text-2xl font-orbitron italic font-bold text-blue-600">CEORater</h1>
-          <span class="text-2xl font-light text-gray-300">|</span>
-          <h2 class="text-xl font-bold text-gray-800">CEO Comparison</h2>
-        </div>
-        <button id="closeComparisonModalBtn" class="text-gray-400 hover:text-gray-600">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-        </button>
-      </div>
-
-      <div class="flex-grow overflow-auto">
-        <div id="comparisonTableContainer" class="p-4 hidden lg:block"></div>
-        <div id="comparisonCardContainer" class="p-4 lg:hidden"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Firebase -->
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"></script>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
-
-  <script defer src="firebase-config.js"></script>
-  <script type="module" src="script.js"></script>
-
-  <!-- Service Worker -->
+  <!-- App scripts -->
   <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        requestIdleCallback(() => {
-          navigator.serviceWorker.register('/service-worker.js')
-            .then(registration => {
-              console.log('ServiceWorker registration successful with scope: ', registration.scope);
-            })
-            .catch(error => {
-              console.log('ServiceWorker registration failed: ', error);
-            });
-        });
-      });
+    document.getElementById('footerYear').textContent = new Date().getFullYear();
+
+    const state = {
+      data: [],
+      filtered: [],
+      page: 1,
+      perPage: 24,
+      activeTab: 'all'
+    };
+
+    function renderCEOs(list) {
+      const root = document.getElementById('ceoCardView');
+      root.innerHTML = '';
+      if (!list || list.length === 0) {
+        document.getElementById('noResults').classList.remove('hidden');
+        return;
+      }
+      document.getElementById('noResults').classList.add('hidden');
+
+      for (const ceo of list) {
+        const card = document.createElement('div');
+        card.className = 'bg-white shadow-md rounded-xl p-4';
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-lg font-semibold">${ceo.name}</div>
+              <div class="text-sm text-gray-500">${ceo.company} (${ceo.ticker})</div>
+            </div>
+            <div class="text-right">
+              <div class="text-2xl font-bold">${ceo.score}</div>
+              <div class="text-xs text-gray-400">CEORaterScore</div>
+            </div>
+          </div>
+          <div class="mt-3 flex justify-between text-xs text-gray-600">
+            <div>Alpha: ${ceo.alpha}%</div>
+            <div>Comp: ${ceo.comp}%</div>
+          </div>
+        `;
+        root.appendChild(card);
+      }
     }
+
+    async function init() {
+      try {
+        const payload = await window.dataPromise;
+        state.data = payload?.data || [];
+        state.filtered = state.data;
+        renderCEOs(state.filtered);
+      } catch (e) {
+        console.error(e);
+        document.getElementById('error-message').classList.remove('hidden');
+      }
+    }
+
+    init();
   </script>
 </body>
 </html>
-
