@@ -616,3 +616,10 @@ img, svg, video, canvas, audio, iframe, embed, object {
 #appHeader .container > .flex {
   padding-bottom: 4px;
 }
+
+/* ===== Wide-screen grid auto-fit for CEO cards ===== */
+#ceoCardView {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem; /* aligns with Tailwind's gap-6 */
+}
