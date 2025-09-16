@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
   <!-- Main Homepage -->
   <url>
     <loc>https://www.ceorater.com/</loc>
@@ -7,6 +8,7 @@
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
+
   <!-- Methodology Page -->
   <url>
     <loc>https://www.ceorater.com/methodology.html</loc>
@@ -14,4 +16,21 @@
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
+
+  <!-- Support Page -->
+  <url>
+    <loc>https://www.ceorater.com/support.html</loc>
+    <lastmod>2025-09-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- Privacy Page -->
+  <url>
+    <loc>https://www.ceorater.com/privacy.html</loc>
+    <lastmod>2025-09-16</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
 </urlset>
