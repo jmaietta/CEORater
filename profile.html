@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Account Settings - CEORater</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+
+  <style>
+    .font-orbitron { font-family: 'Orbitron', monospace; }
+    .font-inter { font-family: 'Inter', sans-serif; }
+    html, body { height: 100%; }
+
+    /* extra cushion so first paragraph never sits under the sticky header */
+    .under-header { padding-top: calc(env(safe-area-inset-top) + 12px); }
+
+    #profileAvatar { width: 4rem; height: 4rem; border-radius: 9999px; }
+    @media (min-width: 768px) { #profileAvatar { width: 5rem; height: 5rem; } }
+
+    /* Opaque safe-area strip + solid header (this page only) */
+    body::before{
+      content:"";
+      position:fixed;
+      top:0; left:0; right:0;
+      height: env(safe-area-inset-top);
+      background:#fff;
+      z-index:9998;
+      pointer-events:none;
+    }
+    .header-solid{ background:#fff; backdrop-filter:none; }
+  </style>
+</head>
+<body class="bg-gray-50 font-inter">
+  <div class="app-shell">
+    <!-- opaque header -->
+    <header class="header-sticky header-solid border-b border-gray-200">
+      <div class="px-4 py-4 md:px-8">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <a href="./" id="backToHome" class="flex items-center gap-2 text-blue-600 hover:text-blue-700">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+              </svg>
+              <span class="text-sm">Back to CEORater</span>
+            </a>
+          </div>
+          <h1 class="text-xl md:text-2xl font-orbitron italic font-bold text-blue-600">CEORater</h1>
+          <div></div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-scroll under-header mx-auto px-4 py-8 md:py-12 md:max-w-4xl">
+      <div class="mb-8">
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Account Settings</h1>
+        <p class="text-gray-600">Manage your account and data.</p>
+      </div>
+
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-8">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-lg md:text-xl font-semibold text-gray-900">Profile Information</h2>
+          <p class="text-sm text-gray-600">Your account details.</p>
+        </div>
+        <div class="p-6">
+          <div class="flex items-center space-x-6 mb-6">
+            <div id="profileAvatar" data-user-avatar class="bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold text-xl md:text-2xl">--</div>
+            <div>
+              <h3 id="profileEmail" class="text-sm md:text-base font-normal text-gray-900 break-all">Loading...</h3>
+              <p id="profileProvider" class="text-sm text-gray-600">Email/Password account</p>
+              <p class="text-sm text-green-600 mt-1">✓ Verified account</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-8">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-lg md:text-xl font-semibold text-gray-900">Privacy & Terms</h2>
+          <p class="text-sm text-gray-600">Review our policies and control your privacy settings.</p>
+        </div>
+        <div class="p-6">
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div class="flex items-start space-x-3">
+              <svg class="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a 9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <div>
+                <h4 class="font-medium text-blue-900">Our Policies</h4>
+                <p class="text-sm text-blue-700 mt-1">
+                  Review our
+                  <a id="privacy-link" href="./privacy.html" class="underline hover:no-underline">Privacy Policy</a>
+                  to understand how we collect, use, and protect your data.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow-sm border border-red-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-red-200 bg-red-50">
+          <h2 class="text-lg md:text-XL font-semibold text-red-900">Danger Zone</h2>
+          <p class="text-sm text-red-700">Irreversible and destructive actions.</p>
+        </div>
+        <div class="p-6">
+          <div class="border border-red-300 rounded-lg p-4 bg-red-50">
+            <div class="flex items-start justify-between flex-wrap md:flex-nowrap">
+              <div class="flex-1 min-w-0 pr-4 mb-4 md:mb-0">
+                <h3 class="font-medium text-red-900 mb-1">Delete Account</h3>
+                <p class="text-sm text-red-700 mb-3">
+                  Permanently delete your account and all associated data. This action cannot be undone.
+                </p>
+                <ul class="text-sm text-red-700 list-disc list-inside space-y-1 mb-4">
+                  <li>All watchlist data will be permanently deleted</li>
+                  <li>Your account credentials will be removed</li>
+                  <li>No way to recover deleted data</li>
+                  <li>Process takes effect immediately</li>
+                </ul>
+              </div>
+              <button id="deleteAccountBtn" class="w-full md:w-auto px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition flex-shrink-0">
+                Delete Account
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Delete confirmation modal -->
+  <div id="deleteConfirmModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg w-full max-w-md p-6 relative">
+      <div class="flex items-center space-x-3 mb-4">
+        <div class="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.732 15.5c-.77.833.192 2.5 1.732 2.5z"></path>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-red-900">Delete Account</h3>
+          <p class="text-sm text-red-700">This action cannot be undone</p>
+        </div>
+      </div>
+
+      <div class="mb-6">
+        <p class="text-gray-700 mb-3">To confirm deletion, please type your email address below:</p>
+        <label class="text-sm text-gray-600 block mb-1">Email</label>
+        <input id="emailConfirmation" type="email" placeholder="Enter your email" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 mb-2">
+        <p id="expectedEmailText" class="text-xs text-gray-500 mb-4">Expected: Loading...</p>
+      </div>
+
+      <div class="flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-3">
+        <button id="cancelDelete" class="w-full px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition">Cancel</button>
+        <button id="confirmDelete" class="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+          Delete My Account
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase (compat) -->
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
+
+  <!-- Your config — now exposes window.firebaseConfig -->
+  <script defer src="./firebase-config.js"></script>
+
+  <!-- Removed (not needed on this standalone page):
+  <script defer src="./firebase-init.js"></script>
+  <script defer src="./auth.js"></script>
+  <script defer src="./script.js"></script>
+  -->
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const waitForFirebase = (cb, tries = 50) => {
+        if (typeof firebase !== 'undefined' && firebase.auth) return cb();
+        if (tries <= 0) return;
+        setTimeout(() => waitForFirebase(cb, tries - 1), 100);
+      };
+
+      // UI elements for delete flow
+      const modalEl = document.getElementById('deleteConfirmModal');
+      const openBtn = document.getElementById('deleteAccountBtn');
+      const cancelBtn = document.getElementById('cancelDelete');
+      const confirmBtn = document.getElementById('confirmDelete');
+      const emailInput = document.getElementById('emailConfirmation');
+      const expectedEmailText = document.getElementById('expectedEmailText');
+
+      let expectedEmail = '';
+
+      function openModal() {
+        if (!modalEl) return;
+        emailInput.value = '';
+        confirmBtn.disabled = true;
+        modalEl.classList.remove('hidden');
+      }
+      function closeModal() {
+        if (!modalEl) return;
+        modalEl.classList.add('hidden');
+      }
+
+      waitForFirebase(() => {
+        // Initialize if needed
+        if (window.firebaseConfig && (!firebase.apps || !firebase.apps.length)) {
+          firebase.initializeApp(window.firebaseConfig);
+        }
+
+        // Auth state + populate email/avatar
+        firebase.auth().onAuthStateChanged((user) => {
+          if (!user) { window.location.href = './'; return; }
+
+          const email = user.email || (user.providerData && user.providerData[0] && user.providerData[0].email) || '';
+          expectedEmail = email;
+
+          const emailEl = document.getElementById('profileEmail');
+          if (emailEl) emailEl.textContent = email || 'User';
+
+          let initial = '--';
+          if (user.displayName && user.displayName.trim()) {
+            initial = user.displayName.trim()[0].toUpperCase();
+          } else if (email) {
+            const local = (email.split('@')[0] || '');
+            if (local) initial = (local.replace(/[^A-Za-z]/g,'')[0] || local[0]).toUpperCase();
+          }
+          const avatar = document.getElementById('profileAvatar');
+          if (avatar) avatar.textContent = initial;
+
+          if (expectedEmailText) expectedEmailText.textContent = 'Expected: ' + email;
+        });
+
+        // Wire up delete flow
+        if (openBtn) openBtn.addEventListener('click', openModal);
+        if (cancelBtn) cancelBtn.addEventListener('click', (e)=>{ e.preventDefault(); closeModal(); });
+
+        if (emailInput) {
+          emailInput.addEventListener('input', () => {
+            const match = (emailInput.value || '').trim().toLowerCase() === (expectedEmail || '').toLowerCase();
+            confirmBtn.disabled = !match;
+          });
+        }
+
+        if (confirmBtn) confirmBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          confirmBtn.disabled = true;
+          const originalLabel = confirmBtn.textContent;
+          confirmBtn.textContent = 'Deleting...';
+
+          try {
+            const user = firebase.auth().currentUser;
+            if (!user) throw new Error('No authenticated user.');
+
+            // Try delete
+            await user.delete();
+            closeModal();
+            alert('Your account has been deleted.');
+            window.location.href = './';
+          } catch (err) {
+            // If Firebase requires recent login, prompt for password and reauth
+            if (err && (err.code === 'auth/requires-recent-login' || (err.message||'').includes('requires recent'))) {
+              const pwd = prompt('For security, please re-enter your password to delete your account:');
+              if (pwd) {
+                try {
+                  const cred = firebase.auth.EmailAuthProvider.credential(expectedEmail, pwd);
+                  await firebase.auth().currentUser.reauthenticateWithCredential(cred);
+                  await firebase.auth().currentUser.delete();
+                  closeModal();
+                  alert('Your account has been deleted.');
+                  window.location.href = './';
+                  return;
+                } catch (reauthErr) {
+                  alert('Re-authentication failed: ' + (reauthErr.message || reauthErr.code || 'Unknown error'));
+                }
+              } else {
+                alert('Deletion cancelled.');
+              }
+            } else {
+              alert('Delete failed: ' + (err && (err.message || err.code) || 'Unknown error'));
+            }
+            // restore button
+            confirmBtn.textContent = originalLabel;
+            confirmBtn.disabled = false;
+          }
+        });
+
+        // Also allow ESC to close modal
+        document.addEventListener('keydown', (ev)=>{
+          if (ev.key === 'Escape') closeModal();
+        });
+      });
+
+      // Ensure privacy link still works without module routing
+      document.getElementById('privacy-link')?.addEventListener('click', (e) => {
+        // let the normal href navigate; no preventDefault needed since href="./privacy.html"
+      });
+    });
+  </script>
+</body>
+</html>
