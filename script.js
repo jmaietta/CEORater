@@ -57,6 +57,14 @@ function formatRelative(ts) {
   return days === 1 ? 'yesterday' : `${days} days ago`;
 }
 
+// ---------- Privacy helper ----------
+function maskEmail(email) {
+  if (!email || typeof email !== 'string' || !email.includes('@')) return email || '';
+  const [local, domain] = email.split('@');
+  if (local.length <= 3) return local + '@' + domain; // too short to meaningfully mask
+  return `${local.slice(0, 3)}*****@${domain}`;
+}
+
 // Auth elements
 const loginBtn = $("loginBtn");
 const logoutBtn = $("logoutBtn");
@@ -114,8 +122,12 @@ function handleAuthStateChange(user) {
     // Show Profile link when logged in
     if (profileLink) profileLink.classList.remove('hidden');
 
-    // We no longer need the separate watchlistBtn, so we can remove references to it here.
-    userEmail.textContent = user.email;
+    // Masked email on the homepage for privacy; full email stays on /profile.html
+    const masked = maskEmail(user.email || '');
+    userEmail.textContent = masked;
+    // Optional: keep the full email accessible on hover
+    userEmail.title = user.email || '';
+
     auth.loadUserWatchlist(user.uid).then(watchlist => {
         userWatchlist = watchlist;
         updateWatchlistCount();
@@ -127,6 +139,9 @@ function handleAuthStateChange(user) {
     userEmail.classList.add('hidden');
     // Hide Profile link when logged out
     if (profileLink) profileLink.classList.add('hidden');
+
+    // Clear email text/title
+    if (userEmail) { userEmail.textContent = ''; userEmail.title = ''; }
 
     userWatchlist.clear();
     comparisonSet.clear();
