@@ -7,3 +7,8 @@ const firebaseConfig = {
   appId: "1:772315733470:web:990b30df47ba3fc8fc914f",
   measurementId: "G-NRNZ6WZNE8"
 };
+
+// Expose for non-module pages (e.g., profile.html with compat scripts)
+if (typeof window !== "undefined") {
+  window.firebaseConfig = firebaseConfig;
+}
