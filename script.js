@@ -15,7 +15,6 @@ const noResults = $("noResults");
 const loading = $("loading");
 const errorMessage = $("error-message");
 
-
 // --- Spinner helpers (bulletproof) ---
 function hideSpinner() {
   try {
@@ -72,6 +71,8 @@ const signUpEmail = $("signUpEmail");
 const emailInput = $("emailInput");
 const passwordInput = $("passwordInput");
 const forgotPasswordLink = $("forgotPasswordLink");
+// NEW: Profile link toggle
+const profileLink = $("profileLink");
 
 // View toggle
 const allCeosTab = $("allCeosTab");
@@ -110,6 +111,9 @@ function handleAuthStateChange(user) {
     loginBtn.classList.add('hidden');
     logoutBtn.classList.remove('hidden');
     userEmail.classList.remove('hidden');
+    // Show Profile link when logged in
+    if (profileLink) profileLink.classList.remove('hidden');
+
     // We no longer need the separate watchlistBtn, so we can remove references to it here.
     userEmail.textContent = user.email;
     auth.loadUserWatchlist(user.uid).then(watchlist => {
@@ -121,6 +125,9 @@ function handleAuthStateChange(user) {
     loginBtn.classList.remove('hidden');
     logoutBtn.classList.add('hidden');
     userEmail.classList.add('hidden');
+    // Hide Profile link when logged out
+    if (profileLink) profileLink.classList.add('hidden');
+
     userWatchlist.clear();
     comparisonSet.clear();
     ui.updateComparisonTray(comparisonSet);
