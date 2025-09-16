@@ -1,5 +1,5 @@
 // The URL for your secure Cloud Run service.
-const SERVICE_URL = 'https://ceorater-backend-697273542938.us-south1.run.app/api/data';
+const SERVICE_URL = 'https://get-ceos-test-847610982404.us-east4.run.app/api/data';
 
 // Cache configuration
 const CACHE_TIME = 60 * 60 * 1000; // 60 minutes in milliseconds
