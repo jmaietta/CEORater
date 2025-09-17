@@ -57,14 +57,24 @@
     #statCardContainer .left-stats { order: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     #statCardContainer .right-stats { order: 3; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     @media (min-width: 1024px) {
-      #statCardContainer { flex-direction: row; align-items: stretch; gap: 1.5rem; }
+      #statCardContainer {
+        display: grid;
+        grid-template-columns: 1fr 400px 1fr;
+        align-items: stretch;
+        gap: 1.5rem;
+      }
       #statCardContainer .left-stats,
       #statCardContainer .right-stats {
-        order: initial; flex: 1; display: grid;
-        grid-template-rows: 1fr 1fr; grid-template-columns: 1fr; gap: 1rem;
+        display: grid;
+        grid-template-rows: 1fr 1fr;
+        grid-template-columns: 1fr;
+        gap: 1rem;
       }
-      #statCardContainer .center-hero { flex-shrink: 0; width: 400px; }
-      #statCardContainer .stat-card { display: flex; flex-direction: column; justify-content: center; }
+      #statCardContainer .stat-card {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
     }
   </style>
 </head>
