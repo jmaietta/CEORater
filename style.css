@@ -634,5 +634,9 @@ img, svg, video, canvas, audio, iframe, embed, object {
   #statCardContainer .left-stats  { grid-column: 1; }
   #statCardContainer .center-hero { grid-column: 2; justify-self: center; } /* you already had this */
   #statCardContainer .right-stats { grid-column: 3; }
+
+  #statCardContainer .left-stats,
+  #statCardContainer .center-hero,
+  #statCardContainer .right-stats { grid-row: 1; }
 }
 
