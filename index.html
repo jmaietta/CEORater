@@ -18,12 +18,12 @@
   <meta name="theme-color" content="#4f46e5"/>
 
   <meta property="og:title" content="CEORater"/>
-  <meta property="og:description" content="NASDAQ 100 CEO Performance &amp; Compensation Analytics"/>
+  <meta property="og:description" content="NASDAQ 100 CEO Performance & Compensation Analytics"/>
   <meta property="og:image" content="https://www.ceorater.com/android-chrome-512x512.png"/>
   <meta property="og:url" content="https://www.ceorater.com/"/>
   <meta name="twitter:card" content="summary_large_image"/>
   <meta name="twitter:title" content="CEORater"/>
-  <meta name="twitter:description" content="NASDAQ 100 CEO Performance &amp; Compensation Analytics"/>
+  <meta name="twitter:description" content="NASDAQ 100 CEO Performance & Compensation Analytics"/>
   <meta name="twitter:image" content="https://www.ceorater.com/android-chrome-512x512.png"/>
 
   <meta name="mobile-web-app-capable" content="yes"/>
@@ -53,13 +53,7 @@
 
   <style>
     #statCardContainer { display: flex; flex-direction: column; gap: 1rem; }
-    #statCardContainer .center-hero {
-      order: 1;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-    }
+    #statCardContainer .center-hero { order: 1; }
     #statCardContainer .left-stats { order: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     #statCardContainer .right-stats { order: 3; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     @media (min-width: 1024px) {
@@ -68,6 +62,10 @@
         grid-template-columns: 1fr 400px 1fr;
         align-items: stretch;
         gap: 1.5rem;
+      }
+      /* This new rule resets the mobile order for desktop */
+      #statCardContainer > * {
+        order: initial;
       }
       #statCardContainer .left-stats,
       #statCardContainer .right-stats {
