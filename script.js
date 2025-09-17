@@ -79,8 +79,10 @@ const signUpEmail = $("signUpEmail");
 const emailInput = $("emailInput");
 const passwordInput = $("passwordInput");
 const forgotPasswordLink = $("forgotPasswordLink");
-// NEW: Profile link toggle
+// NEW: Profile link + avatar dropdown
 const profileLink = $("profileLink");
+const userAvatar = $("userAvatar");
+const userMenu = $("userMenu");
 
 // View toggle
 const allCeosTab = $("allCeosTab");
@@ -112,21 +114,42 @@ let userWatchlist = new Set();
 let comparisonSet = new Set(); 
 let currentView = 'all'; 
 
+// ---------- Avatar helpers ----------
+function getUserInitial(user) {
+  const email = (user && user.email) || '';
+  const name = (user && user.displayName) || '';
+  if (name && name.trim()) return name.trim()[0].toUpperCase();
+  const local = (email.split('@')[0] || '').replace(/[^A-Za-z]/g, '');
+  return (local[0] || 'U').toUpperCase();
+}
+function closeMenu() {
+  if (userMenu && !userMenu.classList.contains('hidden')) userMenu.classList.add('hidden');
+}
+
 // ---------- App Logic ----------
 function handleAuthStateChange(user) {
   currentUser = user;
   if (user) {
-    loginBtn.classList.add('hidden');
-    logoutBtn.classList.remove('hidden');
-    userEmail.classList.remove('hidden');
-    // Show Profile link when logged in
-    if (profileLink) profileLink.classList.remove('hidden');
+    // Hide legacy login button (if still present) and show logout
+    loginBtn?.classList.add('hidden');
+    logoutBtn?.classList.remove('hidden');
 
-    // Masked email on the homepage for privacy; full email stays on /profile.html
-    const masked = maskEmail(user.email || '');
-    userEmail.textContent = masked;
-    // Optional: keep the full email accessible on hover
-    userEmail.title = user.email || '';
+    // Hide the email text in header (we use avatar now)
+    if (userEmail) {
+      userEmail.classList.add('hidden');
+      userEmail.textContent = '';
+      userEmail.title = '';
+    }
+
+    // Show Profile link (if present)
+    profileLink?.classList.remove('hidden');
+
+    // Configure avatar to open dropdown
+    if (userAvatar) {
+      userAvatar.textContent = getUserInitial(user);
+      userAvatar.title = 'Account';
+      userAvatar.onclick = () => { userMenu?.classList.toggle('hidden'); };
+    }
 
     auth.loadUserWatchlist(user.uid).then(watchlist => {
         userWatchlist = watchlist;
@@ -134,15 +157,25 @@ function handleAuthStateChange(user) {
         refreshView();
     });
   } else {
-    loginBtn.classList.remove('hidden');
-    logoutBtn.classList.add('hidden');
-    userEmail.classList.add('hidden');
-    // Hide Profile link when logged out
-    if (profileLink) profileLink.classList.add('hidden');
+    // Logged out UI
+    loginBtn?.classList.remove('hidden');
+    logoutBtn?.classList.add('hidden');
 
-    // Clear email text/title
-    if (userEmail) { userEmail.textContent = ''; userEmail.title = ''; }
+    profileLink?.classList.add('hidden');
 
+    if (userEmail) {
+      userEmail.classList.add('hidden');
+      userEmail.textContent = '';
+      userEmail.title = '';
+    }
+
+    if (userAvatar) {
+      userAvatar.textContent = '+';
+      userAvatar.title = 'Log in';
+      userAvatar.onclick = () => { loginModal?.classList.remove('hidden'); };
+    }
+
+    closeMenu();
     userWatchlist.clear();
     comparisonSet.clear();
     ui.updateComparisonTray(comparisonSet);
@@ -326,7 +359,8 @@ document.addEventListener('DOMContentLoaded', () => {
   allCeosTab.addEventListener('click', switchToAllView);
   watchlistTab.addEventListener('click', switchToWatchlistView);
 
-  loginBtn.addEventListener('click', () => loginModal.classList.remove('hidden'));
+  // Legacy login button (kept for compatibility if present)
+  loginBtn?.addEventListener('click', () => loginModal.classList.remove('hidden'));
   closeLoginModalBtn.addEventListener('click', () => loginModal.classList.add('hidden'));
   loginModal.addEventListener('click', e => {
     if (e.target === loginModal) loginModal.classList.add('hidden');
@@ -397,7 +431,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  logoutBtn.addEventListener('click', () => auth.signOut());
+  // Logout (works whether button is in header or dropdown)
+  logoutBtn?.addEventListener('click', () => auth.signOut().finally(() => closeMenu()));
   
   googleSignIn.addEventListener('click', () => {
     auth.signInWithGoogle().then(() => {
@@ -519,6 +554,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Escape' && !comparisonModal.classList.contains('hidden')) {
         comparisonModal.classList.add('hidden');
     }
+    // Also close the avatar menu on Escape
+    closeMenu();
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    const inside = e.target.closest('#userMenu') || e.target.closest('#userAvatar');
+    if (!inside) closeMenu();
   });
 
   emailInput.addEventListener('keypress', (e) => {
