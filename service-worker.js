@@ -1,4 +1,4 @@
-/* CEORater SW v47 — API-only, zero overhead for static assets */
+/* CEORater SW v48 — API-only, zero overhead for static assets */
 
 self.addEventListener('install', (e) => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
