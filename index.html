@@ -5,13 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>CEORater</title>
 
-  <!-- Canonical & preconnects -->
   <link rel="canonical" href="https://ceorater.com/"/>
   <link rel="preconnect" href="https://get-ceos-test-847610982404.us-east4.run.app" crossorigin/>
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin/>
   <link rel="dns-prefetch" href="https://get-ceos-test-847610982404.us-east4.run.app"/>
 
-  <!-- Icons & manifest -->
   <link rel="preload" as="image" href="favicon-32x32.png" type="image/png"/>
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png"/>
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png"/>
@@ -19,7 +17,6 @@
   <link rel="manifest" href="manifest.json"/>
   <meta name="theme-color" content="#4f46e5"/>
 
-  <!-- Open Graph / Twitter -->
   <meta property="og:title" content="CEORater"/>
   <meta property="og:description" content="NASDAQ 100 CEO Performance &amp; Compensation Analytics"/>
   <meta property="og:image" content="https://www.ceorater.com/android-chrome-512x512.png"/>
@@ -29,14 +26,12 @@
   <meta name="twitter:description" content="NASDAQ 100 CEO Performance &amp; Compensation Analytics"/>
   <meta name="twitter:image" content="https://www.ceorater.com/android-chrome-512x512.png"/>
 
-  <!-- PWA / iOS -->
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="CEORater"/>
   <link rel="apple-touch-startup-image" href="apple-touch-icon.png"/>
   <meta name="format-detection" content="telephone=no"/>
 
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Orbitron:wght@700&amp;display=swap" onload="this.onload=null;this.rel='stylesheet'"/>
@@ -44,22 +39,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Orbitron:wght@700&amp;display=swap" rel="stylesheet"/>
   </noscript>
 
-  <!-- Styles -->
   <link href="./dist/output.css" rel="stylesheet">
   <link href="style.css" rel="stylesheet">
 
-  <!-- Early data fetch -->
   <script>
     window.dataPromise = fetch('https://get-ceos-test-847610982404.us-east4.run.app/api/data')
       .then(r => r.json())
       .catch(err => console.error('Early fetch failed:', err));
   </script>
 
-  <!-- SEO -->
   <meta name="description" content="CEORater: Compare CEORaterScore, AlphaScore, CompScore and more to evaluate CEO Performance."/>
   <meta name="robots" content="max-snippet:160"/>
 
-  <!-- Small layout helpers for stat cards -->
   <style>
     #statCardContainer { display: flex; flex-direction: column; gap: 1rem; }
     #statCardContainer .center-hero { order: 1; }
@@ -81,11 +72,9 @@
 <body class="bg-gray-100 text-gray-800 font-sans">
 <div class="app-shell">
 
-  <!-- HEADER -->
   <header id="appHeader" class="bg-white shadow-md sticky top-0 z-30">
     <div class="container mx-auto px-4">
       <div class="flex justify-between items-center flex-wrap gap-y-3 py-3">
-        <!-- Left: Logo + Tabs -->
         <div class="flex items-center gap-x-3">
           <a href="/" class="flex-shrink-0">
             <img src="favicon-32x32.png" alt="CEORater Logo" class="block md:hidden h-8 w-8"/>
@@ -101,12 +90,16 @@
           </div>
         </div>
 
-        <!-- Right: Avatar + Dropdown (Profile + Log out only) -->
         <nav class="relative flex items-center">
-          <button id="userAvatar"
-                  class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold shadow-sm ring-1 ring-blue-400/20"
-                  title="Account"
-                  aria-label="Account">+</button>
+          <div id="loginControlContainer" class="flex items-center gap-x-2 cursor-pointer">
+              <div id="userAvatar"
+                      class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold shadow-sm ring-1 ring-blue-400/20"
+                      title="Log in"
+                      aria-label="Log in">
+                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+              </div>
+              <span id="loginText" class="hidden md:inline font-medium text-sm text-gray-700 hover:text-blue-600">Sign In</span>
+          </div>
 
           <div id="userMenu" class="hidden absolute right-0 top-10 w-44 bg-white rounded-lg shadow-lg border border-gray-200 z-40">
             <a href="./profile.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Profile</a>
@@ -116,7 +109,6 @@
       </div>
     </div>
 
-    <!-- Filters row -->
     <div class="container mx-auto px-4 border-t border-gray-200">
       <div class="py-2 lg:hidden">
         <button id="toggleFiltersBtn" class="w-full px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 flex justify-between items-center">
@@ -175,7 +167,6 @@
     </div>
   </header>
 
-  <!-- MAIN -->
   <div class="container mx-auto p-4 md:p-8">
     <div id="statCardContainer" class="mb-6">
       <div class="left-stats">
@@ -189,7 +180,6 @@
         </div>
       </div>
 
-      <!-- Hero CEORaterScore Card -->
       <div class="center-hero mb-4 lg:mb-0">
         <div class="ceorater-stat-card rounded-xl p-6 text-center shadow-lg max-w-md mx-auto lg:max-w-none h-full flex flex-col justify-center">
           <h3 class="text-lg font-semibold text-slate-700 uppercase tracking-wider mb-2">Median CEORaterScore</h3>
@@ -237,10 +227,7 @@
       <p>CEORater 2025. A TEK2day Holdings company.</p>
     </footer>
   </div>
-</div> <!-- /.app-shell -->
-
-<!-- LOGIN MODAL (noindex for snippet) -->
-<div id="loginModal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal z-50 flex items-center justify-center p-4" data-nosnippet>
+</div> <div id="loginModal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal z-50 flex items-center justify-center p-4" data-nosnippet>
   <div class="bg-white rounded-lg p-6 w-full max-w-md relative">
     <h2 class="text-xl font-bold mb-4">Sign In to CEORater</h2>
     <p class="text-gray-600 mb-6">Sign in to save your CEO watchlist and track performance over time.</p>
@@ -284,7 +271,6 @@
   </div>
 </div>
 
-<!-- CEO DETAIL MODAL -->
 <div id="ceoDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal z-50 flex items-center justify-center p-4">
   <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg relative max-h-full overflow-y-auto">
     <div id="modalHeader" class="pb-4 border-b"></div>
@@ -298,7 +284,6 @@
   </div>
 </div>
 
-<!-- COMPARISON TRAY -->
 <div id="comparisonTray" class="hidden fixed bottom-0 left-0 right-0 bg-white shadow-2xl border-t border-gray-200 z-40">
   <div class="container mx-auto p-3 text-center sm:p-4 sm:text-left sm:flex sm:justify-between sm:items-center">
     <div class="flex items-center justify-center sm:justify-start space-x-3">
@@ -309,7 +294,6 @@
   </div>
 </div>
 
-<!-- COMPARISON MODAL -->
 <div id="comparisonModal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal z-50 flex items-center justify-center p-4">
   <div class="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col">
     <div class="p-4 border-b flex justify-between items-center flex-shrink-0">
@@ -331,16 +315,13 @@
   </div>
 </div>
 
-<!-- Firebase (compat) -->
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
 <script defer src="firebase-config.js"></script>
 
-<!-- Main app -->
 <script type="module" src="script.js"></script>
 
-<!-- Service Worker -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
