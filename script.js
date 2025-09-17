@@ -83,6 +83,8 @@ const forgotPasswordLink = $("forgotPasswordLink");
 const profileLink = $("profileLink");
 const userAvatar = $("userAvatar");
 const userMenu = $("userMenu");
+const loginControlContainer = $("loginControlContainer");
+const loginText = $("loginText");
 
 // View toggle
 const allCeosTab = $("allCeosTab");
@@ -130,25 +132,27 @@ function closeMenu() {
 function handleAuthStateChange(user) {
   currentUser = user;
   if (user) {
-    // Hide legacy login button (if still present) and show logout
+    // ---- LOGGED IN ----
+    loginText?.classList.add('hidden');
     loginBtn?.classList.add('hidden');
     logoutBtn?.classList.remove('hidden');
 
-    // Hide the email text in header (we use avatar now)
     if (userEmail) {
       userEmail.classList.add('hidden');
       userEmail.textContent = '';
       userEmail.title = '';
     }
 
-    // Show Profile link (if present)
     profileLink?.classList.remove('hidden');
 
-    // Configure avatar to open dropdown
     if (userAvatar) {
+      userAvatar.innerHTML = ''; // Clear silhouette
       userAvatar.textContent = getUserInitial(user);
       userAvatar.title = 'Account';
-      userAvatar.onclick = () => { userMenu?.classList.toggle('hidden'); };
+    }
+    
+    if (loginControlContainer) {
+      loginControlContainer.onclick = () => { userMenu?.classList.toggle('hidden'); };
     }
 
     auth.loadUserWatchlist(user.uid).then(watchlist => {
@@ -157,10 +161,10 @@ function handleAuthStateChange(user) {
         refreshView();
     });
   } else {
-    // Logged out UI
+    // ---- LOGGED OUT ----
+    loginText?.classList.remove('hidden');
     loginBtn?.classList.remove('hidden');
     logoutBtn?.classList.add('hidden');
-
     profileLink?.classList.add('hidden');
 
     if (userEmail) {
@@ -170,9 +174,13 @@ function handleAuthStateChange(user) {
     }
 
     if (userAvatar) {
-      userAvatar.textContent = '+';
+      userAvatar.textContent = ''; // Clear initials
+      userAvatar.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>`;
       userAvatar.title = 'Log in';
-      userAvatar.onclick = () => { loginModal?.classList.remove('hidden'); };
+    }
+
+    if (loginControlContainer) {
+        loginControlContainer.onclick = () => { loginModal?.classList.remove('hidden'); };
     }
 
     closeMenu();
@@ -560,7 +568,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Close dropdown when clicking outside
   document.addEventListener('click', (e) => {
-    const inside = e.target.closest('#userMenu') || e.target.closest('#userAvatar');
+    const inside = e.target.closest('#userMenu') || e.target.closest('#loginControlContainer');
     if (!inside) closeMenu();
   });
 
