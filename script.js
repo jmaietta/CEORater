@@ -15,7 +15,6 @@ const noResults = $("noResults");
 const loading = $("loading");
 const errorMessage = $("error-message");
 
-
 // --- Spinner helpers (bulletproof) ---
 function hideSpinner() {
   try {
@@ -58,6 +57,14 @@ function formatRelative(ts) {
   return days === 1 ? 'yesterday' : `${days} days ago`;
 }
 
+// ---------- Privacy helper ----------
+function maskEmail(email) {
+  if (!email || typeof email !== 'string' || !email.includes('@')) return email || '';
+  const [local, domain] = email.split('@');
+  if (local.length <= 3) return local + '@' + domain; // too short to meaningfully mask
+  return `${local.slice(0, 3)}*****@${domain}`;
+}
+
 // Auth elements
 const loginBtn = $("loginBtn");
 const logoutBtn = $("logoutBtn");
@@ -72,6 +79,8 @@ const signUpEmail = $("signUpEmail");
 const emailInput = $("emailInput");
 const passwordInput = $("passwordInput");
 const forgotPasswordLink = $("forgotPasswordLink");
+// NEW: Profile link toggle
+const profileLink = $("profileLink");
 
 // View toggle
 const allCeosTab = $("allCeosTab");
@@ -110,8 +119,15 @@ function handleAuthStateChange(user) {
     loginBtn.classList.add('hidden');
     logoutBtn.classList.remove('hidden');
     userEmail.classList.remove('hidden');
-    // We no longer need the separate watchlistBtn, so we can remove references to it here.
-    userEmail.textContent = user.email;
+    // Show Profile link when logged in
+    if (profileLink) profileLink.classList.remove('hidden');
+
+    // Masked email on the homepage for privacy; full email stays on /profile.html
+    const masked = maskEmail(user.email || '');
+    userEmail.textContent = masked;
+    // Optional: keep the full email accessible on hover
+    userEmail.title = user.email || '';
+
     auth.loadUserWatchlist(user.uid).then(watchlist => {
         userWatchlist = watchlist;
         updateWatchlistCount();
@@ -121,6 +137,12 @@ function handleAuthStateChange(user) {
     loginBtn.classList.remove('hidden');
     logoutBtn.classList.add('hidden');
     userEmail.classList.add('hidden');
+    // Hide Profile link when logged out
+    if (profileLink) profileLink.classList.add('hidden');
+
+    // Clear email text/title
+    if (userEmail) { userEmail.textContent = ''; userEmail.title = ''; }
+
     userWatchlist.clear();
     comparisonSet.clear();
     ui.updateComparisonTray(comparisonSet);
