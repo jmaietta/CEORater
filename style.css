@@ -616,3 +616,11 @@ img, svg, video, canvas, audio, iframe, embed, object {
 #appHeader .container > .flex {
   padding-bottom: 4px;
 }
+
+/* Keep Median CEORaterScore in the middle, always */
+#statCardContainer .center-hero {
+  grid-column: 2;      /* middle column of the 3-col grid */
+  justify-self: center;
+}
+
+
