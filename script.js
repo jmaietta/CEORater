@@ -133,7 +133,7 @@ function handleAuthStateChange(user) {
   currentUser = user;
   if (user) {
     // ---- LOGGED IN ----
-    loginText?.classList.add('hidden');
+    loginText?.classList.add('md:hidden'); // Force hide on desktop
     loginBtn?.classList.add('hidden');
     logoutBtn?.classList.remove('hidden');
 
@@ -162,7 +162,7 @@ function handleAuthStateChange(user) {
     });
   } else {
     // ---- LOGGED OUT ----
-    loginText?.classList.remove('hidden');
+    loginText?.classList.remove('md:hidden'); // Restore default responsive behavior
     loginBtn?.classList.remove('hidden');
     logoutBtn?.classList.add('hidden');
     profileLink?.classList.add('hidden');
@@ -592,3 +592,4 @@ document.addEventListener('DOMContentLoaded', () => {
     .catch(() => errorMessage.classList.remove('hidden'))
     .finally(() => loading.style.display = 'none');
 });
+
