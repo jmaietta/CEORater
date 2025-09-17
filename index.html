@@ -53,7 +53,13 @@
 
   <style>
     #statCardContainer { display: flex; flex-direction: column; gap: 1rem; }
-    #statCardContainer .center-hero { order: 1; }
+    #statCardContainer .center-hero {
+  order: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
     #statCardContainer .left-stats { order: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     #statCardContainer .right-stats { order: 3; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     @media (min-width: 1024px) {
