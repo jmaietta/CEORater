@@ -2,7 +2,7 @@
 const SERVICE_URL = 'https://ceorater-backend-697273542938.us-south1.run.app/api/data';
 
 // Cache configuration
-const CACHE_TIME = 60 * 60 * 1000; // 60 minutes in milliseconds
+const CACHE_TIME = 25 * 60 * 60 * 1000; // ~24 hours in milliseconds
 const CACHE_KEYS = {
   DATA: 'ceoData',
   TIMESTAMP: 'lastUpdate'
@@ -166,8 +166,8 @@ async function fetchFreshData() {
   const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
   
   try {
-    // Use original CORS-safe approach (no headers)
-    const response = await fetch(SERVICE_URL + `?t=${Date.now()}`, {
+    // No cache-buster param; allow HTTP caches & backend snapshotting to work
+    const response = await fetch(SERVICE_URL, {
       signal: controller.signal
     });
     
@@ -210,7 +210,7 @@ async function fetchDataInternal() {
   if (isCacheValid()) {
     const cachedData = getCachedData();
     if (cachedData && cachedData.length > 0) {
-      console.log('Using cached data (less than 60 minutes old)');
+      console.log('Using cached data (less than ~24 hours old)');
       return cachedData;
     }
   }
@@ -235,18 +235,20 @@ async function fetchDataInternal() {
 }
 
 /**
- * Fetches data from the secure Cloud Run service with 60-minute caching and request deduplication.
+ * Fetches data from the secure Cloud Run service with daily caching and request deduplication.
  * MAIN API-LIMITING FEATURE: Prevents multiple simultaneous requests.
  * @returns {Promise<Array<Object>>} A promise that resolves to an array of CEO data objects.
  */
 export async function fetchData() {
   // REQUEST DEDUPLICATION - KEY API-LIMITING FEATURE!
-  // If a request is already in flight, return that promise instead of making a new one
   if (pendingRequest) {
     console.log('Request already in progress, returning existing promise');
     return pendingRequest;
   }
-  
+
+  // Small jitter to avoid many tabs hitting at once when cache expires
+  await new Promise(r => setTimeout(r, Math.floor(Math.random() * 400)));
+
   // Start new request
   pendingRequest = fetchDataInternal();
   
