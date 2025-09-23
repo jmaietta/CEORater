@@ -37,6 +37,17 @@ const NUMBER_CLEANUP_REGEX = /[^\d.-]/g;
 // Request deduplication (KEY API-LIMITING FEATURE)
 let pendingRequest = null;
 
+/** ---------- Time helpers for the evening cutoff ---------- **/
+function nowInET() {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+}
+function todayCutoffET(hour = 18, minute = 15) { // default 6:15pm ET
+  const n = nowInET();
+  const cutoff = new Date(n);
+  cutoff.setHours(hour, minute, 0, 0);
+  return cutoff;
+}
+
 /**
  * Helper function to get a string value from a cell.
  * @param {Array} row The data row
@@ -117,11 +128,28 @@ function parseRows(data) {
  * @returns {boolean} True if cache is valid
  */
 function isCacheValid() {
-  const lastFetch = localStorage.getItem(CACHE_KEYS.TIMESTAMP);
-  if (!lastFetch) return false;
-  
-  const cacheAge = Date.now() - parseInt(lastFetch, 10);
-  return cacheAge < CACHE_TIME;
+  const lastFetchStr = localStorage.getItem(CACHE_KEYS.TIMESTAMP);
+  if (!lastFetchStr) return false;
+
+  const lastFetchMs = parseInt(lastFetchStr, 10);
+  if (Number.isNaN(lastFetchMs)) return false;
+
+  // Standard TTL (~24–25h)
+  const ageMs = Date.now() - lastFetchMs;
+  if (ageMs >= CACHE_TIME) return false;
+
+  // Evening cutoff rule: after ~6:15pm ET, force ONE re-fetch if cache
+  // was created before today's cutoff (so 7pm users see fresh 5pm data)
+  const nowET = nowInET();
+  const cutoff = todayCutoffET(18, 15); // adjust to 18:30 if you prefer a bigger buffer
+  if (nowET >= cutoff) {
+    const lastFetchET = new Date(new Date(lastFetchMs).toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    if (lastFetchET < cutoff) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /**
@@ -166,9 +194,10 @@ async function fetchFreshData() {
   const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
   
   try {
-    // No cache-buster param; allow HTTP caches & backend snapshotting to work
+    // Revalidate with server snapshot; still zero Airtable calls on backend
     const response = await fetch(SERVICE_URL, {
-      signal: controller.signal
+      signal: controller.signal,
+      cache: 'no-cache'
     });
     
     clearTimeout(timeoutId);
@@ -210,7 +239,7 @@ async function fetchDataInternal() {
   if (isCacheValid()) {
     const cachedData = getCachedData();
     if (cachedData && cachedData.length > 0) {
-      console.log('Using cached data (less than ~24 hours old)');
+      console.log('Using cached data (valid under TTL / cutoff rules)');
       return cachedData;
     }
   }
