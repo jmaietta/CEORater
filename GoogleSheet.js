@@ -2,7 +2,8 @@
 const SERVICE_URL = 'https://ceorater-backend-697273542938.us-south1.run.app/api/data';
 
 // Cache configuration
-const CACHE_TIME = 25 * 60 * 60 * 1000; // ~24 hours in milliseconds
+// Set to 0 so we always try network first; we still keep cached data for offline fallback.
+const CACHE_TIME = 0; // was ~24h
 const CACHE_KEYS = {
   DATA: 'ceoData',
   TIMESTAMP: 'lastUpdate'
@@ -36,17 +37,6 @@ const NUMBER_CLEANUP_REGEX = /[^\d.-]/g;
 
 // Request deduplication (KEY API-LIMITING FEATURE)
 let pendingRequest = null;
-
-/** ---------- Time helpers for the evening cutoff ---------- **/
-function nowInET() {
-  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
-}
-function todayCutoffET(hour = 18, minute = 15) { // default 6:15pm ET
-  const n = nowInET();
-  const cutoff = new Date(n);
-  cutoff.setHours(hour, minute, 0, 0);
-  return cutoff;
-}
 
 /**
  * Helper function to get a string value from a cell.
@@ -128,28 +118,11 @@ function parseRows(data) {
  * @returns {boolean} True if cache is valid
  */
 function isCacheValid() {
-  const lastFetchStr = localStorage.getItem(CACHE_KEYS.TIMESTAMP);
-  if (!lastFetchStr) return false;
-
-  const lastFetchMs = parseInt(lastFetchStr, 10);
-  if (Number.isNaN(lastFetchMs)) return false;
-
-  // Standard TTL (~24–25h)
-  const ageMs = Date.now() - lastFetchMs;
-  if (ageMs >= CACHE_TIME) return false;
-
-  // Evening cutoff rule: after ~6:15pm ET, force ONE re-fetch if cache
-  // was created before today's cutoff (so 7pm users see fresh 5pm data)
-  const nowET = nowInET();
-  const cutoff = todayCutoffET(18, 15); // adjust to 18:30 if you prefer a bigger buffer
-  if (nowET >= cutoff) {
-    const lastFetchET = new Date(new Date(lastFetchMs).toLocaleString('en-US', { timeZone: 'America/New_York' }));
-    if (lastFetchET < cutoff) {
-      return false;
-    }
-  }
-
-  return true;
+  const lastFetch = localStorage.getItem(CACHE_KEYS.TIMESTAMP);
+  if (!lastFetch) return false;
+  
+  const cacheAge = Date.now() - parseInt(lastFetch, 10);
+  return cacheAge < CACHE_TIME;
 }
 
 /**
@@ -194,10 +167,10 @@ async function fetchFreshData() {
   const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
   
   try {
-    // Revalidate with server snapshot; still zero Airtable calls on backend
+    // Explicitly bypass any HTTP caches; server also sends "no-store"
     const response = await fetch(SERVICE_URL, {
       signal: controller.signal,
-      cache: 'no-cache'
+      cache: 'no-store'
     });
     
     clearTimeout(timeoutId);
@@ -232,39 +205,31 @@ async function fetchFreshData() {
 
 /**
  * Internal fetch function with all the logic.
+ * Network-first: always try server first (fast, from Cloud Run cache),
+ * then fall back to local cache if network fails.
  * @returns {Promise<Array<Object>>} A promise that resolves to CEO data
  */
 async function fetchDataInternal() {
-  // Check cache first
-  if (isCacheValid()) {
-    const cachedData = getCachedData();
-    if (cachedData && cachedData.length > 0) {
-      console.log('Using cached data (valid under TTL / cutoff rules)');
-      return cachedData;
-    }
-  }
-  
+  // 1) Try network first (server is warm + sends no-store)
   try {
-    // Attempt to fetch fresh data
     return await fetchFreshData();
-    
   } catch (error) {
     console.error('Error fetching fresh data:', error);
-    
-    // Fallback to cached data if available (even if stale)
-    const cachedData = getCachedData();
-    if (cachedData && cachedData.length > 0) {
-      console.log('Using cached data as fallback due to fetch error');
-      return cachedData;
-    }
-    
-    // No cached data available, re-throw the error
-    throw error;
   }
+
+  // 2) Fallback to cached data (even if stale) when offline or API failed
+  const cachedData = getCachedData();
+  if (cachedData && cachedData.length > 0) {
+    console.log('Using cached data as fallback due to fetch error');
+    return cachedData;
+  }
+
+  // 3) Nothing to serve
+  throw new Error('No data available');
 }
 
 /**
- * Fetches data from the secure Cloud Run service with daily caching and request deduplication.
+ * Fetches data from the secure Cloud Run service with request deduplication.
  * MAIN API-LIMITING FEATURE: Prevents multiple simultaneous requests.
  * @returns {Promise<Array<Object>>} A promise that resolves to an array of CEO data objects.
  */
@@ -275,7 +240,7 @@ export async function fetchData() {
     return pendingRequest;
   }
 
-  // Small jitter to avoid many tabs hitting at once when cache expires
+  // Small jitter to avoid many tabs hitting at once
   await new Promise(r => setTimeout(r, Math.floor(Math.random() * 400)));
 
   // Start new request
